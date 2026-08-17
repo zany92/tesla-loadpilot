@@ -41,7 +41,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tesla LoadPilot from a config entry."""
     integration = await async_get_integration(hass, DOMAIN)
-    coordinator = LoadPilotCoordinator(hass, entry, integration.version)
+    coordinator = LoadPilotCoordinator(hass, entry, str(integration.version) if integration.version else None)
 
     await coordinator.async_setup()
     await coordinator.async_config_entry_first_refresh()

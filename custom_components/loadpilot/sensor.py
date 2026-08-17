@@ -76,13 +76,17 @@ class LoadPilotBaseSensor(
     ) -> None:
         super().__init__(coordinator)
         # Device name "LoadPilot" => entity ids sensor.loadpilot_* (contract).
-        self._attr_device_info = DeviceInfo(
+        device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name="LoadPilot",
             manufacturer="Tesla LoadPilot project",
             model="TWC Gen 3 load manager",
-            sw_version=coordinator.integration_version,
         )
+        # sw_version omis si inconnu : un None dans le registre des devices
+        # casse la comparaison AwesomeVersion (bug vecu au premier run).
+        if coordinator.integration_version:
+            device_info["sw_version"] = str(coordinator.integration_version)
+        self._attr_device_info = device_info
 
 
 class LoadPilotStateSensor(LoadPilotBaseSensor):
