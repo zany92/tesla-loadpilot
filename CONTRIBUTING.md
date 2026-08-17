@@ -34,7 +34,7 @@ sent back for it. Also include:
   applied bias;
 - for regulation issues: the contactor lifetime cycle counter before/after,
   and whether `evse_state` reached 9 (vehicle give-up — often mistaken for
-  a wallbox fault, see [`docs/BEHAVIOR.md`](docs/BEHAVIOR.md) §4).
+  a wallbox fault, see [`docs/BEHAVIOR.md`](docs/BEHAVIOR.md) §5).
 
 Please do **not** open issues asking how to hack the wallbox beyond its
 load-management interface, and never paste secrets (WiFi credentials, API

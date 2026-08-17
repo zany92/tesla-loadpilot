@@ -94,6 +94,38 @@ implementation for the foreseeable future.
 - **investigating**: optional Mushroom variant, extra badges/cards, config
   flow polish (per-country presets: contract sizes → per-phase limits).
 
+## Risks and external dependencies (tracked)
+
+The project sits on two firmwares it does not control; these are the known
+ways they can move under us.
+
+- **Tesla may harden the plausibility layer.** The distrust state
+  ([`BEHAVIOR.md`](BEHAVIOR.md) §4) is an undocumented behaviour, present
+  since at least fw 25.x per community reports and characterised by us on
+  26.18. Any wallbox OTA can tighten the correlation check (or shift the
+  calibration constants) and silently degrade regulation. Mitigation:
+  freeze wallbox updates where possible, mandatory firmware version in
+  every report, re-run the [`BEHAVIOR.md`](BEHAVIOR.md) §8 validation
+  after any update.
+- **The commissioning door can close.** Meter activation is locked behind
+  installer credentials since ~fw 26.2.0; the working bypass (generic
+  Tesla account → More → "Tesla device settings", validated on 26.18) is
+  unofficial and revocable by Tesla at any update. This is a fragile
+  dependency of the whole install path — documented in
+  [`INSTALL_FR.md`](INSTALL_FR.md) §4.
+- **ESPHome breaking changes.** The community has already been bitten:
+  ESPHome 2026.5.1 broke a comparable project's YAML via the
+  `modbus_controller` → `modbus_server` migration (Klangen82's repo,
+  issue #9). Mitigation: releases pin firmware + integration on the same
+  tag, and the ESPHome minimum version is part of the release notes.
+- **"Cure window" (auto-SHADOW) — investigating.** Recovery from the
+  distrust state was observed after hours of honest raw publication
+  (shadow mode). If the trust-score hypothesis holds, a deliberate
+  automatic cure window (fall back to SHADOW on distrust detection, dwell
+  on the honest signal, then re-engage) becomes the recovery mechanism.
+  Under validation on the reference installation — not designed into the
+  shipped firmware yet.
+
 ## Explicit non-goals (v0.x)
 
 From [`../ARCHITECTURE.md`](../ARCHITECTURE.md):

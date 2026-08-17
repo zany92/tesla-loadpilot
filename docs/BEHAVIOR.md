@@ -97,7 +97,96 @@ same amount**.
 - Design rule: **the published signal must track the vehicle current 1:1 —
   never diluted, never delayed on that component.**
 
-## 4. Session: the vehicle's memory and the silent give-up
+## 4. The distrust state: when the wallbox stops believing the meter
+
+The plausibility check of §3 is not just a per-sample filter: when it is
+violated, the wallbox enters a **latched distrust state** in which the
+emulated meter is durably ignored. **MEASURED on our installation
+(17 Aug 2026, two instrumented episodes)**:
+
+- **Entry path #1 (MEASURED)** — a published value **below the wallbox's
+  own branch current**: a one-off meter glitch published ~0.6 A on a phase
+  for ~2 s while the wallbox itself was drawing 16 A. A real meter on the
+  incomer can physically never read below the charger's own branch —
+  maximally implausible; distrust appears to have latched right there.
+- **Entry path #2 (MEASURED)** — a **vehicle ramp absorbed by the saturated
+  clamp**: with the published value pinned at the limit (zero
+  availability), the car ramped 8 → 16 A while the published signal echoed
+  only +0.7 A — eight amps of the wallbox's own current invisible in the
+  meter it polls. The 1:1 correlation check breaks; session-level distrust
+  was immediate. Note the design tension: the very clamp that makes
+  tripping impossible (§7) is what absorbs the ramp echo under prolonged
+  saturation. (With trust intact this corner is unreachable — at zero
+  availability the pilot is low, so the car cannot ramp; it only happened
+  because distrust was already installed.)
+- **Once installed, the wallbox ignores EVERYTHING (MEASURED)** — no
+  service modulation at sustained clamp, no protection bites, no integral
+  cut, and the **L + 0.1 escalation was ignored for 8 minutes** with the
+  contactor closed: at 0.1 A over the limit for 480 s the ~20 A·s integral
+  (§2) should have cut at ~200 s if the meter were still being honoured.
+  The wallbox simply charges at its internal ceiling.
+- **What does NOT clear it (all MEASURED)** — a charging-current
+  renegotiation, a brand-new charging session, a reboot of the
+  meter-emulating node (~1 min Modbus dropout), a ±0.05 A dither on the
+  published value.
+- **What DID clear it, apparently (MEASURED once)** — an overnight window
+  during which the node published the **honest raw measurement for hours**
+  (shadow mode). Next morning trust was back and the §8 validation ran
+  flawlessly. **Working hypothesis (INFERRED)**: trust is a **score**,
+  rebuilt by time spent on a plausible, 1:1-correlated signal — not an
+  event flag. A controlled re-test (1–2 h of honest signal, then
+  re-engage) is in progress, and a detector now timestamps every
+  entry/exit of the state.
+- Operating invariant that follows: **never publish a value below the
+  wallbox's own branch current, and never let the published signal stop
+  echoing the vehicle's ramps** — even under saturation.
+
+### Independent corroboration (REPORTED)
+
+- **PVi1 (TMC, 9 Aug 2026, fw 26.18 — our exact version)** — arrives at
+  the same theory independently: the TWC3 "actively checks whether the
+  reported meter value actually correlates with the load it's causing
+  itself"; a static-looking value → detected and ignored, regulation
+  honoured before a session but ignored during it. His fix matches ours:
+  the CTs must **measure a branch that includes the wallbox itself** so
+  the reported value is physically correlated with the car's ramps. Same
+  post: the installer lock on meter commissioning introduced around
+  fw 26.2.0 is bypassable on 26.18 via a generic Tesla account (app →
+  More → "Tesla device settings"), and the regulated floor is 5 A.
+- **Klangen82, `tesla-wall-connector-control` issue #1 (5 May 2026)** — a
+  **permissive** +1 A step (10 → 11 A) of the emulated value during an
+  active session: the TWC "often enters a 'fail-safe' mode before it
+  starts ramping up to the new value". Distrust can therefore latch on any
+  discontinuity uncorrelated with the wallbox's behaviour, not only on
+  restrictive or impossible values.
+- **Klangen82 issue #7 (mitf559, brand-new Gen 3; and YLAG on fw 25.x)** —
+  the full signature: meter honoured at standstill, ignored in-session,
+  "the amps will ramp up to the max" a few seconds after charging starts.
+  YLAG reports the same on **fw 25.x**.
+- **Interpretation divergence (flagged, not settled)** — the community
+  (Klangen82's README disclaimer of 20 Apr 2026, echoed elsewhere)
+  attributes this to a **"fw 26.2+ lock"** that "ignores external current
+  limits during active charging". The wider body of evidence — fw 25.x
+  affected (YLAG), 26.x installations working elsewhere (FreekSchreurs:
+  "Firmware version 26.x works without problem"), and our fully
+  controllable 26.18 — points instead to a **recoverable behavioural
+  state present since at least 25.x**, triggered by publication style
+  rather than gated by firmware version. Neither reading is proven.
+
+### What Tesla documents officially (REPORTED — DPM application note, rev 1.2, Jan 2024)
+
+- On **loss of meter connection** the documented fallback is a **6 A
+  maximum output** ("so as not to overload the system") — a degraded
+  mode, not a stop.
+- **No "meter ignored" / distrust state is documented anywhere** in the
+  application note: the behaviour described in this section is an
+  undocumented layer.
+- Max Conductor Limit = **80 % of the panel rating**; **one single Wall
+  Connector per meter**; requires **fw ≥ 23.8.1**. (The 5 A regulated
+  floor above is PVi1's report on 26.18, not an app-note figure — note it
+  differs from the documented 6 A loss-of-meter fallback.)
+
+## 5. Session: the vehicle's memory and the silent give-up
 
 Vehicle-side behaviours (Tesla), measured through the wallbox:
 
@@ -114,7 +203,7 @@ Vehicle-side behaviours (Tesla), measured through the wallbox:
   it: automatic restart after release if an API is available, otherwise an
   explicit notification — and anti-cycling so it never happens.
 
-## 5. Measured dynamics (calibration constants)
+## 6. Measured dynamics (calibration constants)
 
 | Quantity | Measured value |
 |---|---|
@@ -135,10 +224,10 @@ Vehicle-side behaviours (Tesla), measured through the wallbox:
 | Modbus retry timeout (reply deadline) | ~66 ms |
 | Vehicle response to a J1772 setpoint change | ~5 s |
 
-## 6. The architectural consequence: clamped worst-phase symmetric publication
+## 7. The architectural consequence: clamped worst-phase symmetric publication
 
 This is the project's landing point, and it follows mechanically from
-§1–§3:
+§1–§4:
 
 ```
 avail_p  = budget − bias − measure_p        (per phase, clamped to [0 ; L])
@@ -158,17 +247,19 @@ publish  = L − min(avail_1, avail_2, avail_3)     (identical on all 3 channels
   availability" in minutes (§1) and can hold a residual indefinitely, after
   **120 s at zero availability** the block publishes **L + 0.1** on all 3
   channels to force a clean stop (PVi1's technique — REPORTED, then
-  MEASURED on our installation).
+  MEASURED on our installation). Caveat: the escalation is only honoured
+  while the meter is trusted — in the distrust state (§4) it was ignored
+  for 8 measured minutes.
 - **No vehicle estimator**: the published measurement INCLUDES the
   wallbox's current → the published signal tracks the vehicle 1:1 and the
   plausibility check (§3) is satisfied by construction. No internal state
-  other than the escalation timer (see the negative results, §8: every
+  other than the escalation timer (see the negative results, §9: every
   internal state added had created its own bug).
 - **Safety buffer**: the offered resource is `budget = contract_limit ×
   (1 − b)` (b = 10 % by default) — the vehicle never exploits 100 % of the
   margin, in steady state or transients.
 
-## 7. Validation (17 Aug 2026, 11:21–11:35, 3 s trace, block ACTIVE)
+## 8. Validation (17 Aug 2026, 11:21–11:35, 3 s trace, block ACTIVE)
 
 Contactor-cycle baseline = 470. Vehicle at 16 A, live household (A/C, pool
 pump). **MEASURED**:
@@ -191,7 +282,7 @@ recovery — **the 26.18 wallbox CAN hold a plateau below the vehicle's
 demand** when the published signal is bounded ≤ limit. Two real household
 load steps absorbed without a single event.
 
-## 8. Negative results (assumed, and published on purpose)
+## 9. Negative results (assumed, and published on purpose)
 
 An earlier architecture — a "signal synthesizer" that decoupled the
 vehicle's AC component through an estimator (gain α < 1 on transients) —
@@ -233,14 +324,14 @@ the "every internal state creates its own bug" law — is the most complete
 characterisation of this wallbox firmware in existence. That is why the
 failures are published alongside the result.
 
-## 9. Scope and re-calibration warning
+## 10. Scope and re-calibration warning
 
 All constants above were measured against **TWC firmware 26.18** with a
 Tesla vehicle on a three-phase 15 kVA French installation. The law's
 *structure* (symmetric service, worst-phase protection, plausibility) is
 expected to hold across 26.x (REPORTED, convergent community sources), but
 the *constants* are calibration data. **If your wallbox firmware differs,
-re-run the validation of §7 before trusting the escalation and buffer
+re-run the validation of §8 before trusting the escalation and buffer
 settings** — and please report your findings (see `CONTRIBUTING.md`; the
 TWC firmware version is mandatory in every report).
 

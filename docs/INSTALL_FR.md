@@ -95,7 +95,14 @@ publiées à 0, le reste de la chaîne fonctionne tel quel.
    - **masse commune** entre les deux ;
    - pas de terminaison 120 Ω nécessaire sur liaison courte (validé en
      production) ; en prévoir si la liaison dépasse quelques mètres ou si
-     des erreurs de trame apparaissent.
+     des erreurs de trame apparaissent ;
+   - pour référence, la spécification **officielle** Tesla (app note DPM)
+     pour le compteur : paire torsadée **blindée**, longueur **120 m
+     max**, drain du blindage **à la terre côté tableau** (une seule
+     extrémité). Sur liaison longue ou en environnement bruité,
+     alignez-vous dessus. À noter : des montages communautaires
+     fonctionnent sans masse commune ni terminaison (gist LucaTNT) — notre
+     référence utilise la masse commune, les deux existent sur le terrain.
 3. **Flash** du firmware nœud borne (mêmes remarques : premier flash USB,
    `secrets.yaml` renseigné). `TODO-sync` : cible =
    `esphome/packages/twc-core.yaml` + `esphome/packages/boards/kc868-a6.yaml`
@@ -111,7 +118,16 @@ publiées à 0, le reste de la chaîne fonctionne tel quel.
    - `TWC Polling Active` = on et `TWC Poll Interval` stable ~190-200 ms :
      la borne polle le compteur émulé ;
    - des octets RX mais **zéro trame valide** → polarité : **permutez A et
-     B** (piège vécu) ;
+     B** (piège vécu et confirmé côté communauté : « A → +, B → −, et
+     inverser si muet ») ;
+   - si la borne ne polle toujours pas : **redémarrez l'ESP32 APRÈS que la
+     borne est en ligne** (retour communautaire validé — l'ordre de
+     démarrage compte pour que la borne détecte le compteur) ;
+   - **vitesse du bus** : les sources communautaires rapportent tantôt
+     **9600**, tantôt **115200 bauds** selon les installations et versions.
+     Notre firmware de référence fonctionne tel que fourni — n'y touchez
+     pas ; si vous portez la config sur une autre base et que le bus reste
+     muet à polarité correcte, essayez les deux vitesses ;
    - piège n°1 du nœud borne : **jamais `logger: level: VERBOSE`** — les
      logs bloquants font rater la deadline de réponse Modbus (~66 ms) et
      la borne n'obtient plus une seule réponse ([`20_FIRMWARE.md`](20_FIRMWARE.md) §2.2) ;
@@ -144,6 +160,42 @@ Pas-à-pas complet et pièges vécus :
    - Conductor Limit resté à 32 A sur un contrat 21 A = « jamais de
      bridage » : c'est LE piège qui a fait conclure deux fois à tort
      « le DPM ne marche pas ».
+
+### Verrou installateur (firmware ≥ 26.2.0) et contournement
+
+Depuis le firmware **26.2.0** environ, plusieurs installations rapportent
+que la déclaration du compteur externe est **verrouillée derrière des
+identifiants installateur Tesla One** (sans activation, la borne n'initie
+jamais le polling Modbus). Contournement **validé par la communauté sur
+26.18** (notre version) : un **compte Tesla générique** suffit — dans
+l'app Tesla, **More → « Tesla device settings »** donne accès à la
+configuration de l'appareil sans compte pro. Notre commissioning de
+référence (hotspot + Tesla One, §ci-dessus) a fonctionné sans compte pro
+sur 26.18 ; si le menu vous est refusé, passez par ce contournement.
+Gardez en tête que cette porte n'a rien d'officiel : Tesla peut la
+refermer à toute mise à jour.
+
+### Recommandation FORTE : gelez le firmware de la borne
+
+Toute la chaîne (verrou d'activation contourné, constantes de
+comportement mesurées sur 26.18, couche de plausibilité) repose sur un
+firmware borne **non documenté et mouvant** — la communauté a déjà vécu
+un changement de comportement attribué à une MAJ, et un downgrade est
+impossible. **Si votre installation le permet, bloquez les mises à jour
+automatiques de la borne** (pas de méthode officielle documentée —
+question communautaire ouverte). A minima, notez la version firmware
+avant/après toute MAJ et re-déroulez la validation
+([`BEHAVIOR.md`](BEHAVIOR.md) §8) après chaque changement.
+
+> ⚠️ **Invariant d'exploitation — ne publiez JAMAIS une valeur inférieure
+> au courant propre de la borne.** Un vrai compteur en tête d'installation
+> ne peut physiquement pas mesurer moins que ce que la borne tire
+> elle-même : le firmware le détecte et entre dans un **état de défiance**
+> où le compteur émulé est durablement ignoré (service, protection et
+> escalade compris) — voir [`BEHAVIOR.md`](BEHAVIOR.md) §4. Le bloc de
+> publication de référence respecte cet invariant par construction (la
+> mesure publiée inclut la branche de la borne) ; toute modification
+> locale doit le préserver, y compris pendant les rampes du véhicule.
 
 ## 5. Intégration Home Assistant (HACS)
 
@@ -178,7 +230,7 @@ directement en actif** :
    - aucune valeur aberrante (NaN, 0 transitoire au boot).
 2. **Activation : mode `ACTIF-MAX`**, de préférence charge en cours et
    maison chargée (le scénario nominal). Attendu (validation de référence,
-   [`BEHAVIOR.md`](BEHAVIOR.md) §7) : modulation douce sous la consigne,
+   [`BEHAVIOR.md`](BEHAVIOR.md) §8) : modulation douce sous la consigne,
    paliers tenus, remontée ~1 A / 30 s, **zéro ouverture de contacteur**
    (notez le compteur de cycles lifetime avant/après).
 3. **Abandon immédiat si** : la borne ignore le signal > 2 min, TOUTE
@@ -201,7 +253,7 @@ Après ~3 démarrages de charge perturbés en quelques minutes, le véhicule
 Tesla **cesse de retenter** — sans aucune alerte côté borne (signature :
 `evse_state` 9). Relance via l'app ou débranchement/rebranchement. Si vos
 premiers essais multiplient les arrêts/reprises, c'est probablement ça —
-pas une panne. Détails : [`BEHAVIOR.md`](BEHAVIOR.md) §4.
+pas une panne. Détails : [`BEHAVIOR.md`](BEHAVIOR.md) §5.
 
 ## 8. En cas de problème
 
