@@ -469,3 +469,17 @@ modulates durably, and the register emulation prior art are from
 [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control);
 the Neurio identity block is from LucaTNT's public gist. This project is
 not affiliated with, endorsed by, or sponsored by Tesla, Inc.*
+
+
+### Variant B closed-loop validation (17 Aug, 22:56-23:15, MEASURED)
+
+With the decaying-tail law active (tail 2.0 A, decay 0.15 A/s) under the
+exact conditions that produced the +/-2.5 A limit cycle: pool pump +
+electrolyser + one AC, house breathing around the budget. Results: trust
+verdict positive (descent 16 to 9.1 A at ~1 A/s within seconds of the
+published entering the pull zone), then **11 minutes pinned at the exact
+equilibrium (9.1 A) with zero oscillation** while the house dipped and
+rose, zero contactor cycles, and a clean exit (9.1 to 15.7 A in ~6 s once
+the constraint fell). The one alert fired was a detector false positive
+(threshold sat inside the dead band; recalibrated to L+0.85). Raw trace:
+`data/traces/2026-08-17_2256_variantB_closed_loop.log`.

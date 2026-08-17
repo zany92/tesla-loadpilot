@@ -69,3 +69,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator: LoadPilotCoordinator = entry.runtime_data
         await coordinator.async_shutdown()
     return unload_ok
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: ConfigEntry, device_entry
+) -> bool:
+    """Allow removing devices from the UI.
+
+    The live LoadPilot device carries the (DOMAIN, entry_id) identifier;
+    anything else attached to this entry (e.g. ghost devices left by a
+    failed setup) can be removed safely.
+    """
+    return (DOMAIN, config_entry.entry_id) not in device_entry.identifiers

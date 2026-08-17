@@ -139,3 +139,16 @@ GO uniquement si TOUT est vrai :
 
 NO-GO immédiat si : un seul cas C4/C6/C7 échoue (sécurité), ou un secret
 subsiste dans l'historique.
+
+
+## Relevé A15 (17/08 soir) : variante B validée en boucle fermée
+
+Conditions du yo-yo reproduites (pompe + électrolyseur + clim, maison
+respirant autour du budget). Cibles : Y1 excursions ≤ 2/5 min : zéro
+excursion en rafale ; Y2 zéro cycle contacteur : tenu (482 constant) ;
+Y3 oscillation ≤ ±1,5 A sur ≥ 60 s : battu (0 oscillation, palier
+9,1 A tenu 11 min) ; Y4 zéro défiance : tenu (l'unique alerte = faux
+positif de seuil, détecteur recalé à L+0,85) ; Y5 reprise : sortie
+propre 9,1 → 15,7 A en ~6 s. Trace :
+`data/traces/2026-08-17_2256_variantB_closed_loop.log`. La traînée
+reste active en production (2,0 A).
