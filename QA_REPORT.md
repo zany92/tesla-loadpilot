@@ -102,9 +102,11 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
 > revalidant) ; presets kVA France ajoutés (mono 6-24, tri 6-36, aide de
 > saisie - stockage inchangé en A/phase) pour le profil `fr_tic` ; tous
 > les `[UX_COPY.md pending]` remplacés par les textes UX_COPY réels
-> (EN/FR, arbres de clés identiques). Restent en TODO explicite
-> (const.py) : parcours 5 étapes (step electrical dédié, récap confirm,
-> test d'existence des nœuds) + demandes `paused`/`charger_current`.
+> (EN/FR, arbres de clés identiques). Le TODO const.py « parcours 5
+> étapes » est levé : ✅ implémenté par la passe correctifs du 17/08 soir
+> (détail en fin de section MINEURS) ; restent les demandes
+> `paused`/`charger_current` et les sélecteurs de devices ESPHome
+> (UX_COPY.md §Demandes, post-v0.1.0).
 - Buffer : UX 0–50 % (`dashboards/UX.md:173`, `UX_COPY.md:116`) vs
   firmware/flow 0–30 % (`twc-core.yaml:601`, `config_flow.py:98`) - la loi
   clampe aussi à 30 (héritée prod). Trancher UNE valeur (30 recommandé) et
@@ -121,33 +123,79 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
 
 ---
 
-## MINEURS
+## MINEURS - statuts après la passe correctifs du 17/08 soir (n°2)
 
-1. `select` « Signal Mode » et capteur « Shadow Published Current »
-   (`twc-core.yaml:537-551, 429-435`) : entités absentes du contrat §3.1 -
-   additives, utiles (INSTALL_FR s'appuie dessus) ; à ratifier dans
-   CONTRACTS.md plutôt qu'à supprimer.
-2. `const.py:133` `ISSUE_CHARGER_NODE_MISSING` déclaré, jamais levé, sans
-   traduction - implémenter ou retirer.
-3. `coordinator.py:283` + `repairs.py` : `learn_more_url` avec `OWNER_TBD`
-   (10 occurrences dans le repo) - suit la décision compte GitHub.
-4. Options flow (`config_flow.py:117`) : une entité miroir déjà saisie
-   devient `vol.Required` → impossible à retirer sans recréer l'entrée.
-5. `config_flow.py` : aucun test d'existence du nœud (le dict `errors`
-   reste vide) - l'UX promettait des erreurs guidées vers le guide firmware.
-6. `esphome/packages/README.md:28-29` : « Both are already sanitised » -
-   faux pour la clé UDP (cf. B1) ; reformuler après réécriture d'historique.
-7. Pas d'exemple mono ni d'exemple pour la carte S3 draft dans
-   `esphome/examples/` (drafts honnêtement marqués non testés, OK pour 0.1).
-8. `Escalation Active` peut passer ON en mode OMBRE-MAX (escalade calculée
-   dans l'ombre, `twc-core.yaml:987-1020`) - cosmétique, documenter.
-9. Corpus docs : mentions « Loupiac » et un `number.whale_courant_de_recharge`
-   (`docs/40_LOI_DE_COMMANDE.md:219`) - nom de village + entity_id inerte
-   dans un doc de données : jugé ACCEPTABLE pour un repo public (aucune
-   adresse, aucune IP, aucun nom de réseau dans les fichiers courants ;
-   scan IP privées : néant).
-10. Dashboards : gauges `max` câblées sur 21/25 A (à ajuster à la limite
-    contrat, déjà noté par l'UX) ; carte SoC proprement commentée.
+1. ✅ **corrigé** - « Signal Mode » + « Shadow Published Current » ratifiés
+   dans CONTRACTS.md (table « Ajout ratifié le 17/08 soir (n°2, passe
+   QA) »), avec la sémantique d'Escalation Active associée (cf. 8).
+2. ✅ **corrigé (implémenté)** - `ISSUE_CHARGER_NODE_MISSING` levé par le
+   coordinator quand AUCUNE entité trackée du nœud borne n'existe dans la
+   machine d'états (≠ unavailable : nœud renommé/supprimé/jamais adopté),
+   severity ERROR, fixable (acquittement), placeholder `{charger_node}`,
+   traductions EN/FR ajoutées ; docstring `repairs.py` à jour.
+3. ✅ **corrigé** - `OWNER_TBD` → `zany92`
+   (github.com/zany92/tesla-loadpilot) dans README, manifest.json (×3,
+   codeowners inclus), coordinator, les 2 exemples ESPHome et
+   `.github/ISSUE_TEMPLATE/config.yml` ; note CONTRACTS.md §1.4 mise à
+   jour. Les mentions restantes (QA_REPORT, TESTPLAN) sont des
+   méta-références au critère de test, voulues.
+4. ✅ **corrigé** - miroir désactivable : `_mirror_schema` passe en
+   `vol.Optional` + `description={"suggested_value": …}` (jamais Required
+   avec default) ; un champ vidé est absent de `user_input` et l'options
+   flow reconstruit le mapping depuis la soumission → retrait effectif.
+5. ✅ **corrigé** - tests d'existence des nœuds à l'étape `nodes` du
+   nouveau parcours : scan de préfixe `slugify(node)_` sur les object_id
+   de la machine d'états ; erreurs `charger_not_found` / `meter_not_found`
+   (textes UX_COPY §1.6, EN/FR), bloquantes conformément à UX.md §2.2.
+6. ✅ **corrigé** - `esphome/packages/README.md` reformulé : les deux YAML
+   historiques n'étaient que PARTIELLEMENT assainis (clé UDP XXTEA en
+   clair, cf. B1 - réécriture d'historique + rotation restent dues) ;
+   toute extraction est à traiter comme non assainie par défaut.
+7. ✅ **corrigé (partiel, assumé)** - exemple mono créé :
+   `esphome/examples/charger-mono-exemple.yaml` (dérivé du tri,
+   `phase_count: "1"`, miroir L1 seul) ; README des exemples réaligné sur
+   les noms de fichiers réels. Pas d'exemple S3 (carte draft non testée -
+   assumé pour 0.1).
+8. ✅ **corrigé (sémantique)** - `escalation_state = esc && law_active`
+   dans `twc-core.yaml` : « Escalation Active » n'est ON que si le
+   plancher L+0,1 est PUBLIÉ (ACTIF-MAX). En RAW/OMBRE-MAX l'effet reste
+   visible sur Shadow Published Current ; le drapeau (donc l'état
+   `escalating` de l'intégration et les bannières dashboards) reste OFF.
+   Ratifié dans CONTRACTS.md.
+9. ➖ **sans objet** - jugé acceptable par la QA, aucun changement.
+10. ✅ **documenté (limite assumée)** - gauges à `max: 20` avec consigne
+    d'ajustement ; la carte gauge du cœur HA n'accepte qu'un nombre
+    STATIQUE pour `max` (pas d'entité/template sans carte HACS, exclue par
+    le contrat « core cards only ») → limite documentée en tête de
+    `loadpilot-overview.yaml`.
+
+### Complément passe correctifs - parcours config-flow 5 étapes (TODO M4)
+
+✅ **implémenté** : `user` (profil compteur) → `nodes` (2 boîtiers,
+existence vérifiée) → `electrical` (type d'installation + presets kVA +
+limite/buffer ; validations `budget_too_small`/`tri_limit_suspicious`
+inchangées) → `mirror` (L1 seul en mono) → `confirm` (récapitulatif via
+placeholders, création de l'entrée). Traductions EN/FR restructurées
+(étapes `nodes`/`electrical`/`confirm`, arbres de clés identiques,
+101 feuilles).
+
+Arbitrages pris :
+- récap `confirm` : les placeholders HA ne varient pas selon la langue →
+  `{country_profile}` passé en libellé quasi neutre (« France - Linky
+  (TIC) », « DSMR P1 »…) et `{phases}` en chiffre (« {phases}-phase » /
+  « {phases} phase(s) ») - légère déviation du copy UX_COPY §1.5 ;
+- l'étape `electrical` montre la liste COMPLÈTE des presets mono+tri (le
+  type d'installation se choisit sur le même écran, comme la maquette
+  UX.md §2.3) ; l'options flow, lui, filtre selon les phases de l'entrée ;
+- erreurs nœud introuvable BLOQUANTES (choix UX.md §2.2 : « le boîtier
+  doit être adopté … avant cette étape ») ;
+- options flow maintenu en UNE étape `init` (UX_COPY §2 en décrit deux -
+  hors périmètre de la passe, comportement inchangé par ailleurs).
+
+Validations passe correctifs : py_compile 8/8 OK ; json.load 4/4 OK ;
+arbres de clés EN/FR identiques (101 feuilles) + placeholders `{x}`
+identiques clé à clé ; yaml safe_load OK (twc-core, exemples borne tri et
+mono, les 2 dashboards).
 
 ---
 
@@ -187,3 +235,6 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
   `secrets.yaml.example` cohérent (6 clés, toutes consommées, clé UDP
   partagée documentée - la demande du rédacteur est donc déjà satisfaite) ;
   `.gitignore` couvre `secrets.yaml` et `*.BACKUP*`.
+
+
+> Note (17/08 soir) : B1 est TRAITÉ depuis le 17/08 après-midi (historique git recréé sans la clé, force-push, clé XXTEA tournée en prod sur les deux nœuds). Le rappel « reste dû » plus haut est obsolète.
