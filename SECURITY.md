@@ -1,13 +1,13 @@
 # Security policy
 
-## No secrets in this repository — ever
+## No secrets in this repository - ever
 
 This repository must never contain, in any file or commit history:
 
 - WiFi credentials, ESPHome API encryption keys, OTA passwords,
   fallback-AP passwords;
 - the **UDP meter key** (the XXTEA key protecting the meter → charger
-  link — whoever holds it can forge the measurements the wallbox acts on);
+  link - whoever holds it can forge the measurements the wallbox acts on);
 - private IP addresses, MAC addresses, or entity ids of a real
   installation;
 - tokens or credentials of any kind.
@@ -20,7 +20,7 @@ Mechanics:
   committed;
 - reference/example configs are sanitised (placeholders such as
   `<IP_NOEUD_BORNE>`); when copying anything from a live installation,
-  re-apply the sanitisation — never assume it carries over.
+  re-apply the sanitisation - never assume it carries over.
 
 **If a secret ever lands in a commit**: treat it as compromised. Rotate it
 at the source (new WiFi password, regenerate the ESPHome API key, new UDP
@@ -53,5 +53,5 @@ ship a fix before publishing details.
 
 Electrical-safety caveat: this project supervises a 230 V charging
 appliance. Software mitigations never replace the electrical protections
-(breakers, RCDs) of the installation — see the safety warnings in the
+(breakers, RCDs) of the installation - see the safety warnings in the
 README and [`docs/INSTALL_FR.md`](docs/INSTALL_FR.md).

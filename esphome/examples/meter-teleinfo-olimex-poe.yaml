@@ -1,5 +1,5 @@
 # =============================================================================
-# Tesla LoadPilot — example entry file: METER NODE (France, Linky TIC)
+# Tesla LoadPilot - example entry file: METER NODE (France, Linky TIC)
 # on Olimex ESP32-POE + Hallard "WeMos TeleInfo" hat (reference hardware)
 #
 # The provider package is board-agnostic: the network block lives HERE.

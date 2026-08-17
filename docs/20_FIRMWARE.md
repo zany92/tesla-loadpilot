@@ -1,9 +1,9 @@
-# Tesla LoadPilot — firmware ESPHome : les deux nœuds, expliqués et généricisés
+# Tesla LoadPilot - firmware ESPHome : les deux nœuds, expliqués et généricisés
 
 > Les extraits ci-dessous sont GÉNÉRICISÉS : broches, limites et IP passent en
 > `substitutions`, tous les secrets en `!secret` (voir
 > `90_SECRETS_A_REGENERER.md`). Les fichiers vivants de Loupiac contiennent
-> des valeurs en clair — ne JAMAIS les copier tels quels.
+> des valeurs en clair - ne JAMAIS les copier tels quels.
 
 ## 1. Nœud téléinfo (`teleinfo-node.yaml`, Olimex ESP32-POE + hat Hallard)
 
@@ -42,7 +42,7 @@ ethernet:                     # LAN8720 de l'ESP32-POE
   mdio_pin: GPIO18
   clk_mode: GPIO17_OUT
   phy_addr: 0
-  power_pin: GPIO12           # alimentation du PHY — voir note ci-dessous
+  power_pin: GPIO12           # alimentation du PHY - voir note ci-dessous
 
 uart:
   id: uart_bus
@@ -61,12 +61,12 @@ teleinfo:
 ```
 
 **Note Ethernet ESP32-POE (réconciliation).** La config de PRODUCTION de
-Loupiac tourne avec `board: esp32dev` et SANS `power_pin` — et l'Ethernet
+Loupiac tourne avec `board: esp32dev` et SANS `power_pin` - et l'Ethernet
 fonctionne sur cet exemplaire (le brochage MDC 23 / MDIO 18 /
 CLK `GPIO17_OUT` / phy 0 est bien celui de l'ESP32-POE). La config de
 RÉFÉRENCE Olimex/ESPHome pour cette carte inclut `power_pin: GPIO12` : c'est
 le GPIO qui alimente le PHY LAN8720. Sans lui, on dépend de l'état par
-défaut de GPIO12 au boot — ça « marche » souvent, mais le PHY ne peut pas
+défaut de GPIO12 au boot - ça « marche » souvent, mais le PHY ne peut pas
 être remis sous tension proprement et certains exemplaires/révisions ne
 relancent pas l'Ethernet après un soft-reset. La version publiée déclare
 donc le `power_pin` (inoffensif là où ça marchait déjà sans).
@@ -86,7 +86,7 @@ donc le `power_pin` (inoffensif là où ça marchait déjà sans).
 - **Filtre plancher sur IRMS** (bruit du capteur à vide) : `x ≤ 1.05 → 0`.
 - Le registre **STGE** (text_sensor) est décodé côté HA : bit 7 =
   « dépassement de la puissance de référence EN COURS » constaté par le
-  Linky lui-même — c'est le signal d'escalade du package.
+  Linky lui-même - c'est le signal d'escalade du package.
 
 ### 1.4 Diffusion UDP directe (packet_transport)
 
@@ -176,7 +176,7 @@ modbus_server:
     address: 1
     registers:
       # 1) Bloc d'identité fixe (registres 1-55) : chaîne ASCII du compteur
-      #    émulé (« Tesla », firmware « 1.6.1- », modèle VAH4810…) — constantes
+      #    émulé (« Tesla », firmware « 1.6.1- », modèle VAH4810…) - constantes
       #    reprises du gist public LucaTNT :
       #    https://gist.github.com/LucaTNT/4adf01a7252386559070023612efa117
       # 2) Puissances par CT, FP32 (W) :
@@ -199,7 +199,7 @@ plausibilité/corrélation** sur les mesures reçues (quand la voiture charge,
 le courant de l'arrivée doit MONTER en corrélation avec sa propre sortie).
 L'approche « publier `breaker − disponible` » (PVi1 historique) produit un
 plateau figé peu plausible ; ici on publie la **MESURE RÉELLE** de l'arrivée
-(courant + puissance par phase, import positif — pas de solaire dans
+(courant + puissance par phase, import positif - pas de solaire dans
 l'installation de référence, mode GRID) : la borne calcule elle-même
 `marge = SA limite (Max Conductor Limit, Tesla One) − mesure publiée`.
 
@@ -207,8 +207,8 @@ Priorité des sources dans `recompute_ct` (tick 1 s + événementiel) :
 
 | Priorité | Source | Condition |
 |---|---|---|
-| 1 | **UDP direct** | 6 grandeurs vues depuis le boot ET dernier paquet < `udp_fresh_ms` (5 s) — drapeaux `*_seen` : jamais de 0.0 d'init publiés |
-| 2 | **miroir HA** | 6 entités disponibles (debounce 10 s) ET `ha_link_ok` (binary_sensor `status` natif **multi-clients** — un drapeau maison basculé par `on_client_disconnected` restait à false quand un client API SECONDAIRE se déconnectait : bug vécu, reported figé) |
+| 1 | **UDP direct** | 6 grandeurs vues depuis le boot ET dernier paquet < `udp_fresh_ms` (5 s) - drapeaux `*_seen` : jamais de 0.0 d'init publiés |
+| 2 | **miroir HA** | 6 entités disponibles (debounce 10 s) ET `ha_link_ok` (binary_sensor `status` natif **multi-clients** - un drapeau maison basculé par `on_client_disconnected` restait à false quand un client API SECONDAIRE se déconnectait : bug vécu, reported figé) |
 | 3 | **fail-safe** | publie conso = `main_breaker` sur les 3 phases → marge 0 → **charge bloquée** (comportement d'un vrai compteur en panne). Au boot, les globals `ct*` sont initialisées à `main_breaker` (sûr par défaut) |
 
 Interrupteur maître `twc_control_enabled` : OFF → publie 0 A partout → marge
@@ -217,7 +217,7 @@ est neutralisé sans toucher au câblage). Un texte `Linky Source Active`
 (UDP/HA/FAILSAFE/OFF/BOOT) trace chaque bascule.
 
 Conséquence assumée de l'UDP : une coupure de HA (reboot) **ne bloque plus la
-charge** tant que le flux UDP est frais — le fail-safe n'est PAS affaibli, il
+charge** tant que le flux UDP est frais - le fail-safe n'est PAS affaibli, il
 s'arme dès qu'aucune source n'est saine.
 
 ### 2.5 Le biais : cible + rampe + application immédiate contacteur ouvert
@@ -240,16 +240,16 @@ publié = mesure + biais  (A par phase, et biais×230 en W)
     pilote à protéger). Supprime la fenêtre « code 10 » (160 s de rampe de
     descente pendant lesquelles la borne refusait de démarrer, vécu) ;
   - sinon **rampe** : montée **1 A / 5 s**, descente **0,5 A / 5 s** (tick
-    5 s dédié ; les autres appelants — changement de cible, bascule du
-    miroir — ne font JAMAIS de pas hors cadence). Raison d'être : un échelon
+    5 s dédié ; les autres appelants - changement de cible, bascule du
+    miroir - ne font JAMAIS de pas hors cadence). Raison d'être : un échelon
     de marge pendant la rampe du véhicule = violation du pilote = **trip du
     contacteur** (+58 alertes borne en une journée avant la rampe) ;
   - miroir contacteur jamais vu / indisponible > 30 s / API HA décrochée →
     rampe conservée par prudence (grâce ≤ 30 s : dernier état connu).
 - le miroir contacteur est un **`text_sensor` homeassistant, PAS un
   binary_sensor** : la plateforme binaire avale `unavailable`/`unknown` sans
-  callback — en text on VOIT l'indisponibilité et on applique la grâce ;
-- le biais s'applique en branche NORMALE uniquement — jamais en fail-safe
+  callback - en text on VOIT l'indisponibilité et on applique la grâce ;
+- le biais s'applique en branche NORMALE uniquement - jamais en fail-safe
   (déjà à `main_breaker`) ni quand `twc_control_enabled` est OFF.
 
 ### 2.6 Réception UDP (écoute pure)
@@ -258,7 +258,7 @@ Côté nœud borne, `packet_transport` est configuré en **providers seulement,
 sans ping_pong** → ESPHome ne crée que le socket d'ÉCOUTE (non-bloquant,
 drainé dans `loop()`) : ce nœud n'émet RIEN, rien ne peut retarder la réponse
 Modbus. Conséquence : le timeout natif du provider (NAN + binary status)
-exige ping_pong et est donc INACTIF — la fraîcheur est jugée par notre
+exige ping_pong et est donc INACTIF - la fraîcheur est jugée par notre
 horodatage `udp_last_ok_ms` dans `recompute_ct` (même patron que le miroir
 HA). Les 6 capteurs `platform: packet_transport` sont internes (zéro entité
 HA, zéro recorder).
@@ -280,7 +280,7 @@ Last Poll`, `TWC Polling Active`, `Linky UDP Fresh`, `Linky Source Active`,
   machine (2 builds simultanés = crash vécu).
 - Si le nœud borne mutualise d'autres fonctions (cas de Loupiac :
   sécurité eau/forage), le contrôle TWC ne doit toucher QUE l'UART RS485
-  libre — aucune broche partagée.
+  libre - aucune broche partagée.
 
 ### 2.9 Déclinaisons par carte (cœur commun + paquet de substitutions)
 
@@ -293,7 +293,7 @@ Structure cible du dépôt : `esphome/twc-node.yaml` (commun) +
 
 | Carte | Transceiver RS485 | UART TX / RX | Direction | Réseau | Statut |
 |---|---|---|---|---|---|
-| **Kincony KC868-A6** | MAX13487E | **GPIO27 / GPIO14** | **auto-direction** (aucun DE/RE) | WiFi | ✅ **TESTÉE — référence de production** (poll ~190 ms, chaîne complète validée) |
+| **Kincony KC868-A6** | MAX13487E | **GPIO27 / GPIO14** | **auto-direction** (aucun DE/RE) | WiFi | ✅ **TESTÉE - référence de production** (poll ~190 ms, chaîne complète validée) |
 | **Kincony ESP32-S3 core** (ESP32-S3-WROOM-1U N16R8) | intégré, auto-direction | **GPIO16 / GPIO15** | auto-direction | Ethernet **W5500** (SPI : CLK 43 / MOSI 44 / MISO 42 / CS 41 / INT 2 / RST 1) ; logs via `USB_SERIAL_JTAG` (l'UART0 est réquisitionné par le SPI) ; `board: esp32-s3-devkitc-1` | ⚠️ draft complet existant et **compilé OK** (`twc-control.yaml`), jamais raccordé à une borne |
 | **Kincony KC868-A16** | à confirmer (doc Kincony) | **GPIO13 / GPIO16** (source : fiche ESPHome devices + forum HA) | à confirmer | Ethernet LAN8720 | ❌ non testé |
 | **Kincony KC868-A4 / A8** | à confirmer | **broches RS485 à confirmer sur la doc Kincony** (non publiées clairement) | à confirmer | WiFi | ❌ non testé |
@@ -306,7 +306,7 @@ Règles pour porter le cœur sur une nouvelle carte :
   VALIDER au compteur de polls (`TWC Poll Interval` stable, zéro
   `tx_blocked`) avant toute mise en service.
 - Vérifier que l'UART choisie n'entre pas en conflit avec les périphériques
-  de la carte (I2C/PCF8574, SPI Ethernet, 1-Wire…) — sur la S3 core, les
+  de la carte (I2C/PCF8574, SPI Ethernet, 1-Wire…) - sur la S3 core, les
   broches UART0 par défaut sont prises par le SPI du W5500.
 - Rejouer la QA minimale : polling actif, poll ~200 ms stable, fail-safe
   (couper la source de mesure → publication `main_breaker` → charge

@@ -1,6 +1,6 @@
 """Constants for the Tesla LoadPilot integration.
 
-CONTRACTUAL FILE — the names below are the frozen interface shared with the
+CONTRACTUAL FILE - the names below are the frozen interface shared with the
 dashboards and the documentation (see /CONTRACTS.md). The HA specialist owns
 and extends this file, but MUST NOT rename anything listed here without an
 architecture decision.
@@ -30,7 +30,7 @@ SERVICE_RESUME = "resume"                 # bias back to 0
 # --- Charger-node entity contract (ESPHome device name: loadpilot-twc) ---
 # Entity ids below are produced by esphome/packages/twc-core.yaml and are
 # consumed by the integration, the dashboards and the docs. Full table in
-# /CONTRACTS.md — keep the three in sync.
+# /CONTRACTS.md - keep the three in sync.
 CHARGER_NODE_DEFAULT_NAME = "loadpilot-twc"
 METER_NODE_DEFAULT_NAME = "loadpilot-meter"
 
@@ -50,7 +50,7 @@ FW_UDP_FRESH_MS = 5000                    # UDP staleness before HA-mirror
 FW_MAX_CONDUCTOR_DEFAULT_A = 21           # L, TWC "Max Conductor Limit"
 
 # =========================================================================
-# Extensions below (HA specialist) — additive only, nothing above renamed.
+# Extensions below (HA specialist) - additive only, nothing above renamed.
 # =========================================================================
 
 SERVICE_ATTR_AMPS = "amps"
@@ -130,13 +130,13 @@ PHASE_NAMES = ["l1", "l2", "l3"]
 # --- Config-flow validation & presets (UX.md §2.3, aligned on firmware) ----
 # The number-selector bounds mirror the FIRMWARE knobs (twc-core.yaml):
 # contract limit 6..120 A (hardware envelope of the node-resident number),
-# buffer 0..30 % (the law clamps at 30 as well — 0..50 in early UX drafts
+# buffer 0..30 % (the law clamps at 30 as well - 0..50 in early UX drafts
 # was never implementable). The UX "10..100 A" range is a PLAUSIBILITY rule,
 # implemented as validation below, not as a hard selector bound.
 MIN_CHARGE_BUDGET_A = 8.0        # limit×(1−buffer) under this: the car can never charge (~6 A min + margin)
 TRI_LIMIT_SUSPICIOUS_A = 40.0    # 3-phase, per-phase limit above this: probably a kVA or 3-phase-total entry
 
-# French kVA presets (standard Enedis pairs) — input helper ONLY: what is
+# French kVA presets (standard Enedis pairs) - input helper ONLY: what is
 # stored stays CONF_CONTRACT_LIMIT_A in amps per phase (UX.md §2.3).
 # Single-phase stops at 24 kVA (120 A): 30/36 kVA single-phase offers do not
 # exist and would exceed the 120 A firmware bound.

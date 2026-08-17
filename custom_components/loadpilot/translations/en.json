@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Welcome to Tesla LoadPilot",
-        "description": "LoadPilot adjusts your vehicle's charging so your home never exceeds your electricity contract. Everything runs locally — no cloud. First, tell us which meter your installation uses.",
+        "description": "LoadPilot adjusts your vehicle's charging so your home never exceeds your electricity contract. Everything runs locally - no cloud. First, tell us which meter your installation uses.",
         "data": {
           "country_profile": "Meter profile"
         },
@@ -33,7 +33,7 @@
           "buffer_pct": "Safety buffer (%)"
         },
         "data_description": {
-          "contract_preset": "Pick your subscribed power to fill in the limit for you — or choose “Other” and enter the amps yourself below.",
+          "contract_preset": "Pick your subscribed power to fill in the limit for you - or choose “Other” and enter the amps yourself below.",
           "contract_limit_a": "In France: 6 kVA single-phase = 30 A · 9 kVA = 45 A · 12 kVA = 60 A · 15 kVA = 75 A · 18 kVA = 90 A. Three-phase, per phase: 6 kVA = 10 A · 9 kVA = 15 A · 12 kVA = 20 A · 15 kVA = 25 A · 18 kVA = 30 A.",
           "buffer_pct": "With a 10% buffer, the car only uses 90% of your contract: the rest absorbs surges (an oven or a pump starting) without tripping the breaker."
         }
@@ -55,14 +55,14 @@
       },
       "confirm": {
         "title": "Check before enabling",
-        "description": "Meter: {country_profile}. Installation: {phases}-phase. Contract: {contract_limit_a} A per phase, {buffer_pct}% buffer — that leaves a budget of {budget_a} A per phase for the whole house, car included. These settings are written into the charger node: they stay active even when Home Assistant is off. Regulation itself is enabled from the LoadPilot card, not here."
+        "description": "Meter: {country_profile}. Installation: {phases}-phase. Contract: {contract_limit_a} A per phase, {buffer_pct}% buffer - that leaves a budget of {budget_a} A per phase for the whole house, car included. These settings are written into the charger node: they stay active even when Home Assistant is off. Regulation itself is enabled from the LoadPilot card, not here."
       }
     },
     "error": {
       "charger_not_found": "Charger node not found. It must be adopted in ESPHome and visible in Home Assistant before this step (see the firmware guide).",
       "meter_not_found": "Meter node not found. It must be adopted in ESPHome and visible in Home Assistant before this step (see the firmware guide).",
-      "budget_too_small": "With these settings only {budget_a} A per phase remain for the whole house — the car will never be able to charge. Check the limit (in amps PER PHASE) and the buffer.",
-      "tri_limit_suspicious": "{contract_limit_a} A per phase on three-phase is unusually high — did you enter the three-phase total, or a single-phase figure? Submit again without changing it to confirm."
+      "budget_too_small": "With these settings only {budget_a} A per phase remain for the whole house - the car will never be able to charge. Check the limit (in amps PER PHASE) and the buffer.",
+      "tri_limit_suspicious": "{contract_limit_a} A per phase on three-phase is unusually high - did you enter the three-phase total, or a single-phase figure? Submit again without changing it to confirm."
     },
     "abort": {
       "already_configured": "This LoadPilot charger node is already configured."
@@ -85,14 +85,14 @@
           "power_l3": "Power, phase 3"
         },
         "data_description": {
-          "contract_preset": "Pick your subscribed power to fill in the limit for you — or choose “Other” and enter the amps yourself below.",
+          "contract_preset": "Pick your subscribed power to fill in the limit for you - or choose “Other” and enter the amps yourself below.",
           "buffer_pct": "With a 10% buffer, the car only uses 90% of your contract: the rest absorbs surges without tripping the breaker."
         }
       }
     },
     "error": {
-      "budget_too_small": "With these settings only {budget_a} A per phase remain for the whole house — the car will never be able to charge. Check the limit (in amps PER PHASE) and the buffer.",
-      "tri_limit_suspicious": "{contract_limit_a} A per phase on three-phase is unusually high — did you enter the three-phase total, or a single-phase figure? Submit again without changing it to confirm."
+      "budget_too_small": "With these settings only {budget_a} A per phase remain for the whole house - the car will never be able to charge. Check the limit (in amps PER PHASE) and the buffer.",
+      "tri_limit_suspicious": "{contract_limit_a} A per phase on three-phase is unusually high - did you enter the three-phase total, or a single-phase figure? Submit again without changing it to confirm."
     }
   },
   "selector": {
@@ -104,29 +104,29 @@
     },
     "country_profile": {
       "options": {
-        "fr_tic": "France — Linky (TIC)",
-        "dsmr_p1": "Netherlands / Belgium — DSMR P1 (preview)",
-        "sml_de": "Germany / Austria — SML (preview)",
-        "ct_clamps": "Universal — CT clamps (preview)"
+        "fr_tic": "France - Linky (TIC)",
+        "dsmr_p1": "Netherlands / Belgium - DSMR P1 (preview)",
+        "sml_de": "Germany / Austria - SML (preview)",
+        "ct_clamps": "Universal - CT clamps (preview)"
       }
     },
     "contract_preset": {
       "options": {
         "custom": "Other (enter the limit in amps)",
-        "mono_6": "6 kVA single-phase — 30 A",
-        "mono_9": "9 kVA single-phase — 45 A",
-        "mono_12": "12 kVA single-phase — 60 A",
-        "mono_15": "15 kVA single-phase — 75 A",
-        "mono_18": "18 kVA single-phase — 90 A",
-        "mono_24": "24 kVA single-phase — 120 A",
-        "tri_6": "6 kVA three-phase — 10 A per phase",
-        "tri_9": "9 kVA three-phase — 15 A per phase",
-        "tri_12": "12 kVA three-phase — 20 A per phase",
-        "tri_15": "15 kVA three-phase — 25 A per phase",
-        "tri_18": "18 kVA three-phase — 30 A per phase",
-        "tri_24": "24 kVA three-phase — 40 A per phase",
-        "tri_30": "30 kVA three-phase — 50 A per phase",
-        "tri_36": "36 kVA three-phase — 60 A per phase"
+        "mono_6": "6 kVA single-phase - 30 A",
+        "mono_9": "9 kVA single-phase - 45 A",
+        "mono_12": "12 kVA single-phase - 60 A",
+        "mono_15": "15 kVA single-phase - 75 A",
+        "mono_18": "18 kVA single-phase - 90 A",
+        "mono_24": "24 kVA single-phase - 120 A",
+        "tri_6": "6 kVA three-phase - 10 A per phase",
+        "tri_9": "9 kVA three-phase - 15 A per phase",
+        "tri_12": "12 kVA three-phase - 20 A per phase",
+        "tri_15": "15 kVA three-phase - 25 A per phase",
+        "tri_18": "18 kVA three-phase - 30 A per phase",
+        "tri_24": "24 kVA three-phase - 40 A per phase",
+        "tri_30": "30 kVA three-phase - 50 A per phase",
+        "tri_36": "36 kVA three-phase - 60 A per phase"
       }
     }
   },
@@ -158,7 +158,7 @@
   "services": {
     "set_bias": {
       "name": "Set charging slowdown (bias)",
-      "description": "Deliberately slows the vehicle down by reserving amps for the rest of the house. 0 = no slowdown, 16 = charging paused. The value ramps smoothly — the ramp is handled by the charger node.",
+      "description": "Deliberately slows the vehicle down by reserving amps for the rest of the house. 0 = no slowdown, 16 = charging paused. The value ramps smoothly - the ramp is handled by the charger node.",
       "fields": {
         "amps": {
           "name": "Reserved amps",
@@ -204,7 +204,7 @@
         "step": {
           "confirm": {
             "title": "Charger node not found in Home Assistant",
-            "description": "No entity of the charger node “{charger_node}” exists in Home Assistant (node offline since before startup, renamed, or removed from ESPHome). The node itself keeps regulating on its own — the control law lives in its firmware — but Home Assistant can no longer observe or adjust it. Restore the node under this exact name (or remove and re-add the integration with the right name), then confirm."
+            "description": "No entity of the charger node “{charger_node}” exists in Home Assistant (node offline since before startup, renamed, or removed from ESPHome). The node itself keeps regulating on its own - the control law lives in its firmware - but Home Assistant can no longer observe or adjust it. Restore the node under this exact name (or remove and re-add the integration with the right name), then confirm."
           }
         }
       }

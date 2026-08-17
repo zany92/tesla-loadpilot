@@ -1,17 +1,17 @@
 # =============================================================================
-# Tesla LoadPilot — meter provider: universal CT clamps (ATM90E32) — SKELETON
+# Tesla LoadPilot - meter provider: universal CT clamps (ATM90E32) - SKELETON
 #
-# STATUS: SKELETON — NEVER COMPILED, NEVER TESTED ON REAL HARDWARE.
+# STATUS: SKELETON - NEVER COMPILED, NEVER TESTED ON REAL HARDWARE.
 # The UDP contract (port 18511, lky_* broadcast ids, XXTEA, 1 Hz) is FROZEN.
 #
 # The universal fallback when the national meter is ineligible (DSMR 4,
-# Smarty, UK SMETS, SML total-only — docs/15_FOURNISSEURS_MESURE.md §2):
+# Smarty, UK SMETS, SML total-only - docs/15_FOURNISSEURS_MESURE.md §2):
 # CT clamps on the mains feed, read directly by the ESP. Also the best
-# latency of the whole family (sub-second capable — though beyond ~1 Hz
+# latency of the whole family (sub-second capable - though beyond ~1 Hz
 # there is NO measurable gain at the wallbox, measured).
 #
 # Reference part: ATM90E32 (e.g. CircuitSetup 6-channel board, SPI).
-# PZEM-004T v3 (UART, per-phase modules) is a cheaper alternative — same
+# PZEM-004T v3 (UART, per-phase modules) is a cheaper alternative - same
 # contract, different acquisition block (TODO).
 #
 # TODO before first use:

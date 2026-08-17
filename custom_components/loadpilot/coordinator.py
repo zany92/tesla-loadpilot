@@ -2,7 +2,7 @@
 
 Observes the ESPHome charger-node entities (push, via state-change events)
 and derives the integration-owned values (regulation state, per-phase
-headroom, worst phase). The real-time control loop NEVER runs here — it is
+headroom, worst phase). The real-time control loop NEVER runs here - it is
 firmware (see /ARCHITECTURE.md D2); this coordinator is pure observation.
 """
 
@@ -267,7 +267,7 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
         # in the state machine (never registered / renamed / deleted). This
         # is different from "unavailable" (registered entities keep a state
         # object): it means the configured node name no longer matches
-        # anything. The firmware keeps regulating on its own (D2) — HA just
+        # anything. The firmware keeps regulating on its own (D2) - HA just
         # cannot observe or adjust it.
         missing_issue = f"{ISSUE_CHARGER_NODE_MISSING}_{entry_id}"
         node_present = any(

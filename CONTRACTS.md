@@ -1,18 +1,18 @@
-# Tesla LoadPilot — CONTRATS D'ÉQUIPE (zones disjointes)
+# Tesla LoadPilot - CONTRATS D'ÉQUIPE (zones disjointes)
 
 > Fichier FIGÉ, propriété de l'architecte. Toute demande de modification des
 > interfaces passe par l'orchestrateur. Les trois équipiers travaillent EN
 > PARALLÈLE : **personne n'écrit dans la zone d'un autre**. Les interfaces
 > ci-dessous (entités, services, clés de config) sont les SEULS points de
-> contact — on les lit ici, jamais dans les fichiers du voisin.
+> contact - on les lit ici, jamais dans les fichiers du voisin.
 
 ## 0. Règles communes (rappel, non négociables)
 
-1. **Aucun secret dans le repo** — `!secret` partout, `esphome/secrets.yaml.example`
+1. **Aucun secret dans le repo** - `!secret` partout, `esphome/secrets.yaml.example`
    tenu à jour. Ne jamais recopier depuis `/Volumes/config` (lecture seule)
    sans réappliquer l'assainissement : ni clé, ni IP privée cachée en dur,
    ni entity_id Loupiac (`whale_*`, `olimex_portail_*`…).
-2. **Rien n'est publié** : pas de `gh`, pas de push, pas de commit — les
+2. **Rien n'est publié** : pas de `gh`, pas de push, pas de commit - les
    fichiers sont écrits, l'orchestrateur commite.
 3. Attribution **PVi1** (github.com/PVi1/esphome-twc-control) + gist LucaTNT
    dans toute doc qui touche l'émulation ; disclaimer non-affiliation Tesla ;
@@ -25,7 +25,7 @@
 
 ## 1. Zones de propriété (fichiers)
 
-### 1.1 Spécialiste HA — possède `custom_components/loadpilot/**` et `esphome/**`
+### 1.1 Spécialiste HA - possède `custom_components/loadpilot/**` et `esphome/**`
 
 Livrables :
 
@@ -36,7 +36,7 @@ Livrables :
   - coordinator + capteurs dérivés (§3.3), services (§4), `diagnostics.py`,
     `repairs.py` (écart de version firmware/intégration, sources UDP/miroir
     périmées), `translations/en.json` + `fr.json` (libellés fournis par
-    l'UX via `dashboards/UX_COPY.md` — il les INTÈGRE, il ne les invente pas) ;
+    l'UX via `dashboards/UX_COPY.md` - il les INTÈGRE, il ne les invente pas) ;
   - `const.py` : il l'étend, il ne RENOMME rien de ce qui y figure.
 - **Firmware générique** (`esphome/packages/`) : extraction depuis
   `esphome/kc868-a6-1.yaml` (bloc PVi1-GRADE 17/08) et
@@ -49,30 +49,30 @@ Livrables :
   (la loi, à transcrire sans « amélioration »), `docs/20_FIRMWARE.md`
   (pièges : VERBOSE interdit sur le nœud borne, deadline 66 ms,
   `rx_buffer_size: 1024`, text_sensor pour le miroir contacteur),
-  `docs/15_FOURNISSEURS_MESURE.md` (contrat UDP §1 — INTOUCHABLE).
+  `docs/15_FOURNISSEURS_MESURE.md` (contrat UDP §1 - INTOUCHABLE).
 
-### 1.2 UX designer — possède `dashboards/**`
+### 1.2 UX designer - possède `dashboards/**`
 
 Livrables :
 
 - `dashboards/loadpilot-overview.yaml` : vue Lovelace prête à importer
   (état de régulation, publié vs mesuré par phase, marge/headroom, source
-  active, biais, escalade, contrôles pause/reprise) — cartes du cœur HA
+  active, biais, escalade, contrôles pause/reprise) - cartes du cœur HA
   uniquement (aucune dépendance HACS tierce obligatoire ; si une variante
   Mushroom est proposée en bonus, TOUJOURS définir explicitement les 4
-  actions `tap/hold/double_tap/icon_tap` — piège connu du toggle par défaut) ;
+  actions `tap/hold/double_tap/icon_tap` - piège connu du toggle par défaut) ;
 - `dashboards/cards/` : cartes/badges additionnels éventuels ;
 - `dashboards/UX_COPY.md` : TOUS les libellés utilisateur (étapes du config
   flow, descriptions des services, textes de notifications types, EN + FR)
-  — consommé par le spécialiste HA pour `translations/` ;
-- `dashboards/brand/` : visuels ORIGINAUX (SVG) si besoin — zéro asset
+  - consommé par le spécialiste HA pour `translations/` ;
+- `dashboards/brand/` : visuels ORIGINAUX (SVG) si besoin - zéro asset
   Tesla, zéro capture d'écran Tesla One.
 
 Il consomme UNIQUEMENT les tables §3 et §4 de ce fichier. Si une entité
-manque pour son design, il le note dans `dashboards/UX_COPY.md` §Demandes —
+manque pour son design, il le note dans `dashboards/UX_COPY.md` §Demandes -
 il ne l'invente pas dans son YAML.
 
-### 1.3 Rédacteur technique — possède `README.md`, `info.md`, `docs/**`, `CONTRIBUTING.md`, `LICENSE.placeholder`
+### 1.3 Rédacteur technique - possède `README.md`, `info.md`, `docs/**`, `CONTRIBUTING.md`, `LICENSE.placeholder`
 
 Livrables :
 
@@ -89,7 +89,7 @@ Livrables :
 - `CONTRIBUTING.md` + politique d'issues (le sujet attire les questions de
   firmware borne : template d'issue avec version TWC obligatoire) ;
 - `LICENSE.placeholder` : documente l'intention (MIT pressenti) et le
-  BLOCAGE accord PVi1 — pas de LICENSE définitive sans cet accord.
+  BLOCAGE accord PVi1 - pas de LICENSE définitive sans cet accord.
 
 Il ne touche ni au code ni aux YAML ; ses extraits de code sont copiés
 depuis les fichiers du spécialiste (à la fin, ou balisés TODO-sync).
@@ -98,10 +98,10 @@ depuis les fichiers du spécialiste (à la fin, ou balisés TODO-sync).
 
 `ARCHITECTURE.md`, `CONTRACTS.md`, `hacs.json`,
 `custom_components/loadpilot/{manifest.json,const.py,__init__.py}` (état
-squelette — le spécialiste HA en prend la suite SAUF renommages),
+squelette - le spécialiste HA en prend la suite SAUF renommages),
 READMEs de zone (`esphome/packages/`, `esphome/examples/`, `dashboards/`).
 `manifest.json` : `OWNER_TBD` remplacé par `zany92`
-(github.com/zany92/tesla-loadpilot, tranché 17/08 — appliqué dans tout le
+(github.com/zany92/tesla-loadpilot, tranché 17/08 - appliqué dans tout le
 repo par la passe correctifs).
 
 ## 2. Contrat UDP provider → cœur (rappel, figé)
@@ -144,7 +144,7 @@ Noms de nœuds par défaut : `loadpilot-twc` (borne), `loadpilot-meter`
 |---|---|---|
 | `sensor.loadpilot_meter_current_l1/_l2/_l3` | A | copies throttlées (recorder-friendly) |
 | `sensor.loadpilot_meter_power_l1/_l2/_l3` | VA | idem |
-| `binary_sensor.loadpilot_meter_overload` | bool | OPTIONNEL — signal compteur générique (FR : STGE bit 7) |
+| `binary_sensor.loadpilot_meter_overload` | bool | OPTIONNEL - signal compteur générique (FR : STGE bit 7) |
 
 ### 3.3 Capteurs dérivés (intégration `loadpilot`)
 
@@ -159,8 +159,8 @@ Noms de nœuds par défaut : `loadpilot-twc` (borne), `loadpilot-meter`
 | Service | Champs | Sémantique |
 |---|---|---|
 | `loadpilot.set_bias` | `amps` (0-16, pas 0,5) | écrit la cible de biais (la RAMPE reste firmware) |
-| `loadpilot.pause` | — | levier binaire : biais plein (pause de charge propre) |
-| `loadpilot.resume` | — | biais 0 (la garde anti-yo-yo/projection est une politique HA ultérieure, pas v0) |
+| `loadpilot.pause` | - | levier binaire : biais plein (pause de charge propre) |
+| `loadpilot.resume` | - | biais 0 (la garde anti-yo-yo/projection est une politique HA ultérieure, pas v0) |
 
 ## 5. Ordre de marche et points de synchronisation
 
@@ -169,7 +169,7 @@ Noms de nœuds par défaut : `loadpilot-twc` (borne), `loadpilot-meter`
   translations/ ; (2) extraits de code → README/docs. Jusque-là, chacun
   code contre les tables de CE fichier.
 - Toute incohérence découverte entre une table §3/§4 et la réalité du code
-  se signale à l'orchestrateur — on corrige LE CONTRAT ou LE CODE, jamais
+  se signale à l'orchestrateur - on corrige LE CONTRAT ou LE CODE, jamais
   silencieusement l'un des deux.
 
 ### Ajout ratifié le 17/08 soir (loi v2 co-variante, flash n°2)
@@ -179,9 +179,9 @@ Noms de nœuds par défaut : `loadpilot-twc` (borne), `loadpilot-meter`
 | Law Echo Gain (`number`, 0,1–1,0, défaut 0,5) | réglage runtime | gain de compression de l'excès au-dessus de L |
 | Law Max Excursion (`number`, 0,1–1,0 A, défaut 1,0) | réglage runtime | excursion max du publié au-dessus de L |
 | Charge Stop (`switch`, OFF au boot) | commande | ordre d'arrêt immédiat (publié ≥ L+0,1), jamais restauré |
-| Meter Absent (`switch`, OFF au boot) | test/maintenance | silence Modbus total (adresse 245) — repli 6 A borne |
+| Meter Absent (`switch`, OFF au boot) | test/maintenance | silence Modbus total (adresse 245) - repli 6 A borne |
 
-### Ajout ratifié le 17/08 soir (n°2, passe QA) — entités de mise en service
+### Ajout ratifié le 17/08 soir (n°2, passe QA) - entités de mise en service
 
 Présentes dans `twc-core.yaml` depuis l'extraction (INSTALL_FR s'appuie
 dessus) ; ratifiées ici plutôt que supprimées (QA mineur 1).
@@ -189,9 +189,9 @@ dessus) ; ratifiées ici plutôt que supprimées (QA mineur 1).
 | Entité | Type | Contrat |
 |---|---|---|
 | Signal Mode (`select` : RAW / OMBRE-MAX / ACTIF-MAX, boot = ACTIF-MAX, jamais restauré) | mise en service | échelle de commissioning : RAW = mesure brute (+biais, émulation Neurio pure) ; OMBRE-MAX = publie RAW, calcule la loi en ombre ; ACTIF-MAX = publie la loi (production) |
-| Shadow Published Current (`sensor` A, diagnostic) | observabilité | ce que publierait ACTIF-MAX — calcul en ombre en RAW/OMBRE-MAX, suit la publication en ACTIF-MAX |
+| Shadow Published Current (`sensor` A, diagnostic) | observabilité | ce que publierait ACTIF-MAX - calcul en ombre en RAW/OMBRE-MAX, suit la publication en ACTIF-MAX |
 
 Sémantique associée (corrigée par la passe QA) : `Escalation Active`
 (§3.1) n'est ON que si le plancher L+0,1 est effectivement PUBLIÉ, donc
-uniquement en ACTIF-MAX — en RAW/OMBRE-MAX l'effet reste visible sur
+uniquement en ACTIF-MAX - en RAW/OMBRE-MAX l'effet reste visible sur
 Shadow Published Current, le drapeau reste OFF.

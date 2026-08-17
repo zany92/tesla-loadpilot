@@ -1,7 +1,7 @@
 # =============================================================================
-# Tesla LoadPilot — board pack: Kincony ESP32-S3 core (ESP32-S3-WROOM-1U N16R8)
+# Tesla LoadPilot - board pack: Kincony ESP32-S3 core (ESP32-S3-WROOM-1U N16R8)
 #
-# STATUS: DRAFT — compiled OK, NEVER connected to a wallbox. Do not use on a
+# STATUS: DRAFT - compiled OK, NEVER connected to a wallbox. Do not use on a
 # live installation before replaying the minimal QA of docs/20_FIRMWARE.md
 # §2.9 (polling active, poll ~200 ms stable, fail-safe, bias 0->16->0).
 #

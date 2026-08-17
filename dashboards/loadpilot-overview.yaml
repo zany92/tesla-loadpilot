@@ -1,6 +1,6 @@
-# Tesla LoadPilot — ready-to-import Lovelace VIEW (contract §1.2 deliverable)
+# Tesla LoadPilot - ready-to-import Lovelace VIEW (contract §1.2 deliverable)
 # ---------------------------------------------------------------------------
-# Home Assistant CORE cards only — zero HACS dependency.
+# Home Assistant CORE cards only - zero HACS dependency.
 #
 # HOW TO IMPORT
 #   Dashboard → edit → Raw configuration editor → add this view under
@@ -17,7 +17,7 @@
 #   France). Set "max" to YOUR contract limit per phase, and the severity
 #   thresholds to roughly 10% / 25% of it.
 #   KNOWN LIMIT: the Home Assistant core gauge card only accepts a static
-#   number for "max" — it cannot follow number.loadpilot_twc_contract_limit.
+#   number for "max" - it cannot follow number.loadpilot_twc_contract_limit.
 #   Making it dynamic would require a HACS template card, which this view
 #   deliberately avoids (core cards only). Adjust manually if your contract
 #   changes.
@@ -30,7 +30,7 @@ path: loadpilot
 icon: mdi:ev-station
 cards:
 
-  # ===== 1. Master card — the everyday face (see loadpilot_card.yaml) =====
+  # ===== 1. Master card - the everyday face (see loadpilot_card.yaml) =====
   - type: vertical-stack
     cards:
       - type: tile
@@ -43,7 +43,7 @@ cards:
           confirmation:
             text: >-
               Toggle charge regulation? When OFF, the wall connector returns
-              to factory behaviour at FULL power — your electricity contract
+              to factory behaviour at FULL power - your electricity contract
               is no longer protected.
         icon_tap_action:
           action: more-info
@@ -58,7 +58,7 @@ cards:
         icon_tap_action:
           action: more-info
 
-  # ===== 2. Alerts — appear only when relevant ============================
+  # ===== 2. Alerts - appear only when relevant ============================
   - type: conditional
     conditions:
       - condition: state
@@ -67,7 +67,7 @@ cards:
     card:
       type: markdown
       content: >-
-        ⚠️ **Regulation OFF** — charger at full power, contract not
+        ⚠️ **Regulation OFF** - charger at full power, contract not
         protected.
   - type: conditional
     conditions:
@@ -77,7 +77,7 @@ cards:
     card:
       type: markdown
       content: >-
-        🛑 **Sustained overload — clean stop in progress** (budget exceeded
+        🛑 **Sustained overload - clean stop in progress** (budget exceeded
         for 2 minutes; charging is being stopped safely).
   - type: conditional
     conditions:
@@ -87,7 +87,7 @@ cards:
     card:
       type: markdown
       content: >-
-        🟠 **Running on Home Assistant backup** — direct meter link down,
+        🟠 **Running on Home Assistant backup** - direct meter link down,
         degraded responsiveness. Check the meter node.
   - type: conditional
     conditions:
@@ -97,7 +97,7 @@ cards:
     card:
       type: markdown
       content: >-
-        ⛔ **No measurement — charging blocked for safety.** Your contract
+        ⛔ **No measurement - charging blocked for safety.** Your contract
         can never be exceeded.
   - type: conditional
     conditions:
@@ -192,7 +192,7 @@ cards:
 
   # ===== 5. Last 24 h =====================================================
   - type: history-graph
-    title: Published vs measured — 24 h
+    title: Published vs measured - 24 h
     hours_to_show: 24
     entities:
       - entity: sensor.loadpilot_twc_published_current_l1
@@ -212,7 +212,7 @@ cards:
 
   # ===== 6. Pause / resume ================================================
   # "Paused" is inferred from bias_applied >= 15 A (no explicit paused
-  # state in v0 — see UX_COPY.md §Demandes, item 2).
+  # state in v0 - see UX_COPY.md §Demandes, item 2).
   - type: conditional
     conditions:
       - condition: numeric_state
@@ -279,7 +279,7 @@ cards:
         name: Slowdown applied
         icon: mdi:speedometer-slow
 
-  # ===== 8. Diagnostics — for the curious and for support =================
+  # ===== 8. Diagnostics - for the curious and for support =================
   - type: entities
     title: Diagnostics
     show_header_toggle: false

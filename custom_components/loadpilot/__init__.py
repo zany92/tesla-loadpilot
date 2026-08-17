@@ -1,4 +1,4 @@
-"""Tesla LoadPilot — local, cloud-free load management for the Tesla Wall
+"""Tesla LoadPilot - local, cloud-free load management for the Tesla Wall
 Connector Gen 3.
 
 The integration configures and observes the ESPHome nodes; the control law

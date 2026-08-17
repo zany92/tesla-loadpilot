@@ -1,6 +1,6 @@
-# DESIGN — Loi de publication pire-phase TOUJOURS CO-VARIANTE (flash n° 2)
+# DESIGN - Loi de publication pire-phase TOUJOURS CO-VARIANTE (flash n° 2)
 
-> **IMPLÉMENTÉ le 17/08 soir (flash n° 2) — VALIDÉ EN RÉEL le soir même**
+> **IMPLÉMENTÉ le 17/08 soir (flash n° 2) - VALIDÉ EN RÉEL le soir même**
 > (19:06-19:43) : danse d'équilibre ±1 A à la frontière du budget (régime
 > normal, pas une défiance), descente continue 16→12+ A sous échelon
 > +4 clims (pente publiée L+0,95), cascade complète
@@ -26,7 +26,7 @@
 
 Le clamp v1.1 rend le trip impossible (`pub ≤ 21` toujours) mais **fige le
 publié en saturation** : pendant une rampe voiture 8→16 A sous clamp, le
-publié n'a bougé que de +0,7 A — huit ampères du courant propre de la borne
+publié n'a bougé que de +0,7 A - huit ampères du courant propre de la borne
 sans écho dans le compteur qu'elle polle. Le contrôle de corrélation du
 firmware 26.x casse → **défiance de session latchée** : plus de service,
 plus de morsures, plus d'intégrale, escalade 21,1 ignorée 8 min. Le clamp
@@ -35,7 +35,7 @@ qui protège du trip est précisément ce qui fabrique le compteur menteur
 
 **Invariant à garantir désormais** : le publié n'est JAMAIS une valeur
 morte, et l'écho des variations réelles (surtout la composante borne) est
-TOUJOURS présent — y compris en contrainte.
+TOUJOURS présent - y compris en contrainte.
 
 ## 2. Micro-lois d'appui (RAPPORTÉ, à recalibrer chez nous)
 
@@ -49,15 +49,15 @@ Fil HA 985613 + TWCManager #20 (olaliv, mono ~26.2) et tomiczech :
 | > L − 5 au démarrage | **session refusée** (il faut ≥ 5 A de marge affichée pour démarrer) |
 
 - Nudges gagnants (olaliv) : **±1 A max autour de la limite, un cycle sur
-  deux** — le reste du temps on publie la réalité corrélée.
+  deux** - le reste du temps on publie la réalité corrélée.
 - tomiczech : impulsions d'un seul cycle, +1 A pour réduire / −1,2 A pour
   augmenter, « every fifth request ». À ~190 ms/poll, un cycle sur cinq
-  ≈ 1 Hz — exactement la cadence de notre `recompute_ct` : notre grain de
+  ≈ 1 Hz - exactement la cadence de notre `recompute_ct` : notre grain de
   publication est déjà le bon.
 - PVi1 : jamais de dilution (EMA/moyenne = rejet en secondes), mais **un
   gain multiplicatif sans retard est accepté** ; preuve terrain qu'un
   signal à gain < 1 module durablement (BEHAVIOR.md §3, §9).
-- La borne ne lit QUE les registres courant (olaliv) — les registres
+- La borne ne lit QUE les registres courant (olaliv) - les registres
   puissance restent publiés par cohérence (coût nul), mais la loi se
   raisonne en ampères.
 
@@ -65,7 +65,7 @@ Chez nous : tri, L = 21 A, budget contrat 19,53 A (21,7 × 0,9),
 polls ~190 ms, service près de la limite en 5-20 s, intégrale de
 protection ~20-21 A·s au-dessus de 21 (décroissante sous la limite).
 
-## 3. La loi candidate — « compression bornée à point fixe L »
+## 3. La loi candidate - « compression bornée à point fixe L »
 
 ### 3.1 Idée
 
@@ -74,12 +74,12 @@ zéro retard) ; en contrainte, on publie L + une image **compressée mais
 strictement croissante** de l'excès, bornée à +1 A. Le publié n'est plus
 jamais une constante : il monte quand la réalité monte, descend quand elle
 descend, et son niveau au-dessus de L est en même temps le signal de
-descente mesuré (§2). Il n'y a **aucun état nouveau** — la loi reste une
+descente mesuré (§2). Il n'y a **aucun état nouveau** - la loi reste une
 fonction pure de l'entrée du cycle, fidèle à la leçon 28 (« chaque état
 ajouté crée son bug »).
 
 Identité utile : hors clamp, la v1.1 publie déjà
-`o_raw = max_p(m_p) + biais + (L − budget)` — c'est la pire phase réelle
+`o_raw = max_p(m_p) + biais + (L − budget)` - c'est la pire phase réelle
 décalée d'une constante (+1,47 A à b = 10 %, + biais). Un décalage additif
 constant préserve la corrélation 1:1 (les DELTAS sont identiques) ; seule
 la zone clampée était morte. La loi covariante ne change donc RIEN hors
@@ -127,7 +127,7 @@ Différences vs v1.1, en une ligne chacune :
 2. le dither devient symétrique ±0,05 et **permanent** (même hors
    contrainte : assurance à coût nul contre toute source momentanément
    plate) ;
-3. l'escalade 120 s devient un simple **plancher** (`max(pub, L+0,1)`) —
+3. l'escalade 120 s devient un simple **plancher** (`max(pub, L+0,1)`) -
    dès qu'il y a excès la loi publie déjà ≥ L+0,1, donc le signal de
    descente est actif dès la première seconde de contrainte au lieu
    d'attendre 120 s ; le timer reste comme filet et pour l'observabilité
@@ -140,9 +140,9 @@ Différences vs v1.1, en une ligne chacune :
 Toute compression qui démarre SOUS L (soft-knee classique) retarde
 l'engagement du service : la borne ne verrait la contrainte que pour un
 excès réel déjà important (à genou L−1 et gain 0,25, elle n'engagerait
-qu'à +3 A réels — inacceptable, le contrat serait dépassé en silence). Le
+qu'à +3 A réels - inacceptable, le contrat serait dépassé en silence). Le
 point fixe en L garantit : `réalité au budget ⇔ publié à la limite`, comme
-aujourd'hui — l'engagement du service se produit exactement à la vraie
+aujourd'hui - l'engagement du service se produit exactement à la vraie
 contrainte, quelle que soit la fonctionnelle exacte (symétrie conservée :
 min = moy = max sur les 3 voies).
 
@@ -153,7 +153,7 @@ min = moy = max sur les 3 voies).
 Le trip n'est plus « impossible par construction » : le publié peut vivre
 au-dessus de 21. Il devient **improbable par dynamique**, et c'est
 quantifiable avec l'intégrale mesurée (~20-21 A·s, décroissante sous la
-limite ; décroissance non calibrée — toutes les durées ci-dessous sont
+limite ; décroissance non calibrée - toutes les durées ci-dessous sont
 donc des BORNES BASSES, décroissance supposée nulle) :
 
 | Publié soutenu | Vie max avant coupure (sans décroissance) |
@@ -178,7 +178,7 @@ descente rapportée est **~1 A/s**. Scénarios :
   rapporté)** : e persiste → pub reste > L → la borne finit par
   s'arrêter (service) ou par couper (intégrale, ≥ 20 s à E_MAX). Un
   claquement ici est le DERNIER filet d'une vraie surcharge que ni la
-  voiture ni la couche HA (pause ~40-120 s, délestage) n'ont résorbée —
+  voiture ni la couche HA (pause ~40-120 s, délestage) n'ont résorbée -
   comportement acceptable et voulu. Contacteur ouvert = plus de charge à
   couper = l'excès résiduel est un problème maison, hors périmètre borne.
 - **Cas pathologique** : oscillation de la maison pile autour du budget →
@@ -201,25 +201,25 @@ au-dessus de L avec p99 > 12 s.
 - Hors contrainte : démarrage autorisé ssi `o_raw ≤ 16`, soit une pire
   phase réelle ≤ 16 − 1,47 − biais ≈ **14,5 A** (biais 0). Le décalage
   budget rend donc le démarrage un peu plus exigeant que la réalité brute
-  — c'est le sens sûr, et cohérent avec une demande mémorisée de 16 A.
+  - c'est le sens sûr, et cohérent avec une demande mémorisée de 16 A.
 - Piège vécu à ne pas recréer : la « fenêtre code 10 » (biais en rampe de
   descente = refus 160 s). La règle contacteur-ouvert → biais immédiat
   (lot 13) reste la parade ; la loi covariante n'y touche pas.
 - Risque nouveau : en conditions marginales (pire phase réelle ~14-15 A
   fluctuante), des démarrages refusés/interrompus répétés peuvent mener à
   l'**abandon silencieux du véhicule** (~3 tentatives, `evse_state` 9,
-  BEHAVIOR.md §5). L'anti-cyclage est du ressort de la couche HA — à
+  BEHAVIOR.md §5). L'anti-cyclage est du ressort de la couche HA - à
   vérifier au plan de validation (§6, métrique M5).
 
 ### 4.3 Interaction avec le biais et l'escalade
 
 - Le biais entre dans `o_raw` AVANT la compression : un pas de rampe
-  (±0,5-1 A/5 s) se lit dans le publié comme une dérive maison lente —
+  (±0,5-1 A/5 s) se lit dans le publié comme une dérive maison lente -
   plausible pour la borne (c'est déjà le cas en v1.1 hors clamp). Sous
   contrainte, le même pas est compressé ×K_ECHO : l'effet du biais
   s'affaiblit près de la limite mais son SIGNE est conservé, et
   pousser le biais finit toujours par faire monter pub → descente. Le
-  levier reste monotone — juste plus mou dans la bande [L ; L+1].
+  levier reste monotone - juste plus mou dans la bande [L ; L+1].
 - Un biais de pause (16 A) pousse o_raw très au-delà de L+2 → pub sature
   à L+1 : arrêt par la voie service (~1 A/s), plus rapide que l'ancienne
   paire clamp+escalade. Le switch STOP reste le chemin d'arrêt franc
@@ -262,7 +262,7 @@ substitutions (pas des réglages).
 
 ## 6. Plan de validation en OMBRE-MAX
 
-Pré-requis : **confiance reconstruite** avant toute lecture — ≥ une nuit
+Pré-requis : **confiance reconstruite** avant toute lecture - ≥ une nuit
 de publication honnête (le mode actuel v1.1 hors saturation suffit), le
 détecteur de défiance muet sur la fenêtre. Sans cela, tout est confondu.
 
@@ -282,7 +282,7 @@ contrainte provoqués en journée (clim + piscine, comme la validation du
 
 Passage en ACTIF-MAX : créneaux courts surveillés (30 min), STOP à portée,
 compteur `contactor_cycles` avant/après, détecteur de défiance en alerte
-temps réel, véhicule à 16 A, maison vivante — mêmes conditions que la
+temps réel, véhicule à 16 A, maison vivante - mêmes conditions que la
 validation §8 du 17/08 pour comparaison directe. GO 24 h ensuite (patron
 A11 du TESTPLAN). Toute entrée en défiance pendant les créneaux = STOP,
 retour v1.1, analyse de trace avant nouvel essai.

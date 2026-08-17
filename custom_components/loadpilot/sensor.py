@@ -1,7 +1,7 @@
 """Derived sensors for Tesla LoadPilot (contract /CONTRACTS.md §3.3).
 
 sensor.loadpilot_state, sensor.loadpilot_headroom_l1/_l2/_l3,
-sensor.loadpilot_worst_phase — pure derivations from the charger-node
+sensor.loadpilot_worst_phase - pure derivations from the charger-node
 entities, computed by the coordinator. No control logic here (D2).
 """
 
@@ -63,7 +63,7 @@ class LoadPilotBaseSensor(
 
     Entity ids are CONTRACTUAL (/CONTRACTS.md §3.3): every subclass pins an
     English ``_attr_suggested_object_id``. Without it, HA derives the object
-    id from the TRANSLATED friendly name at creation time — on a French
+    id from the TRANSLATED friendly name at creation time - on a French
     instance sensor.loadpilot_state would be born sensor.loadpilot_etat,
     breaking the dashboards and the docs. ``has_entity_name`` +
     ``translation_key`` stay in place for the DISPLAY name only.

@@ -1,4 +1,4 @@
-# Tesla LoadPilot — the everyday card ("two faces" design, face B: daily use)
+# Tesla LoadPilot - the everyday card ("two faces" design, face B: daily use)
 # ---------------------------------------------------------------------------
 # Generalised from the pilot site's "Charger" page (docs/50_COUCHE_HA.md).
 # ONE master switch (with confirmation both ways), status chips, alerts that
@@ -13,14 +13,14 @@
 #   * SECTION 1 uses ONLY Home Assistant core cards (no HACS dependency).
 #   * SECTION 2 (bottom, commented) is an OPTIONAL Mushroom variant. If you
 #     enable it, note that EVERY action (tap/hold/double_tap/icon_tap) is
-#     defined explicitly — Mushroom's default icon_tap_action is "toggle"
+#     defined explicitly - Mushroom's default icon_tap_action is "toggle"
 #     even when tap_action is "none", which WILL toggle your entity from an
 #     accidental icon touch. Keep all four actions defined. Always.
 #
 # This project is not affiliated with, endorsed by, or sponsored by Tesla, Inc.
 # ---------------------------------------------------------------------------
 
-# ============================ SECTION 1 — CORE ============================
+# ============================ SECTION 1 - CORE ============================
 type: vertical-stack
 cards:
   # --- Master switch: THE one control. Confirmation in both directions. ---
@@ -34,7 +34,7 @@ cards:
       confirmation:
         text: >-
           Toggle charge regulation? When OFF, the wall connector returns to
-          factory behaviour at FULL power — your electricity contract is no
+          factory behaviour at FULL power - your electricity contract is no
           longer protected.
     icon_tap_action:
       action: more-info
@@ -50,7 +50,7 @@ cards:
     card:
       type: markdown
       content: >-
-        ⚠️ **Regulation OFF** — charger at full power, contract not
+        ⚠️ **Regulation OFF** - charger at full power, contract not
         protected.
 
   - type: conditional
@@ -61,7 +61,7 @@ cards:
     card:
       type: markdown
       content: >-
-        🛑 **Sustained overload — clean stop in progress.** The house has
+        🛑 **Sustained overload - clean stop in progress.** The house has
         been over budget for 2 minutes; charging is being stopped safely.
 
   - type: conditional
@@ -72,7 +72,7 @@ cards:
     card:
       type: markdown
       content: >-
-        🟠 **Running on Home Assistant backup** (direct meter link down —
+        🟠 **Running on Home Assistant backup** (direct meter link down -
         degraded responsiveness). Check the meter node.
 
   - type: conditional
@@ -83,7 +83,7 @@ cards:
     card:
       type: markdown
       content: >-
-        ⛔ **No measurement — charging blocked for safety.** Neither the
+        ⛔ **No measurement - charging blocked for safety.** Neither the
         meter link nor the Home Assistant backup is available. Your
         contract can never be exceeded.
 
@@ -100,7 +100,7 @@ cards:
       - entity: sensor.loadpilot_headroom_l1
         name: Headroom L1
         icon: mdi:gauge
-      # 3-phase installs — harmless on single-phase (L2/L3 stay at budget):
+      # 3-phase installs - harmless on single-phase (L2/L3 stay at budget):
       - entity: sensor.loadpilot_headroom_l2
         name: Headroom L2
         icon: mdi:gauge
@@ -112,7 +112,7 @@ cards:
       - entity: sensor.loadpilot_twc_published_current_l1
         name: Published to charger
         icon: mdi:ev-station
-      # OPTIONAL — plug YOUR OWN vehicle state-of-charge entity here
+      # OPTIONAL - plug YOUR OWN vehicle state-of-charge entity here
       # (no vehicle API ships with LoadPilot v0):
       # - entity: sensor.my_car_battery_level
       #   name: Vehicle charge
@@ -120,7 +120,7 @@ cards:
 
   # --- Pause banner + resume: only while a pause (full bias) is applied. --
   # NOTE: "paused" is inferred from bias_applied >= 15 A (no explicit
-  # paused state in v0 — see UX_COPY.md §Demandes, item 2).
+  # paused state in v0 - see UX_COPY.md §Demandes, item 2).
   - type: conditional
     conditions:
       - condition: numeric_state
@@ -173,7 +173,7 @@ cards:
       double_tap_action:
         action: none
 
-  # --- Settings: visible but discreet — touched twice a year. -------------
+  # --- Settings: visible but discreet - touched twice a year. -------------
   - type: entities
     title: Settings
     show_header_toggle: false
@@ -191,10 +191,10 @@ cards:
         name: Slowdown applied
         icon: mdi:speedometer-slow
 
-# ======================= SECTION 2 — MUSHROOM (BONUS) ======================
+# ======================= SECTION 2 - MUSHROOM (BONUS) ======================
 # OPTIONAL variant of the master switch + chips using Mushroom (HACS).
 # Not required by anything. If you use it: ALL FOUR actions are defined on
-# EVERY card below — never remove them. Mushroom's implicit default for
+# EVERY card below - never remove them. Mushroom's implicit default for
 # icon_tap_action is "toggle" even with tap_action: none; an accidental
 # icon touch then flips the entity (this exact trap once triggered a real
 # alarm siren on the pilot site).

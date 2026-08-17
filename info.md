@@ -5,13 +5,13 @@
 An ESP32 emulates the discontinued Neurio meter on the wallbox's RS485 bus
 and publishes your home's real consumption, measured at the utility meter
 (France: Linky) and shipped over encrypted UDP. The wallbox's own load
-management then modulates the vehicle — smoothly, locally, and **without
+management then modulates the vehicle - smoothly, locally, and **without
 ever tripping: the published signal is clamped below the limit by
 construction.**
 
 This integration provides the config flow, derived sensors (regulation
 state, per-phase headroom, worst phase), services (bias, pause/resume) and
-Repairs. It is an observer and installer — **regulation and protection run
+Repairs. It is an observer and installer - **regulation and protection run
 entirely in the ESP32 firmware** and keep working with Home Assistant down.
 
 The matching firmware is consumed as ESPHome remote packages from the same

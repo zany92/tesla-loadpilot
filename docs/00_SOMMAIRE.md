@@ -1,16 +1,16 @@
-# Tesla LoadPilot — dossier technique
+# Tesla LoadPilot - dossier technique
 ## Contrôle dynamique Tesla Wall Connector Gen 3 par émulation Neurio
 
 > **Staging documentaire (14/08/2026)** en préparation d'une future publication
 > GitHub. **RIEN n'est publié.** Ce dossier est une réécriture GÉNÉRICISÉE et
-> SANS SECRET des configs et docs vivants de Loupiac — les fichiers de
+> SANS SECRET des configs et docs vivants de Loupiac - les fichiers de
 > production restent la seule source de vérité opérationnelle
 > (`/config/esphome/*.yaml`, `/config/packages/*.yaml`,
 > `/config/docs/contrat_electrique_LOGIQUE.md`).
 
 ## Le projet en une phrase
 
-> **Any meter, any country, any vehicle — no discontinued Neurio required.**
+> **Any meter, any country, any vehicle - no discontinued Neurio required.**
 
 Piloter dynamiquement la puissance de charge d'un **Tesla Wall Connector
 Gen 3** (fonction *Home Load Management* / DPM, firmware ≥ 26.18) sans le
@@ -26,17 +26,17 @@ Nom retenu : **« Tesla LoadPilot »** (dépôt probable `tesla-loadpilot`).
 L'usage de la marque Tesla dans les noms de projets open source est une
 pratique répandue et tolérée (TeslaMate, TeslaFi, TWCManager…), mais le
 README portera en tête le disclaimer standard : *« This project is not
-affiliated with, endorsed by, or sponsored by Tesla, Inc. »* — et aucun
+affiliated with, endorsed by, or sponsored by Tesla, Inc. »* - et aucun
 logo/visuel Tesla ne sera utilisé.
 
 ## Architecture de publication : DEUX MODULES (décision Vincent, 14/08)
 
 1. **Le cœur universel** (nœud borne) : émulation Neurio, sémantique RAW,
    biais/rampe, fail-safe, priorité de sources, loi de commande mesurée.
-   **Rien de spécifique à la France** — valable pour toute borne TWC Gen 3,
+   **Rien de spécifique à la France** - valable pour toute borne TWC Gen 3,
    mono ou triphasée, quel que soit le compteur en amont. Le cœur est
    lui-même **multi-cartes** : logique commune + paquet de substitutions
-   par carte Kincony (`20_FIRMWARE.md` §2.9 — seule la KC868-A6 est
+   par carte Kincony (`20_FIRMWARE.md` §2.9 - seule la KC868-A6 est
    validée à ce jour).
 2. **Des « fournisseurs de mesure » enfichables** via la liaison UDP
    (contrat de diffusion documenté). Notre téléinfo Linky (hat Hallard)
@@ -86,9 +86,9 @@ tesla-loadpilot/
 
 ## Décisions ACTÉES (Vincent, 14/08/2026)
 
-- **Nom : « Tesla LoadPilot »** (dépôt probable `tesla-loadpilot`) — voir la
+- **Nom : « Tesla LoadPilot »** (dépôt probable `tesla-loadpilot`) - voir la
   note de nommage ci-dessus (disclaimer non-affiliation obligatoire).
-- **Module indépendant** — PAS une contribution/PR au dépôt
+- **Module indépendant** - PAS une contribution/PR au dépôt
   PVi1/esphome-twc-control. Attribution claire à PVi1 comme source
   d'inspiration/base initiale. **Vérifié le 14/08 sur GitHub : le dépôt
   PVi1/esphome-twc-control n'affiche AUCUNE licence explicite** (ni fichier
@@ -108,7 +108,7 @@ tesla-loadpilot/
   (ci-dessus).
 - **Nœud téléinfo de référence = Olimex ESP32-POE** (confirmé Vincent,
   fiche : https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware)
-  — réconciliation de la config Ethernet dans `10_MATERIEL.md` /
+  - réconciliation de la config Ethernet dans `10_MATERIEL.md` /
   `20_FIRMWARE.md` §1.2.
 - **Cœur multi-cartes Kincony** : structure commune + substitutions par
   carte, tableau GPIO/transceiver et statut testé/non testé dans
@@ -136,7 +136,7 @@ tesla-loadpilot/
 ## Trous documentaires restants (état 14/08/2026)
 
 - ~~Test « palier »~~ **FAIT (14/08 15:11, verdict final)** : même à 0,46 s
-  la borne ne tient pas un palier sous la consigne — plafond du firmware
+  la borne ne tient pas un palier sous la consigne - plafond du firmware
   TWC, pas la latence. Conclusion intégrée à `40_LOI_DE_COMMANDE.md`.
 - **Protocole T1-T6** (critères chiffrés, PLAN_lot13) à rejouer avec
   `borne_seul` OFF pour valider le pilotage Fleet + biais en réel.
@@ -148,7 +148,7 @@ tesla-loadpilot/
   Kincony ; ESP32-S3 core = draft compilé jamais branché à une borne.
 - **Providers non-français** (`15_FOURNISSEURS_MESURE.md`) : squelettes dsmr
   / sml / pinces CT à écrire et à faire valider par des testeurs des pays
-  concernés — aucun n'a tourné en réel.
+  concernés - aucun n'a tourné en réel.
 - Le **refresh interne du Linky (~1 Hz)** et le plafond TIC 9600 bd sont des
   limites Enedis non configurables : à sourcer proprement
   (Enedis-NOI-CPT_54E) pour la publication.

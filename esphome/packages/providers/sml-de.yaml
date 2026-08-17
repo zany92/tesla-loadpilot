@@ -1,10 +1,10 @@
 # =============================================================================
-# Tesla LoadPilot — meter provider: SML IR head (DE / AT) — SKELETON
+# Tesla LoadPilot - meter provider: SML IR head (DE / AT) - SKELETON
 #
-# STATUS: SKELETON — NEVER COMPILED, NEVER TESTED ON A REAL METER.
+# STATUS: SKELETON - NEVER COMPILED, NEVER TESTED ON A REAL METER.
 # The UDP contract (port 18511, lky_* broadcast ids, XXTEA, 1 Hz) is FROZEN.
 #
-# HONEST CAVEATS (docs/15_FOURNISSEURS_MESURE.md §2-§3) — read before use:
+# HONEST CAVEATS (docs/15_FOURNISSEURS_MESURE.md §2-§3) - read before use:
 # - Many SML meters (ISKRA MT681, EMH eHZ...) only expose the TOTAL signed
 #   power (OBIS 1-0:16.7.0), NOT per-phase values. Publishing total/3 on the
 #   three phases is a DEGRADED approximation: on an unbalanced installation
@@ -13,7 +13,7 @@
 #   61.7.0), prefer providers/ct-clamps.yaml.
 # - A PIN (from the utility) is often required to unlock instantaneous power.
 # - Cadence varies 1-4 s per meter model: verify >= ~1 Hz before relying on
-#   it (below ~1 Hz the wallbox bang-bang is guaranteed — measured).
+#   it (below ~1 Hz the wallbox bang-bang is guaranteed - measured).
 # =============================================================================
 substitutions:
   node_name: loadpilot-meter
@@ -81,7 +81,7 @@ sml:
   uart_id: uart_sml
 
 sensor:
-  # TODO: per-phase OBIS codes — PRESENT ONLY ON SOME METERS (see header).
+  # TODO: per-phase OBIS codes - PRESENT ONLY ON SOME METERS (see header).
   - platform: sml
     sml_id: sml_bus
     obis_code: "1-0:21.7.0"    # active power L1 (W)

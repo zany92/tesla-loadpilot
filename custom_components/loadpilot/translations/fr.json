@@ -33,7 +33,7 @@
           "buffer_pct": "Réserve de sécurité (%)"
         },
         "data_description": {
-          "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement — ou « Autre » pour saisir les ampères vous-même ci-dessous.",
+          "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement - ou « Autre » pour saisir les ampères vous-même ci-dessous.",
           "contract_limit_a": "En France : 6 kVA monophasé = 30 A · 9 kVA = 45 A · 12 kVA = 60 A · 15 kVA = 75 A · 18 kVA = 90 A. En triphasé, par phase : 6 kVA = 10 A · 9 kVA = 15 A · 12 kVA = 20 A · 15 kVA = 25 A · 18 kVA = 30 A.",
           "buffer_pct": "Avec 10 % de réserve, la voiture n'exploite que 90 % de votre abonnement : le reste absorbe les à-coups (démarrage d'un four, d'une pompe) sans faire disjoncter."
         }
@@ -55,14 +55,14 @@
       },
       "confirm": {
         "title": "Vérifiez avant d'activer",
-        "description": "Compteur : {country_profile}. Installation : {phases} phase(s). Abonnement : {contract_limit_a} A par phase, réserve {buffer_pct} % — soit un budget de {budget_a} A par phase pour toute la maison, voiture comprise. Ces réglages sont écrits dans le boîtier borne : ils restent actifs même si Home Assistant est éteint. L'activation de la régulation se fait depuis la carte LoadPilot, pas ici."
+        "description": "Compteur : {country_profile}. Installation : {phases} phase(s). Abonnement : {contract_limit_a} A par phase, réserve {buffer_pct} % - soit un budget de {budget_a} A par phase pour toute la maison, voiture comprise. Ces réglages sont écrits dans le boîtier borne : ils restent actifs même si Home Assistant est éteint. L'activation de la régulation se fait depuis la carte LoadPilot, pas ici."
       }
     },
     "error": {
       "charger_not_found": "Boîtier borne introuvable. Il doit être adopté dans ESPHome et visible dans Home Assistant avant cette étape (voir le guide firmware).",
       "meter_not_found": "Boîtier compteur introuvable. Il doit être adopté dans ESPHome et visible dans Home Assistant avant cette étape (voir le guide firmware).",
-      "budget_too_small": "Avec ces réglages, il ne reste que {budget_a} A par phase pour toute la maison — la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve.",
-      "tri_limit_suspicious": "{contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé — auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? Validez de nouveau sans rien changer pour confirmer."
+      "budget_too_small": "Avec ces réglages, il ne reste que {budget_a} A par phase pour toute la maison - la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve.",
+      "tri_limit_suspicious": "{contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé - auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? Validez de nouveau sans rien changer pour confirmer."
     },
     "abort": {
       "already_configured": "Ce boîtier borne LoadPilot est déjà configuré."
@@ -85,14 +85,14 @@
           "power_l3": "Puissance, phase 3"
         },
         "data_description": {
-          "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement — ou « Autre » pour saisir les ampères vous-même ci-dessous.",
+          "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement - ou « Autre » pour saisir les ampères vous-même ci-dessous.",
           "buffer_pct": "Avec 10 % de réserve, la voiture n'exploite que 90 % de votre abonnement : le reste absorbe les à-coups sans faire disjoncter."
         }
       }
     },
     "error": {
-      "budget_too_small": "Avec ces réglages, il ne reste que {budget_a} A par phase pour toute la maison — la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve.",
-      "tri_limit_suspicious": "{contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé — auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? Validez de nouveau sans rien changer pour confirmer."
+      "budget_too_small": "Avec ces réglages, il ne reste que {budget_a} A par phase pour toute la maison - la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve.",
+      "tri_limit_suspicious": "{contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé - auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? Validez de nouveau sans rien changer pour confirmer."
     }
   },
   "selector": {
@@ -104,29 +104,29 @@
     },
     "country_profile": {
       "options": {
-        "fr_tic": "France — Linky (TIC)",
-        "dsmr_p1": "Pays-Bas / Belgique — DSMR P1 (aperçu)",
-        "sml_de": "Allemagne / Autriche — SML (aperçu)",
-        "ct_clamps": "Universel — pinces ampèremétriques (aperçu)"
+        "fr_tic": "France - Linky (TIC)",
+        "dsmr_p1": "Pays-Bas / Belgique - DSMR P1 (aperçu)",
+        "sml_de": "Allemagne / Autriche - SML (aperçu)",
+        "ct_clamps": "Universel - pinces ampèremétriques (aperçu)"
       }
     },
     "contract_preset": {
       "options": {
         "custom": "Autre (saisir la limite en ampères)",
-        "mono_6": "6 kVA monophasé — 30 A",
-        "mono_9": "9 kVA monophasé — 45 A",
-        "mono_12": "12 kVA monophasé — 60 A",
-        "mono_15": "15 kVA monophasé — 75 A",
-        "mono_18": "18 kVA monophasé — 90 A",
-        "mono_24": "24 kVA monophasé — 120 A",
-        "tri_6": "6 kVA triphasé — 10 A par phase",
-        "tri_9": "9 kVA triphasé — 15 A par phase",
-        "tri_12": "12 kVA triphasé — 20 A par phase",
-        "tri_15": "15 kVA triphasé — 25 A par phase",
-        "tri_18": "18 kVA triphasé — 30 A par phase",
-        "tri_24": "24 kVA triphasé — 40 A par phase",
-        "tri_30": "30 kVA triphasé — 50 A par phase",
-        "tri_36": "36 kVA triphasé — 60 A par phase"
+        "mono_6": "6 kVA monophasé - 30 A",
+        "mono_9": "9 kVA monophasé - 45 A",
+        "mono_12": "12 kVA monophasé - 60 A",
+        "mono_15": "15 kVA monophasé - 75 A",
+        "mono_18": "18 kVA monophasé - 90 A",
+        "mono_24": "24 kVA monophasé - 120 A",
+        "tri_6": "6 kVA triphasé - 10 A par phase",
+        "tri_9": "9 kVA triphasé - 15 A par phase",
+        "tri_12": "12 kVA triphasé - 20 A par phase",
+        "tri_15": "15 kVA triphasé - 25 A par phase",
+        "tri_18": "18 kVA triphasé - 30 A par phase",
+        "tri_24": "24 kVA triphasé - 40 A par phase",
+        "tri_30": "30 kVA triphasé - 50 A par phase",
+        "tri_36": "36 kVA triphasé - 60 A par phase"
       }
     }
   },
@@ -158,7 +158,7 @@
   "services": {
     "set_bias": {
       "name": "Régler le ralentissement de charge (biais)",
-      "description": "Ralentit volontairement le véhicule en réservant des ampères pour le reste de la maison. 0 = aucun ralentissement, 16 = charge en pause. La valeur est appliquée en douceur — la rampe est gérée par le boîtier borne.",
+      "description": "Ralentit volontairement le véhicule en réservant des ampères pour le reste de la maison. 0 = aucun ralentissement, 16 = charge en pause. La valeur est appliquée en douceur - la rampe est gérée par le boîtier borne.",
       "fields": {
         "amps": {
           "name": "Ampères réservés",
@@ -204,7 +204,7 @@
         "step": {
           "confirm": {
             "title": "Boîtier borne introuvable dans Home Assistant",
-            "description": "Aucune entité du boîtier borne « {charger_node} » n'existe dans Home Assistant (boîtier hors ligne depuis avant le démarrage, renommé, ou retiré d'ESPHome). Le boîtier continue de réguler seul — la loi de commande vit dans son firmware — mais Home Assistant ne peut plus l'observer ni le régler. Rétablissez le boîtier sous ce nom exact (ou supprimez puis réinstallez l'intégration avec le bon nom), puis confirmez."
+            "description": "Aucune entité du boîtier borne « {charger_node} » n'existe dans Home Assistant (boîtier hors ligne depuis avant le démarrage, renommé, ou retiré d'ESPHome). Le boîtier continue de réguler seul - la loi de commande vit dans son firmware - mais Home Assistant ne peut plus l'observer ni le régler. Rétablissez le boîtier sous ce nom exact (ou supprimez puis réinstallez l'intégration avec le bon nom), puis confirmez."
           }
         }
       }

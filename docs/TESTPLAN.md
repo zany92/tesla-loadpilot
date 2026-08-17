@@ -1,4 +1,4 @@
-# Tesla LoadPilot — Plan de test avant publication
+# Tesla LoadPilot - Plan de test avant publication
 
 > Propriété QA. Campagne à dérouler AVANT le premier tag public `v0.1.0`.
 > Trois volets : (A) non-régression sur le site pilote (déjà en prod),
@@ -15,16 +15,16 @@
     packages consommés en CHEMIN LOCAL, le tag n'existant pas encore) ;
   - `examples/meter-teleinfo-olimex-poe.yaml` ;
   - les squelettes `dsmr-p1` / `sml-de` / `ct-clamps` : **config seule**
-    (ils sont marqués jamais compilés — l'objectif est zéro erreur de
+    (ils sont marqués jamais compilés - l'objectif est zéro erreur de
     syntaxe/schéma, pas une validation fonctionnelle).
 - [ ] `python -m script.hassfest` (ou l'action GitHub hassfest) passe sur
   `custom_components/loadpilot`.
 - [ ] Validation HACS (action `hacs/action`) passe.
 - [ ] Le scan secrets de la QA est vert **y compris sur l'historique git**
-  (voir QA_REPORT.md — bloquant B1 : réécrire l'historique et/ou tourner la
+  (voir QA_REPORT.md - bloquant B1 : réécrire l'historique et/ou tourner la
   clé UDP avant tout push).
 
-## A. Site pilote (prod Loupiac) — non-régression de l'extraction
+## A. Site pilote (prod Loupiac) - non-régression de l'extraction
 
 Le site tourne aujourd'hui sur `kc868-a6-1.yaml` (bloc **PVi1-GRADE v2
 co-variant**, flash n°2 du 17/08 soir). Objectif : prouver que
@@ -33,7 +33,7 @@ reproduisent EXACTEMENT le comportement validé.
 
 > **Annotation 17/08 soir** : plusieurs cas A* ont déjà été JOUÉS EN RÉEL
 > sur le firmware site (le comportement cible est donc mesuré, traces à
-> l'appui) — voir le relevé sous le tableau. Cela ne dispense PAS de
+> l'appui) - voir le relevé sous le tableau. Cela ne dispense PAS de
 > rejouer ces cas sur le core EXTRAIT : c'est la non-régression de
 > l'extraction qui est l'objet de ce volet, et elle reste à faire.
 
@@ -50,10 +50,10 @@ reproduisent EXACTEMENT le comportement validé.
 | A9 | Biais contacteur ouvert (pas de véhicule) | cible appliquée IMMÉDIATEMENT (pas de fenêtre « code 10 ») | rampe appliquée à vide |
 | A10 | Kill-switch OFF pendant 10 min | publication 0 A constante, la borne retombe au comportement d'usine (curseur appli), état HA `off` | la borne reste bridée |
 | A11 | 24 h en `ACTIF-MAX` (usage normal) | zéro reboot nœud, zéro cycle contacteur, UDP Age p99 < 2 s | reboot spontané, watchdog |
-| A12 | **Yo-yo boucle fermée** (gain 0,5 / emax 1,0, contrainte SOUTENUE — clims maintenues) | reproduire la signature mesurée 17/08 20:20 : cycle véhicule ±2,5 A période ~20 s ; la pause HA (biais) doit résoudre AVANT la coupure intégrale (~7 excursions) | coupure contacteur atteinte sans intervention de la pause |
-| A13 | **Bande morte à +0,5** : maintenir le publié à L+0,45..0,55 ~90 s (biais fin, charge stable) | AUCUNE réaction pilote pendant ~70 s, AUCUNE coupure (intégrale tolérante : 35 A·s vécus à +0,5) — cf. BEHAVIOR §2 (dead band) | descente franche ou coupure dans la bande L+0,1..L+0,5 |
-| A14 | **Re-défiance par dilution** (NE PAS rejouer en prod — cas destructif, uniquement banc/fenêtre dédiée) : gain 0,25 / emax 0,5 puis rampe de démarrage véhicule | défiance latchée EN UNE RAMPE (voiture figée à travers pub > L+0,4, pause biais ignorée) + détecteur 21,45/120 s qui SONNE ; retour 0,5/1,0 ensuite | le détecteur ne sonne pas ; ou la défiance survient aussi à 0,5/1,0 |
-| A15 | **Validation variante B** (placeholder — loi asymétrique/nudges un-cycle-sur-deux, cf. `DESIGN_LOI_COVARIANTE.md`, en design) | sous la même contrainte soutenue qu'A12 : modulation tenue SANS cycle ±2,5 A ni coupure intégrale ; critères chiffrés à poser au design | — (à définir avec la variante B) |
+| A12 | **Yo-yo boucle fermée** (gain 0,5 / emax 1,0, contrainte SOUTENUE - clims maintenues) | reproduire la signature mesurée 17/08 20:20 : cycle véhicule ±2,5 A période ~20 s ; la pause HA (biais) doit résoudre AVANT la coupure intégrale (~7 excursions) | coupure contacteur atteinte sans intervention de la pause |
+| A13 | **Bande morte à +0,5** : maintenir le publié à L+0,45..0,55 ~90 s (biais fin, charge stable) | AUCUNE réaction pilote pendant ~70 s, AUCUNE coupure (intégrale tolérante : 35 A·s vécus à +0,5) - cf. BEHAVIOR §2 (dead band) | descente franche ou coupure dans la bande L+0,1..L+0,5 |
+| A14 | **Re-défiance par dilution** (NE PAS rejouer en prod - cas destructif, uniquement banc/fenêtre dédiée) : gain 0,25 / emax 0,5 puis rampe de démarrage véhicule | défiance latchée EN UNE RAMPE (voiture figée à travers pub > L+0,4, pause biais ignorée) + détecteur 21,45/120 s qui SONNE ; retour 0,5/1,0 ensuite | le détecteur ne sonne pas ; ou la défiance survient aussi à 0,5/1,0 |
+| A15 | **Validation variante B** (placeholder - loi asymétrique/nudges un-cycle-sur-deux, cf. `DESIGN_LOI_COVARIANTE.md`, en design) | sous la même contrainte soutenue qu'A12 : modulation tenue SANS cycle ±2,5 A ni coupure intégrale ; critères chiffrés à poser au design | - (à définir avec la variante B) |
 
 ### Relevé des cas déjà joués en réel sur le site pilote (firmware site, 17/08)
 
@@ -68,12 +68,12 @@ soirée complète), `test_v2_covariant.log` et `test_v2_toutes_clims.log`
 | A4 | ✅ joué (équivalent) | OMBRE-MAX tenu ~1 h 30 en charge réelle (fenêtre de cure 16:30-18:00) : publié = brut honnête, aucune anomalie |
 | A5 | ✅ joué | v1 11:21-11:35 : modulation douce 16→11,1, paliers tenus, remontée ~1 A/30 s, lifetime contacteur 470 inchangé (`test_pvi1grade.log`) ; rejoué sous v2 le soir (danse d'équilibre ±1 A à la frontière = régime NORMAL v2, ne pas le prendre pour une défiance) |
 | A6 | ✅ joué (v2) | échelon +4 clims 19:35+ : descente CONTINUE 16→12+ A sous pente publiée L+0,95 (~21,95), zéro plafond, zéro coupure (`test_v2_toutes_clims.log`) |
-| A7 | ◐ partiel | le filet L+0,1 lui-même est validé borne confiante : ordre 21,1 exécuté en ~5 s (18:49:46, `test_soir_v3.log`) — mais la procédure exacte A7 (baisser Contract Limit, attendre 120 s, vérifier `Escalation Active`) reste à jouer sur le core extrait. Caveat mesuré : en défiance, le même ordre a été ignoré 8 min (midi) |
+| A7 | ◐ partiel | le filet L+0,1 lui-même est validé borne confiante : ordre 21,1 exécuté en ~5 s (18:49:46, `test_soir_v3.log`) - mais la procédure exacte A7 (baisser Contract Limit, attendre 120 s, vérifier `Escalation Active`) reste à jouer sur le core extrait. Caveat mesuré : en défiance, le même ordre a été ignoré 8 min (midi) |
 | A8 | ◐ partiel | biais 16 posé/relâché en cascade réelle 19:30-19:34 ; la rampe EN charge (0,5/1 A par 5 s) validée les jours précédents sur site, à rejouer via `loadpilot.set_bias` |
-| A9 | ✅ joué (v2) | relâche biais 16→0 INSTANTANÉE contacteur ouvert (19:34:29) suivie de la REPRISE AUTONOME de session (cycle 478, sans app) — cascade complète descente→pause→relâche→reprise (`test_v2_toutes_clims.log`) |
-| A12 | ✅ joué (subi) | 17/08 ~20:20 : 7 excursions ±2,5 A période ~20 s puis coupure intégrale. ⚠️ Trace non archivée (fenêtre entre la fin de `test_soir_v3.log`, 20:14, et le début de `test_loi_douce.log`, 20:31) — signature documentée BEHAVIOR §8 (addendum soir) ; à instrumenter au rejeu |
-| A13 | ✅ joué (mesuré en passant) | bande morte relevée pendant l'épisode leçon 31 : ~70 s à publié ~L+0,5 sans réaction, 35 A·s tolérés — trace `test_loi_douce.log` (20:31-20:35) |
-| A14 | ✅ joué (subi) | 17/08 20:30-20:34 : gain 0,25/emax 0,5 → dilution 4:1 → défiance latchée en une rampe (voiture figée 12,1 à travers pub 21,45→21,85, pause ignorée), première vraie détection du détecteur 21,45 — trace `test_loi_douce.log` |
+| A9 | ✅ joué (v2) | relâche biais 16→0 INSTANTANÉE contacteur ouvert (19:34:29) suivie de la REPRISE AUTONOME de session (cycle 478, sans app) - cascade complète descente→pause→relâche→reprise (`test_v2_toutes_clims.log`) |
+| A12 | ✅ joué (subi) | 17/08 ~20:20 : 7 excursions ±2,5 A période ~20 s puis coupure intégrale. ⚠️ Trace non archivée (fenêtre entre la fin de `test_soir_v3.log`, 20:14, et le début de `test_loi_douce.log`, 20:31) - signature documentée BEHAVIOR §8 (addendum soir) ; à instrumenter au rejeu |
+| A13 | ✅ joué (mesuré en passant) | bande morte relevée pendant l'épisode leçon 31 : ~70 s à publié ~L+0,5 sans réaction, 35 A·s tolérés - trace `test_loi_douce.log` (20:31-20:35) |
+| A14 | ✅ joué (subi) | 17/08 20:30-20:34 : gain 0,25/emax 0,5 → dilution 4:1 → défiance latchée en une rampe (voiture figée 12,1 à travers pub 21,45→21,85, pause ignorée), première vraie détection du détecteur 21,45 - trace `test_loi_douce.log` |
 | A15 | ⬜ à jouer | attend la variante B (design en cours) |
 | A1-A3, A10, A11 | ⬜ à jouer | dépendent du flash du core EXTRAIT (jamais flashé à ce jour) |
 
@@ -102,14 +102,14 @@ Sur une instance HA VIERGE (VM) + les deux ESP32 de rechange si possible :
 | C3 | Perte HA seule, UDP frais | arrêter Home Assistant pendant une charge régulée | la régulation CONTINUE (Source `UDP`), aucune perturbation ≥ 30 min | reboot du nœud (reboot_timeout ≠ 0), bascule intempestive |
 | C4 | Perte HA + UDP (double panne) | HA arrêté puis nœud compteur coupé | `FAILSAFE` : charge bloquée, JAMAIS de charge non contrôlée | toute charge > 0 A en double panne |
 | C5 | Retour de source | rebrancher le compteur après C2/C4 | reprise `UDP` < 5 s, reprise de charge sans intervention, issue Repair effacée | reprise manuelle nécessaire |
-| C6 | **TIC gelé, nœud vivant** (hat débranché, ESP32 up) | débrancher le hat téléinfo ~2 min | **TRANCHÉ 17/08 (QA M3, verdict B)** : sans correctif, packet_transport réémet le sextuplet FIGÉ à 1 Hz et le miroir HA gèle par la même panne — aucun repli ne tombe (preuve par lecture source ESPHome : `teleinfo` sans timeout, `send_data_(true)` réémet tout). CORRECTIF EN PLACE : watchdog TIC du provider (`tic_timeout_ms`, défaut 15 s) → NAN sur les 6 grandeurs → cascade côté borne. ATTENDU au test : ≤ ~17 s après débranchement, « TIC Alive » OFF, miroirs HA unavailable, `FAILSAFE` (publication main_breaker DITHÉRÉE), charge bloquée ; retour automatique < 5 s au rebranchement | la borne régule sur une mesure figée ; ou fail-safe publié STATIQUE (risque défiance = fail-safe auto-neutralisé) |
+| C6 | **TIC gelé, nœud vivant** (hat débranché, ESP32 up) | débrancher le hat téléinfo ~2 min | **TRANCHÉ 17/08 (QA M3, verdict B)** : sans correctif, packet_transport réémet le sextuplet FIGÉ à 1 Hz et le miroir HA gèle par la même panne - aucun repli ne tombe (preuve par lecture source ESPHome : `teleinfo` sans timeout, `send_data_(true)` réémet tout). CORRECTIF EN PLACE : watchdog TIC du provider (`tic_timeout_ms`, défaut 15 s) → NAN sur les 6 grandeurs → cascade côté borne. ATTENDU au test : ≤ ~17 s après débranchement, « TIC Alive » OFF, miroirs HA unavailable, `FAILSAFE` (publication main_breaker DITHÉRÉE), charge bloquée ; retour automatique < 5 s au rebranchement | la borne régule sur une mesure figée ; ou fail-safe publié STATIQUE (risque défiance = fail-safe auto-neutralisé) |
 | C7 | Reboot nœud borne pendant charge | couper/rétablir l'alim du KC868-A6 en charge | au boot : publication main_breaker (charge bloquée) jusqu'à la première mesure, puis reprise ; mode restauré `ACTIF-MAX` ; Contract Limit/Buffer restaurés flash ; Bias Target = 0 | boot en pleine marge (charge non contrôlée), knobs perdus |
 | C8 | Reboot nœud compteur | couper/rétablir l'Olimex | C1 puis C5 enchaînés ; rolling code accepté après reboot (pas de rejet permanent) | paquets rejetés en boucle après reboot |
 | C9 | Coupure secteur complète puis retour | tout couper 2 min | les deux nœuds reviennent seuls, régulation rétablie sans HA (si HA plus lent) | ordre de boot bloquant |
 | C10 | Monophasé | banc mono (`phase_count: "1"`, provider B/C=0) | loi dégénérée sur L1 seule, miroir L1 suffisant, pas de fail-safe cause B/C | fail-safe déclenché par les phases absentes |
-| C11 | Véhicule : abandon silencieux | 3+ interruptions de charge rapprochées | comportement documenté (INSTALL_FR §7) : le véhicule peut abandonner — vérifier que la doc suffit au diagnostic | non documenté / diagnostic impossible |
+| C11 | Véhicule : abandon silencieux | 3+ interruptions de charge rapprochées | comportement documenté (INSTALL_FR §7) : le véhicule peut abandonner - vérifier que la doc suffit au diagnostic | non documenté / diagnostic impossible |
 | C12 | Paquet UDP forgé/rejoué (XXTEA + rolling code) | rejouer un paquet capturé | paquet rejeté (log warning), aucune influence sur la publication | mesure falsifiée acceptée |
-| C13 | Deux destinations UDP (broadcast + unicast) | configurer les deux | rejet du doublon documenté (warning/s) — vérifier l'absence d'effet sur la fraîcheur | fraîcheur cassée par les doublons |
+| C13 | Deux destinations UDP (broadcast + unicast) | configurer les deux | rejet du doublon documenté (warning/s) - vérifier l'absence d'effet sur la fraîcheur | fraîcheur cassée par les doublons |
 
 ## D. Critères GO / NO-GO de publication
 
@@ -120,19 +120,19 @@ GO uniquement si TOUT est vrai :
    secrets vert sur TOUTES les révisions publiées.
 2. A1–A11 verts sur le site pilote (dont 24 h A11 sans événement).
    A12–A14 : rejeu sur le core extrait recommandé mais non bloquant
-   (comportements déjà mesurés sur le firmware site, cf. relevé — A14
+   (comportements déjà mesurés sur le firmware site, cf. relevé - A14
    destructif, banc seulement) ; A15 suit la variante B, hors périmètre
    du premier tag.
-3. C1–C9 verts ; C6 : correctif watchdog TIC implémenté (fait 17/08) —
+3. C1–C9 verts ; C6 : correctif watchdog TIC implémenté (fait 17/08) -
    reste le test physique de confirmation (jour de maintenance).
 4. B1–B8 verts sur instance vierge ; B10 tranché (entity_id stables en FR).
 5. hassfest + validation HACS verts ; `esphome config` vert sur les 2
    exemples et les 4 providers.
 6. Zéro `[UX_COPY.md pending]` dans translations/ ; zéro `OWNER_TBD`
    (compte de publication tranché) ; LICENSE définitive posée (accord PVi1
-   obtenu — sinon le repo reste privé, cf. LICENSE.placeholder).
+   obtenu - sinon le repo reste privé, cf. LICENSE.placeholder).
 7. Divergences contrat/UX arbitrées (buffer 30 vs 50 %, limite 6–120 vs
-   10–100 A, état `paused`, capteur courant véhicule) — voir QA_REPORT.md.
+   10–100 A, état `paused`, capteur courant véhicule) - voir QA_REPORT.md.
 8. README/INSTALL relus après extraction : plus aucune affirmation basée
    sur l'ancien firmware de référence (mode au boot, capteurs Shadow ×3,
    « Linky Source Active »).

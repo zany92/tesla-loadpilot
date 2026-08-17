@@ -2,7 +2,7 @@
 
 loadpilot.set_bias / loadpilot.pause / loadpilot.resume all write the bias
 TARGET number on the charger node. The RAMP (and every protection) stays
-firmware — these services are convenience levers only.
+firmware - these services are convenience levers only.
 """
 
 from __future__ import annotations

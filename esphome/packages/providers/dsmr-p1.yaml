@@ -1,14 +1,14 @@
 # =============================================================================
-# Tesla LoadPilot — meter provider: DSMR 5 port P1 (NL / BE) — SKELETON
+# Tesla LoadPilot - meter provider: DSMR 5 port P1 (NL / BE) - SKELETON
 #
-# STATUS: SKELETON — NEVER COMPILED, NEVER TESTED ON A REAL METER.
+# STATUS: SKELETON - NEVER COMPILED, NEVER TESTED ON A REAL METER.
 # The UDP contract below (broadcast_id, port 18511, encryption, 1 Hz) is
-# FROZEN (docs/15_FOURNISSEURS_MESURE.md §1) — do not change it. What needs
+# FROZEN (docs/15_FOURNISSEURS_MESURE.md §1) - do not change it. What needs
 # work is the acquisition side, marked TODO.
 #
 # Eligibility (docs/15 §2): DSMR 5 telegrams arrive every 1 s -> eligible.
 # DSMR 4 (10 s) and Luxembourg "Smarty" (~10 s + encrypted telegrams) are
-# NOT eligible — use providers/ct-clamps.yaml instead.
+# NOT eligible - use providers/ct-clamps.yaml instead.
 #
 # Honest caveats:
 # - The DSMR `current` OBIS values are WHOLE amperes. Prefer computing
@@ -16,7 +16,7 @@
 #   sub-ampere resolution.
 # - Export (solar) is out of scope v0.x: the contract wants IMPORT-POSITIVE
 #   values; power_returned_* handling is TODO for solar installs.
-# - Some P1 ports need the 5 V supply / RTS handling and an inverted UART —
+# - Some P1 ports need the 5 V supply / RTS handling and an inverted UART -
 #   verify per meter.
 # =============================================================================
 substitutions:
@@ -82,11 +82,11 @@ dsmr:
   id: dsmr_p1
   uart_id: uart_p1
   # TODO: decryption_key for Luxembourg Smarty is NOT supported here (cadence
-  # ineligible anyway — see header).
+  # ineligible anyway - see header).
 
 sensor:
   # DSMR gives kW per phase; convert to VA-equivalent W (the contract wants
-  # apparent power in VA; using active power is an approximation — TODO:
+  # apparent power in VA; using active power is an approximation - TODO:
   # document the error margin honestly after a real-meter test).
   - platform: dsmr
     power_delivered_l1:

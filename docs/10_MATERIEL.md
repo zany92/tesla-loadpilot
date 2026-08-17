@@ -1,36 +1,36 @@
-# Tesla LoadPilot — matériel (BOM) et architecture
+# Tesla LoadPilot - matériel (BOM) et architecture
 
-> Généricisé — les IP/identifiants réels sont remplacés par des placeholders.
+> Généricisé - les IP/identifiants réels sont remplacés par des placeholders.
 
 ## 1. Nomenclature
 
 | # | Matériel | Rôle | Détails / lien |
 |---|---|---|---|
 | 1 | **Compteur Linky triphasé** (contrat Tempo 15 kVA dans l'installation de référence) | Source de mesure : téléinfo TIC **mode standard**, 9600 bd, 7E1, trames ~1 Hz (SINSTS >400 octets en Tempo) | Sortie I1/I2 du compteur. Limite surveillée PAR PHASE : contrat ÷ 3 (5 000 VA/phase ≈ 21,7 A à 15 kVA) |
-| 2 | **Nœud téléinfo : Olimex ESP32-POE** (modèle confirmé par Vincent) | Décode la TIC, publie vers HA (API native) **et** vers le nœud borne (UDP direct) | https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware — Ethernet LAN8720 : MDC GPIO23, MDIO GPIO18, CLK `GPIO17_OUT`, `phy_addr 0`. **Réconciliation config** (voir `20_FIRMWARE.md` §1.2) : la config de PRODUCTION (`board: esp32dev`, sans `power_pin`) fonctionne en Ethernet sur notre exemplaire — le brochage LAN8720 correspond bien à l'ESP32-POE ; mais la config de RÉFÉRENCE Olimex/ESPHome pour cette carte inclut `power_pin: GPIO12` (le GPIO qui alimente le PHY). La version publiée l'ajoute : sans lui le PHY dépend de l'état par défaut de GPIO12 et l'Ethernet peut ne pas revenir sur certains exemplaires/révisions après un soft-reset |
-| 3 | **Hat téléinfo Hallard « WeMos TeleInfo »** | Adaptation du signal TIC vers l'UART de l'ESP32 (opto-isolation) | https://www.tindie.com/products/hallard/wemos-teleinfo/ — monté sur le port UART, **RX GPIO36**, 9600 bd 7E1, mode standard (info Vincent) |
-| 4 | **Kincony KC868-A6** (ESP32) | Nœud borne : émule le compteur Neurio en **esclave Modbus RTU** sur le RS485 du TWC | Transceiver RS485 **MAX13487E à direction automatique** (aucun DE/RE à piloter), TX **GPIO27** / RX **GPIO14**. Doc : https://devices.esphome.io/devices/kincony-kc868-a6/ , https://www.kincony.com/forum/showthread.php?tid=1962 . À Loupiac ce nœud est mutualisé avec la sécurité eau/forage — seule l'UART RS485 libre est utilisée par le TWC |
-| 5 | **Tesla Wall Connector Gen 3** (firmware ≥ 26.18) | La borne. Entrée « Home Load Management » = bus RS485 interne, la borne est **maître Modbus et polle** le compteur | Bornier **RS485 2 points derrière la façade** (près du 230 V → **disjoncteur de la borne COUPÉ** avant d'ouvrir). Câblage A/B + GND, CAT5e. **Polarité à inverser si muet** (octets reçus mais 0 trame valide = A/B permutés — vécu). Modbus RTU **115200 8N1** |
-| 6 | Câble CAT5e (une paire + masse) | Liaison KC868 ↔ TWC | **Terminaison 120 Ω : non requise sur liaison courte** — VALIDÉ en production sans aucune résistance (115 200 bd, poll ~190 ms, zéro tx_blocked/trame rejetée sur des jours de fonctionnement). Ajouter 120 Ω à chaque extrémité si liaison longue (> quelques mètres) ou si erreurs de trame observées |
+| 2 | **Nœud téléinfo : Olimex ESP32-POE** (modèle confirmé par Vincent) | Décode la TIC, publie vers HA (API native) **et** vers le nœud borne (UDP direct) | https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware - Ethernet LAN8720 : MDC GPIO23, MDIO GPIO18, CLK `GPIO17_OUT`, `phy_addr 0`. **Réconciliation config** (voir `20_FIRMWARE.md` §1.2) : la config de PRODUCTION (`board: esp32dev`, sans `power_pin`) fonctionne en Ethernet sur notre exemplaire - le brochage LAN8720 correspond bien à l'ESP32-POE ; mais la config de RÉFÉRENCE Olimex/ESPHome pour cette carte inclut `power_pin: GPIO12` (le GPIO qui alimente le PHY). La version publiée l'ajoute : sans lui le PHY dépend de l'état par défaut de GPIO12 et l'Ethernet peut ne pas revenir sur certains exemplaires/révisions après un soft-reset |
+| 3 | **Hat téléinfo Hallard « WeMos TeleInfo »** | Adaptation du signal TIC vers l'UART de l'ESP32 (opto-isolation) | https://www.tindie.com/products/hallard/wemos-teleinfo/ - monté sur le port UART, **RX GPIO36**, 9600 bd 7E1, mode standard (info Vincent) |
+| 4 | **Kincony KC868-A6** (ESP32) | Nœud borne : émule le compteur Neurio en **esclave Modbus RTU** sur le RS485 du TWC | Transceiver RS485 **MAX13487E à direction automatique** (aucun DE/RE à piloter), TX **GPIO27** / RX **GPIO14**. Doc : https://devices.esphome.io/devices/kincony-kc868-a6/ , https://www.kincony.com/forum/showthread.php?tid=1962 . À Loupiac ce nœud est mutualisé avec la sécurité eau/forage - seule l'UART RS485 libre est utilisée par le TWC |
+| 5 | **Tesla Wall Connector Gen 3** (firmware ≥ 26.18) | La borne. Entrée « Home Load Management » = bus RS485 interne, la borne est **maître Modbus et polle** le compteur | Bornier **RS485 2 points derrière la façade** (près du 230 V → **disjoncteur de la borne COUPÉ** avant d'ouvrir). Câblage A/B + GND, CAT5e. **Polarité à inverser si muet** (octets reçus mais 0 trame valide = A/B permutés - vécu). Modbus RTU **115200 8N1** |
+| 6 | Câble CAT5e (une paire + masse) | Liaison KC868 ↔ TWC | **Terminaison 120 Ω : non requise sur liaison courte** - VALIDÉ en production sans aucune résistance (115 200 bd, poll ~190 ms, zéro tx_blocked/trame rejetée sur des jours de fonctionnement). Ajouter 120 Ω à chaque extrémité si liaison longue (> quelques mètres) ou si erreurs de trame observées |
 
 Cette BOM décrit l'installation de référence (France, Linky, triphasé). Les
 lignes 1-3 forment le « fournisseur de mesure » et sont REMPLAÇABLES par
-tout provider respectant le contrat UDP — équivalents par pays (port P1,
+tout provider respectant le contrat UDP - équivalents par pays (port P1,
 tête SML, pinces CT Shelly Pro 3EM / ATM90E32 = aussi l'étage sub-seconde)
 et critère d'éligibilité en cadence : voir `15_FOURNISSEURS_MESURE.md`.
 
 ## 2. Câblage RS485 vers le TWC Gen 3
 
-> **Illustrations — politique du dépôt** : ne JAMAIS reproduire un visuel de
+> **Illustrations - politique du dépôt** : ne JAMAIS reproduire un visuel de
 > la documentation Tesla (images sous copyright, et le projet utilise déjà
 > la marque dans son nom). On LIE la documentation officielle d'installation
-> du Wall Connector Gen 3 — https://www.tesla.com/support/charging/wall-connector
-> — et on illustre le raccordement avec NOS PROPRES schémas originaux
+> du Wall Connector Gen 3 - https://www.tesla.com/support/charging/wall-connector
+> - et on illustre le raccordement avec NOS PROPRES schémas originaux
 > (ci-dessous). Photos personnelles de l'installation bienvenues plus tard.
 
 ```
   Tesla Wall Connector Gen 3                            Nœud borne Kincony
-  (façade déposée — DISJONCTEUR DE LA BORNE COUPÉ)      (KC868-A6, réf. testée)
+  (façade déposée - DISJONCTEUR DE LA BORNE COUPÉ)      (KC868-A6, réf. testée)
 
   ┌───────────────────────────────┐                     ┌───────────────────────┐
   │   bornier RS485 « 2 points »  │      CAT5e          │  bornier RS485        │
@@ -50,9 +50,9 @@ et critère d'éligibilité en cadence : voir `15_FOURNISSEURS_MESURE.md`.
 - borne **B** (KC868-A6) → fil **BLANC** (B−)
 - **GND commun** entre la KC868-A6 et le TWC
 - bus point à point ; **terminaison 120 Ω non requise sur liaison courte**
-  (validé en production sans) — en prévoir une à chaque extrémité si la
+  (validé en production sans) - en prévoir une à chaque extrémité si la
   liaison dépasse quelques mètres ou si des erreurs de trame apparaissent ;
-- diagnostic : le compteur d'octets/trames du firmware — des octets arrivent
+- diagnostic : le compteur d'octets/trames du firmware - des octets arrivent
   mais aucune trame Modbus valide n'est décodée → polarité (permuter A/B) ;
   trames valides mais erreurs sporadiques → soigner la paire/terminaison.
 

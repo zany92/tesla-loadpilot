@@ -1,8 +1,8 @@
 # =============================================================================
-# Tesla LoadPilot — board pack: Kincony KC868-A6 (VALIDATED REFERENCE)
+# Tesla LoadPilot - board pack: Kincony KC868-A6 (VALIDATED REFERENCE)
 #
 # Production-proven charger-node board (poll ~190 ms, full chain validated
-# 17/08/2026). Pins / network / transceiver ONLY — the control law lives in
+# 17/08/2026). Pins / network / transceiver ONLY - the control law lives in
 # twc-core.yaml.
 #
 # RS485: onboard MAX13487E with hardware AUTO-DIRECTION -> no DE/RE pin to
@@ -11,7 +11,7 @@
 #   - https://www.kincony.com/forum/showthread.php?tid=1962
 #   - https://www.kincony.com/forum/showthread.php?tid=6836
 #
-# WIRING to the TWC3 "RS485 A / B" internal terminal (near 230 V — WALLBOX
+# WIRING to the TWC3 "RS485 A / B" internal terminal (near 230 V - WALLBOX
 # BREAKER OFF before opening the cover):
 #   - terminal A (KC868-A6) -> RED wire of the TWC internal RS485 block (A+)
 #   - terminal B (KC868-A6) -> WHITE wire (B-)
@@ -31,7 +31,7 @@ wifi:
   ssid: !secret loadpilot_wifi_ssid
   password: !secret loadpilot_wifi_password
   # The law must keep running with the network down (D2): never reboot on
-  # WiFi loss — the UDP feed is gone anyway and the fail-safe arms itself.
+  # WiFi loss - the UDP feed is gone anyway and the fail-safe arms itself.
   reboot_timeout: 0s
   ap:
     ssid: ${node_name}

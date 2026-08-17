@@ -1,4 +1,4 @@
-# Service descriptions — display strings live in translations/ (UX-owned).
+# Service descriptions - display strings live in translations/ (UX-owned).
 set_bias:
   fields:
     amps:

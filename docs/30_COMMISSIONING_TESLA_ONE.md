@@ -1,10 +1,10 @@
-# Tesla LoadPilot — commissioning Tesla One, le pas-à-pas vécu
+# Tesla LoadPilot - commissioning Tesla One, le pas-à-pas vécu
 
 > Sans cette étape, la borne LIT le compteur émulé mais N'AGIT PAS : le
 > firmware peut publier des mesures parfaites, tant que le compteur n'est pas
 > déclaré et les limites posées dans le menu installateur, aucun bridage
 > n'aura lieu (vécu : chaîne complète validée côté RS485, dépassements réels
-> à 110 % sans réaction — tout venait de la config Tesla One).
+> à 110 % sans réaction - tout venait de la config Tesla One).
 
 ## 0. Prérequis
 
@@ -19,7 +19,7 @@
 Menu installateur → *Home Load Management* (gestion dynamique) → ajouter un
 compteur : la borne détecte le **Neurio** émulé sur son bus RS485 (le bloc
 d'identité registres 1-55 + la poignée de main « Generac » 40002-40007
-suffisent — c'est exactement ce que vérifie la borne).
+suffisent - c'est exactement ce que vérifie la borne).
 
 ## 2. Configurer les CT
 
@@ -33,7 +33,7 @@ suffisent — c'est exactement ce que vérifie la borne).
 En monophasé : CT 1 = Conductor, CT 2/3/4 = None (le firmware publie déjà
 0 sur les phases absentes).
 
-## 3. Poser les limites — l'ordre compte
+## 3. Poser les limites - l'ordre compte
 
 - **Max Conductor Limit** = LE seuil de régulation : le courant maximal
   autorisé sur chaque conducteur mesuré. La borne calcule en continu
@@ -45,7 +45,7 @@ En monophasé : CT 1 = Conductor, CT 2/3/4 = None (le firmware publie déjà
   Conductor Limit ne descend pas sous 32 → **baisser d'abord Max Output
   Current** (ex. 16 A), puis poser le Conductor Limit voulu (21 A).
 - **Piège vécu n°1** : Conductor Limit resté à 32 A sur un contrat 21 A
-  = « jamais de bridage » — tous les dépassements passaient sans réaction.
+  = « jamais de bridage » - tous les dépassements passaient sans réaction.
   Les premiers verdicts « le DPM ne marche pas » venaient de là (et des
   capteurs cloud périmés, voir §5).
 - Le firmware du nœud borne doit connaître la même valeur : reporter la
@@ -71,7 +71,7 @@ En monophasé : CT 1 = Conductor, CT 2/3/4 = None (le firmware publie déjà
   montraient 4 cycles de bridage en 4 minutes. Source de vérité = vitals
   locaux ou intégration HA `tesla_wall_connector`.
 - **`config_status` (vitals) reste non documenté** (valeur 5 observée
-  pendant la phase de doute) — ne pas s'en servir comme critère.
+  pendant la phase de doute) - ne pas s'en servir comme critère.
 - Dans les vitals, `currentA/B/C_a` = courants du **câble véhicule**, PAS le
   compteur reçu (piège d'interprétation vécu deux fois) ; le compteur émulé
   relu par la borne apparaît dans les champs *grid* / Neurio.

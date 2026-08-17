@@ -1,18 +1,18 @@
 # =============================================================================
-# Tesla LoadPilot — meter provider: France, Linky TIC standard mode
+# Tesla LoadPilot - meter provider: France, Linky TIC standard mode
 # (PRODUCTION-PROVEN reference provider)
 #
 # Decodes the Linky "Téléinformation Client" (TIC, standard mode, 9600 bd
 # 7E1) and ships the 6 contract quantities over encrypted UDP to the charger
-# node (docs/15_FOURNISSEURS_MESURE.md §1 — the UDP contract is FROZEN):
+# node (docs/15_FOURNISSEURS_MESURE.md §1 - the UDP contract is FROZEN):
 #   lky_ia/ib/ic  = per-phase current (A), sub-ampere (SINSTS/URMS computed)
 #   lky_pa/pb/pc  = per-phase apparent power (VA)
 # 1 Hz full resend (heartbeat) + immediate incremental packet on any change.
 #
-# TIC WATCHDOG (MEASURED 17/08 evening — QA M3): the ESPHome `teleinfo`
+# TIC WATCHDOG (MEASURED 17/08 evening - QA M3): the ESPHome `teleinfo`
 # component has NO invalidation timeout. A dead TIC hat with a live ESP32
 # does NOT make the node silent: the sensors keep their last state and
-# packet_transport resends the FROZEN sextuplet at 1 Hz forever — the charger
+# packet_transport resends the FROZEN sextuplet at 1 Hz forever - the charger
 # node would judge the UDP feed fresh indefinitely, and the HA mirror is
 # frozen by the same failure (neither fallback ever trips). Fix at the
 # source: no SINSTS frame for ${tic_timeout_ms} ms -> publish NAN on the 6
@@ -41,7 +41,7 @@ substitutions:
   tic_update_interval: 500ms
   # TIC watchdog: silence threshold (ms) before the 6 broadcast quantities
   # are invalidated to NAN. 15 s ~= 15 missed frames at the standard-mode
-  # ~1 Hz cadence — immune to occasional frame loss, short enough that the
+  # ~1 Hz cadence - immune to occasional frame loss, short enough that the
   # charger node's fail-safe arms before the wallbox can drift far (total
   # blind window = this + the receiver freshness window, ~20 s, covered by
   # the wallbox's slow ramp).
@@ -85,13 +85,13 @@ packet_transport:
     # charger node, 5 s window receiver side). Value changes ALSO leave
     # immediately (incremental packet, next loop).
     update_interval: 1s
-    # XXTEA (SHA-256-hashed key) — MUST be identical on the charger node.
+    # XXTEA (SHA-256-hashed key) - MUST be identical on the charger node.
     encryption: !secret loadpilot_udp_key
     # Anti-replay rolling code (persisted in flash at boot + 2^32 overflow:
     # negligible wear). A replayed/duplicated packet is dropped.
     rolling_code_enable: true
     sensors:
-      # Sub-ampere computed currents (SINSTS/URMS) — NOT the integer IRMS:
+      # Sub-ampere computed currents (SINSTS/URMS) - NOT the integer IRMS:
       # the TIC only publishes whole amperes, while SINSTS (VA) / URMS (V)
       # give ~4 mA resolution.
       - id: tic_current_calc_1
@@ -155,7 +155,7 @@ sensor:
     accuracy_decimals: 0
 
   # ---------------------------------------------------------------------------
-  # Apparent powers — UDP and HA paths DECOUPLED (recorder-friendly):
+  # Apparent powers - UDP and HA paths DECOUPLED (recorder-friendly):
   # the internal base sensor (no throttle, ~1 Hz) is what packet_transport
   # reads; the throttled copy below is the HA entity.
   # ---------------------------------------------------------------------------
@@ -235,7 +235,7 @@ sensor:
 
   # ---------------------------------------------------------------------------
   # CONTRACTUAL HA entities (/CONTRACTS.md §3.2): throttled copies of the
-  # measures — same data as the UDP feed, recorder-friendly. These are also
+  # measures - same data as the UDP feed, recorder-friendly. These are also
   # the natural targets for the charger node's HA-mirror substitutions.
   # ---------------------------------------------------------------------------
   - platform: copy
@@ -290,7 +290,7 @@ binary_sensor:
     internal: true
 
   # TIC watchdog liveness, exposed to HA for operator alerting: the node
-  # itself can be perfectly healthy while the TIC hat is dead — this is the
+  # itself can be perfectly healthy while the TIC hat is dead - this is the
   # only signal that distinguishes the two.
   - platform: template
     name: "TIC Alive"
@@ -333,7 +333,7 @@ button:
 
 # =============================================================================
 # TIC WATCHDOG (QA M3, deployed 17/08): see header. Without it, a dead hat on
-# a live ESP32 means frozen values resent at 1 Hz — the worst failure mode a
+# a live ESP32 means frozen values resent at 1 Hz - the worst failure mode a
 # meter can present to the wallbox (stale-but-fresh-looking measure).
 # Publishing NAN at the source lets every downstream guard (charger-node NAN
 # check, HA availability) trip on its own, with automatic recovery.
@@ -365,5 +365,5 @@ interval:
             id(tic_current_calc_3).publish_state(NAN);
           } else if (!dead && id(tic_dead_flagged)) {
             id(tic_dead_flagged) = false;
-            ESP_LOGI("tic", "TIC back — real measures republished");
+            ESP_LOGI("tic", "TIC back - real measures republished");
           }

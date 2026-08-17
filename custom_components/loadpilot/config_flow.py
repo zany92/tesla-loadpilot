@@ -1,6 +1,6 @@
 """Config flow for Tesla LoadPilot.
 
-Field labels/descriptions come from translations/ — the UX designer owns the
+Field labels/descriptions come from translations/ - the UX designer owns the
 copy (dashboards/UX_COPY.md); this module only defines keys and validation.
 
 Flow layout (UX.md §2.0, five steps):
@@ -69,7 +69,7 @@ _LOGGER = logging.getLogger(__name__)
 # Deliberately language-neutral-ish (proper nouns / protocol names): HA
 # description placeholders cannot vary per viewer language.
 _PROFILE_RECAP_LABELS = {
-    "fr_tic": "France — Linky (TIC)",
+    "fr_tic": "France - Linky (TIC)",
     "dsmr_p1": "DSMR P1",
     "sml_de": "SML",
     "ct_clamps": "CT clamps",
@@ -106,7 +106,7 @@ def _node_entities_present(hass: HomeAssistant, node_name: str) -> bool:
 
     ESPHome object_ids are prefixed with the slugified node name (that is
     exactly how the coordinator builds its tracked entity ids), so a single
-    prefix scan is the honest existence test — the node must be adopted in
+    prefix scan is the honest existence test - the node must be adopted in
     ESPHome and visible in HA before the flow proceeds (UX.md §2.2).
     """
     prefix = f"{slugify(node_name)}_"
@@ -136,7 +136,7 @@ def _limits_schema(
     """Electrical-limits schema (limit + buffer, optional kVA presets).
 
     Selector bounds are the FIRMWARE bounds (twc-core.yaml): contract limit
-    6..120 A, buffer 0..30 % — the plausibility rules (UX.md §2.3) live in
+    6..120 A, buffer 0..30 % - the plausibility rules (UX.md §2.3) live in
     ``_validate_limits``. ``with_presets`` adds the French kVA helper
     dropdown (fr_tic profile): a preset OVERRIDES the amps field; what is
     stored is always ``contract_limit_a`` in amps per phase. ``phases``
@@ -256,7 +256,7 @@ def _mirror_schema(
 
     Every field is ``vol.Optional`` with a ``suggested_value`` (never a
     Required with default): a previously saved entity is pre-filled but can
-    be CLEARED in the options flow — clearing removes it from the mapping.
+    be CLEARED in the options flow - clearing removes it from the mapping.
     """
     defaults = defaults or {}
     schema: dict[Any, Any] = {}
@@ -281,13 +281,13 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
         # Limit value for which the non-blocking three-phase warning was
-        # already shown — resubmitting the same value acknowledges it.
+        # already shown - resubmitting the same value acknowledges it.
         self._tri_warned_limit: Optional[float] = None
 
     async def async_step_user(
         self, user_input: Optional[dict[str, Any]] = None
     ) -> ConfigFlowResult:
-        """Step 1 — country / meter profile (UX.md §2.1)."""
+        """Step 1 - country / meter profile (UX.md §2.1)."""
         if user_input is not None:
             self._data = {
                 CONF_COUNTRY_PROFILE: user_input[CONF_COUNTRY_PROFILE],
@@ -299,7 +299,7 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_nodes(
         self, user_input: Optional[dict[str, Any]] = None
     ) -> ConfigFlowResult:
-        """Step 2 — the two ESPHome nodes, existence-checked (UX.md §2.2)."""
+        """Step 2 - the two ESPHome nodes, existence-checked (UX.md §2.2)."""
         errors: dict[str, str] = {}
         if user_input is not None:
             charger_node = user_input[CONF_CHARGER_NODE].strip()
@@ -322,7 +322,7 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_electrical(
         self, user_input: Optional[dict[str, Any]] = None
     ) -> ConfigFlowResult:
-        """Step 3 — installation type + electrical limits (UX.md §2.3).
+        """Step 3 - installation type + electrical limits (UX.md §2.3).
 
         The limits are later written to the NODE-RESIDENT knobs (D2).
         """
@@ -359,7 +359,7 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_mirror(
         self, user_input: Optional[dict[str, Any]] = None
     ) -> ConfigFlowResult:
-        """Step 4 — optional HA-mirror entities (backup measure path)."""
+        """Step 4 - optional HA-mirror entities (backup measure path)."""
         phases: int = self._data.get(CONF_PHASES, DEFAULT_PHASES)
         if user_input is not None:
             self._data[CONF_MIRROR_ENTITIES] = {
@@ -376,7 +376,7 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_confirm(
         self, user_input: Optional[dict[str, Any]] = None
     ) -> ConfigFlowResult:
-        """Step 5 — recap before creating the entry (UX.md §2.5)."""
+        """Step 5 - recap before creating the entry (UX.md §2.5)."""
         if user_input is not None:
             return self.async_create_entry(
                 title=self._data[CONF_CHARGER_NODE], data=self._data

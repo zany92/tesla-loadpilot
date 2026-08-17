@@ -1,5 +1,5 @@
 # =============================================================================
-# Tesla LoadPilot — twc-core.yaml (board-agnostic charger-node core)
+# Tesla LoadPilot - twc-core.yaml (board-agnostic charger-node core)
 #
 # Extracted from the production-validated "PVi1-GRADE v2 CO-VARIANT
 # (17/08/2026 evening, flash #2)" block. The control law is FIRMWARE: it
@@ -8,22 +8,22 @@
 # boards/<board>.yaml adds pins/network only.
 #
 # Law v2 "co-variant" (measured, docs/40_LOI_DE_COMMANDE.md +
-# docs/DESIGN_LOI_COVARIANTE.md — do NOT "improve" it):
+# docs/DESIGN_LOI_COVARIANTE.md - do NOT "improve" it):
 #   o_raw = worst_phase + bias + (L − budget),  budget = contract × (1 − b%)
 #   out of constraint (o_raw ≤ L): pub = o_raw    (shifted reality, gain 1,
-#     zero delay — the published value is NEVER a dead flat: ±0.05 dither)
+#     zero delay - the published value is NEVER a dead flat: ±0.05 dither)
 #   in constraint  (o_raw > L):    pub = L + clamp(gain × excess, 0.1, emax)
-#     — the level above L IS the measured slow-down signal (micro-law:
+#     - the level above L IS the measured slow-down signal (micro-law:
 #     L+0.1 → ~−1 A/s; L exactly → HOLD; below L → recovery). The 120 s
 #     escalation timer remains as a floor/safety net only.
 #   pub is published identically on the 3 CT channels (symmetric).
 #   Input firewall (docs/DESIGN_ANTI_GLITCH.md): R1 physical floor with the
 #   contactor closed (an incomer can never read below the charger's own
 #   branch); R2 sudden drops > 5 A confirmed by 2 samples before being
-#   believed (rises always pass immediately — the safe direction).
+#   believed (rises always pass immediately - the safe direction).
 #   fail-safe: no healthy source → publish main_breaker ± dither (margin 0,
-#   charge blocked; DITHERED — a static value would trip distrust and undo
-#   the fail-safe) — also the boot state. Source priority: UDP > HA mirror >
+#   charge blocked; DITHERED - a static value would trip distrust and undo
+#   the fail-safe) - also the boot state. Source priority: UDP > HA mirror >
 #   failsafe.
 #
 # Attribution: core inspiration PVi1 (github.com/PVi1/esphome-twc-control);
@@ -40,19 +40,19 @@ substitutions:
   friendly_name: LoadPilot TWC
   # Name of the meter-provider ESPHome node (packet_transport provider name).
   meter_node_name: loadpilot-meter
-  # Package version — MUST match the release tag (skew detection in HA).
+  # Package version - MUST match the release tag (skew detection in HA).
   loadpilot_fw_version: "0.1.0"
 
   # --- Electrical limits (THREE different limits, do not confuse) -----------
   # Max Conductor Limit as configured in the Tesla One installer menu (A).
   # The whole calibration (docs/40_LOI_DE_COMMANDE.md) was measured at 21 A.
   twc_conductor_limit_a: "21"
-  # Service breaker per phase (A) — fail-safe publication value.
+  # Service breaker per phase (A) - fail-safe publication value.
   main_breaker_limit_a: "25"
-  # Default grid-contract limit per phase (A) — runtime-adjustable via the
+  # Default grid-contract limit per phase (A) - runtime-adjustable via the
   # "Contract Limit" number (node-resident, flash-restored).
   contract_limit_default_a: "21.7"
-  # Default safety buffer (%) — runtime-adjustable via "Buffer Pct".
+  # Default safety buffer (%) - runtime-adjustable via "Buffer Pct".
   buffer_default_pct: "10"
   # Bias lever upper bound (A).
   bias_max_a: "16"
@@ -63,19 +63,19 @@ substitutions:
   # Compression gain above L (runtime-adjustable via "Law Echo Gain";
   # restore_value false: the law must always boot at its validated default).
   law_gain_default: "0.5"
-  # Max excursion above L (A) — runtime-adjustable via "Law Max Excursion".
+  # Max excursion above L (A) - runtime-adjustable via "Law Max Excursion".
   law_emax_default: "1.0"
   # Minimum nudge above L (A): the smallest slow-down signal, and the floor
   # applied by the escalation net and by "Charge Stop". NOT a knob.
   law_nudge_min_a: "0.1"
   # Permanent alternating dither amplitude (A, 1 Hz): the published value is
-  # never twice the same — insurance against any momentarily flat source
+  # never twice the same - insurance against any momentarily flat source
   # (a static value is what latches the wallbox distrust state). NOT a knob.
   law_dither_a: "0.05"
 
   # --- Input firewall (anti-glitch, docs/DESIGN_ANTI_GLITCH.md) ------------
   # R1: with the wallbox contactor closed each incomer phase carries at
-  # least the vehicle minimum (~6 A AC) — a lower reading is physically
+  # least the vehicle minimum (~6 A AC) - a lower reading is physically
   # impossible and would latch distrust (measured: a 0.6 A / 2 s glitch did).
   vehicle_floor_a: "6.0"
   # R2: a drop larger than this (A, sample-to-sample) must repeat on 2
@@ -112,7 +112,7 @@ esphome:
     name: loadpilot.twc-core
     version: ${loadpilot_fw_version}
 
-# Default level (DEBUG) only — see the VERBOSE trap in the header.
+# Default level (DEBUG) only - see the VERBOSE trap in the header.
 logger:
 
 api:
@@ -343,7 +343,7 @@ sensor:
         - script.execute: recompute_ct
 
   # ===========================================================================
-  # Observability (CONTRACTUAL entity names — see /CONTRACTS.md §3.1).
+  # Observability (CONTRACTUAL entity names - see /CONTRACTS.md §3.1).
   # ===========================================================================
   # Current actually PUBLISHED to the wallbox registers (symmetric by
   # construction in ACTIF-MAX).
@@ -448,7 +448,7 @@ sensor:
     lambda: "return id(poll_interval_ms);"
 
   # Bias actually applied by the ramp (the number above is only the TARGET;
-  # without this sensor a slow down-ramp is undiagnosable — "code 10" window).
+  # without this sensor a slow down-ramp is undiagnosable - "code 10" window).
   - platform: template
     id: twc_bias_applied_sensor
     name: "Bias Applied"
@@ -472,7 +472,7 @@ sensor:
 
 binary_sensor:
   # Native multi-client API status (a hand-rolled flag stayed false after a
-  # SECONDARY dashboard client disconnected — measured bug).
+  # SECONDARY dashboard client disconnected - measured bug).
   - platform: status
     id: ha_link_ok
     internal: true
@@ -499,7 +499,7 @@ binary_sensor:
 
   # 120 s escalation net engaged (constraint sustained for 120 s; under the
   # co-variant law the slow-down signal is already active from the first
-  # second of constraint — this flag marks the safety net only).
+  # second of constraint - this flag marks the safety net only).
   # ON only when the net is actually PUBLISHED, i.e. in ACTIF-MAX (in
   # RAW/OMBRE-MAX the law runs as a shadow and this flag stays OFF).
   - platform: template
@@ -510,7 +510,7 @@ binary_sensor:
 text_sensor:
   # Contactor mirror as a TEXT sensor on purpose: the homeassistant
   # binary_sensor platform swallows unavailable/unknown (parse_on_off without
-  # callback) — as text we SEE unavailability and can apply the grace window.
+  # callback) - as text we SEE unavailability and can apply the grace window.
   - platform: homeassistant
     id: twc_contactor_mirror
     entity_id: ${ha_contactor_entity}
@@ -590,7 +590,7 @@ switch:
       - script.execute: recompute_ct
 
   # Meter-absent test switch: total Modbus silence (the slave address moves
-  # to 245 — the wallbox gets NO reply at all = meter unplugged), to
+  # to 245 - the wallbox gets NO reply at all = meter unplugged), to
   # exercise the documented "loss of meter → 6 A max output" fallback
   # (docs/DESIGN_METER_ABSENT.md, set_address() verified on ESPHome source).
   # Reversible at runtime. Never restored at boot.
@@ -607,9 +607,9 @@ switch:
 
 select:
   # Signal mode (commissioning ladder):
-  #   RAW       — publish the raw measure (+bias): plain Neurio emulation.
-  #   OMBRE-MAX — publish RAW, compute the law as a shadow (observe first).
-  #   ACTIF-MAX — publish the worst-phase symmetric co-variant law (production).
+  #   RAW       - publish the raw measure (+bias): plain Neurio emulation.
+  #   OMBRE-MAX - publish RAW, compute the law as a shadow (observe first).
+  #   ACTIF-MAX - publish the worst-phase symmetric co-variant law (production).
   # ALWAYS boots in ACTIF-MAX (restore_value false): a silent post-OTA
   # return to RAW was the dangerous mode (measured: 2 grid cut-offs in one
   # morning). The boot semantics stay safe whatever the mode: pub =
@@ -683,7 +683,7 @@ number:
 
   # Co-variant law: compression gain above L. In constraint the published
   # value is L + clamp(gain × excess, nudge_min, emax). restore_value false
-  # ON PURPOSE: after any reboot the law runs at its validated defaults —
+  # ON PURPOSE: after any reboot the law runs at its validated defaults -
   # a forgotten tuning experiment must never survive a power cycle.
   - platform: template
     id: twc_law_gain
@@ -713,7 +713,7 @@ number:
 globals:
   # ===== PVi1-grade: zero CONTROL state beyond capped_since_ms. =====
   # Every extra internal control state in earlier estimator designs created
-  # its own bug (measured lesson) — do not add any. The fg_* block below is
+  # its own bug (measured lesson) - do not add any. The fg_* block below is
   # INPUT-FILTERING state (anti-glitch firewall), not control state.
   # ---- Anti-glitch firewall state, per phase: last believed value
   # (current/power) + pending drop candidate + confirmation counter. ----
@@ -984,7 +984,7 @@ script:
   # (reliable mirror) -> target applied IMMEDIATELY both ways: removes the
   # "code 10" window (160 s of down-ramp refusing to start, measured).
   # Mirror never seen / unavailable > grace / HA API down -> keep the ramp.
-  # allow_ramp_step: true only from the 5 s tick — other callers (target
+  # allow_ramp_step: true only from the 5 s tick - other callers (target
   # change, mirror flip) NEVER step the ramp out of cadence.
   # ===========================================================================
   - id: twc_bias_step
@@ -1099,7 +1099,7 @@ script:
             // (MEASURED 17/08 evening) Dither the fail-safe too: a STATIC
             // published value trips the wallbox's plausibility check into
             // DISTRUST (docs/BEHAVIOR.md §Distrust), after which it ignores
-            // the meter and resumes at full demand — the exact opposite of
+            // the meter and resumes at full demand - the exact opposite of
             // what a fail-safe is for. Alive = believed = charge actually
             // blocked. Recompute runs at ${recompute_interval}, so the
             // alternation actually ticks even with no incoming measure.
@@ -1110,7 +1110,7 @@ script:
             // NORMAL: real per-phase current + power, import-positive.
             // + BIAS: publishing measure + X A forces the wallbox to lower
             // the vehicle by X A (margin = limit - published). Applied in the
-            // NORMAL branch only — never in fail-safe (already main_breaker),
+            // NORMAL branch only - never in fail-safe (already main_breaker),
             // never with the master switch OFF.
             float bias = id(twc_bias_applied);
             pub_a = m_a + bias;
@@ -1126,7 +1126,7 @@ script:
           // saturation -> "lying meter" -> wallbox DISTRUST state (latched,
           // everything ignored). The co-variant law NEVER has a dead value:
           // out of constraint pub = shifted reality (gain 1, zero delay);
-          // in constraint pub = L + clamp(gain*excess, nudge_min, emax) —
+          // in constraint pub = L + clamp(gain*excess, nudge_min, emax) -
           // the level above L IS the measured slow-down signal (micro-law:
           // L+0.1 -> ~-1 A/s; L exactly -> HOLD; below L -> recovery).
           // Permanent +/-dither. Trip: impossible -> improbable by dynamics
@@ -1230,7 +1230,7 @@ script:
             }
             // Contract §3.1: "Escalation Active" means the L+0.1 floor IS
             // being PUBLISHED. In RAW/OMBRE-MAX the law only runs as a
-            // shadow — the timer may fire internally but nothing is acting
+            // shadow - the timer may fire internally but nothing is acting
             // on the wallbox, so the flag stays OFF (the shadow effect
             // remains visible on "Shadow Published Current").
             id(escalation_state) = esc && law_active;
@@ -1249,10 +1249,10 @@ script:
 
 # =============================================================================
 # RS485 -> Modbus RTU SERVER (the TWC3 is the master and polls ~190-200 ms).
-# Emulates a Neurio/Generac meter — identity block 1-55 and register map from
+# Emulates a Neurio/Generac meter - identity block 1-55 and register map from
 # the public gist by LucaTNT:
 # https://gist.github.com/LucaTNT/4adf01a7252386559070023612efa117
-# Registers INTACT — do not touch. Every read_lambda returns a pre-computed
+# Registers INTACT - do not touch. Every read_lambda returns a pre-computed
 # global (never compute in the lambda: the reply must leave in < 66 ms).
 # The board package MUST provide `uart: id: rs485` (115200 8N1).
 # =============================================================================
@@ -1329,7 +1329,7 @@ modbus_server:
       - { address: 0x8E, value_type: FP32, read_lambda: "return id(ct4_power_w);" }
       - { address: 0x90, value_type: FP32, read_lambda: "return id(ct_total_w);" }
       - { address: 0x92, value_type: U_WORD, read_lambda: "return 0;" }
-      # Current (A) — 0xF4 = first register polled by the TWC3, cycle marker
+      # Current (A) - 0xF4 = first register polled by the TWC3, cycle marker
       - address: 0xF4
         value_type: FP32
         read_lambda: |-

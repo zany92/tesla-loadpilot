@@ -1,4 +1,4 @@
-# Tesla LoadPilot — couche Home Assistant, vue d'ensemble
+# Tesla LoadPilot - couche Home Assistant, vue d'ensemble
 
 > Le firmware (module 1) est autonome et suffisant pour la protection : sans
 > HA, le fail-safe bloque la charge et le DPM protège l'abonnement. La couche
@@ -6,7 +6,7 @@
 > Référence complète (Loupiac) : package `contrat_electrique.yaml`
 > (~6 200 lignes, 11 automatisations) + doc interne
 > `contrat_electrique_LOGIQUE.md` (24 leçons numérotées). Ce fichier en
-> donne la carte — et distingue le GÉNÉRALISABLE du spécifique Loupiac.
+> donne la carte - et distingue le GÉNÉRALISABLE du spécifique Loupiac.
 
 ## 1. Architecture : 4 étages à kill-switches indépendants
 
@@ -22,7 +22,7 @@ Ordre émergent en dépassement : **le véhicule absorbe d'abord** (seul levier
 fin), le délestage attend qu'il soit épuisé, l'humain n'est sollicité qu'en
 dernier.
 
-## 2. « Voiture d'abord, toujours » — et le levier binaire invité
+## 2. « Voiture d'abord, toujours » - et le levier binaire invité
 
 Règle cardinale issue de la chronologie B (`40_LOI_DE_COMMANDE.md`) : le DPM
 redistribue au véhicule toute marge libérée par une coupure d'équipement →
@@ -32,25 +32,25 @@ délestage est donc la RÉDUCTION DU VÉHICULE, par le canal disponible :
 | Situation | Levier | Modalité |
 |---|---|---|
 | Véhicule du foyer, API fraîche | consigne API (`number` courant de charge) | **proportionnelle** (la voiture obéit à une consigne : descente calculée, remontée bornée) |
-| Véhicule invité / API périmée / API muette | **biais borne** (number ESPHome) | **BINAIRE** : pause = biais plein (16 A) direct, relâche = biais 0 direct — jamais de valeur intermédiaire (loi de commande §2-3) |
+| Véhicule invité / API périmée / API muette | **biais borne** (number ESPHome) | **BINAIRE** : pause = biais plein (16 A) direct, relâche = biais 0 direct - jamais de valeur intermédiaire (loi de commande §2-3) |
 
 Le canal binaire s'accompagne de :
 - **mémo de demande** : AVANT la pause, mémoriser la demande du véhicule
-  (max fenêtré 2 min du courant borne) — c'est ce qui reviendra au
+  (max fenêtré 2 min du courant borne) - c'est ce qui reviendra au
   redémarrage (mémoire d'ampères par lieu Tesla) ;
 - **relâche conditionnée à une PROJECTION** : biais 0 uniquement si la
   maison a la place pour le retour de la PLEINE demande mémorisée (place
-  moyenne ≥ memo + 1 A ET marge pire phase ≥ memo) — sinon **la pause
+  moyenne ≥ memo + 1 A ET marge pire phase ≥ memo) - sinon **la pause
   TIENT, même si tout est calme (le calme vient justement de la pause)**,
   avec notification expliquant à l'utilisateur comment reprendre (« réglez
   ≤ Y A dans le véhicule PENDANT une charge stable ») ;
 - **garde anti-yo-yo** : 2 ouvertures de contacteur en < 3 min = oscillation
   DPM certaine (période ~55 s) → re-pause immédiate + blocage de relâche
   30 min ;
-- **fin de session** : débranchement (`vehicle_connected` off, stable — les
+- **fin de session** : débranchement (`vehicle_connected` off, stable - les
   fenêtres contacteur du DPM ne comptent pas) → biais 0 inconditionnel +
   purge des mémos (un biais résiduel briderait la session suivante) ;
-- **filet « biais oublié »** : tick périodique sans kill-switch — biais > 0
+- **filet « biais oublié »** : tick périodique sans kill-switch - biais > 0
   + calme prouvé 30 min + relâche projetée possible → remise à 0 ;
 - **re-mesures anti-creux** : ne JAMAIS conclure « la place suffit » sur une
   lecture prise dans un creux de la dent de scie (projeter le retour du
@@ -58,7 +58,7 @@ Le canal binaire s'accompagne de :
 
 ## 3. Le contrôleur granulaire (véhicule pilotable par API)
 
-Boucle continue (tick 10 s, période effective 30 s) — points transposables :
+Boucle continue (tick 10 s, période effective 30 s) - points transposables :
 - loi proportionnelle sur la **pire phase lissée** (~60 s) pour le confort ;
   décisions de pause/urgence sur la **brute** ; décisions d'escalade sur
   l'**attendue** = brute − effet de la commande **en vol** (feed-forward :
@@ -73,16 +73,16 @@ Boucle continue (tick 10 s, période effective 30 s) — points transposables :
   pauses, gel des hausses après signal compteur ;
 - **7 modes** exposés dans un sensor (inactif / indisponible / suiveur /
   limite / plancher / pause / arrêt_externe) + modes de session
-  (véhicule_invité, fleet_degrade, invité_probable) — c'est l'entrée d'état
+  (véhicule_invité, fleet_degrade, invité_probable) - c'est l'entrée d'état
   du délestage et du diagnostic ;
 - **mode borne_seul** (debug/dégradé) : TOUTE la régulation véhicule passe
-  par le biais borne, zéro commande cloud — utile pour tester le canal
+  par le biais borne, zéro commande cloud - utile pour tester le canal
   binaire avec le véhicule du foyer, ou vivre sans API.
 
 ## 4. Mode manuel
 
 `input_boolean` « mode manuel biais » : ON = plus AUCUNE écriture
-automatique du biais (toutes les automatisations écrivaines sont gardées) —
+automatique du biais (toutes les automatisations écrivaines sont gardées) -
 indispensable pendant les tests (3 « bras de fer » automatisation vs
 réglage humain vécus avant son ajout). La purge de fin de session reste
 EXEMPTE (le débranchement nettoie toujours). Garde codée en
@@ -94,7 +94,7 @@ Patron transposable : une notification de SITUATION par épisode (annonce +
 push critique, avec les mesures prises OU l'action demandée à l'humain),
 actions ordinaires en logbook seul, notifications PERMANENTES à id fixes
 avec mini-historique (stockage en codes courts ≤ 255 caractères, dépliage
-par macro Jinja au rendu), anti-rafales partout — « les critiques passent
+par macro Jinja au rendu), anti-rafales partout - « les critiques passent
 toujours » est un piège : pendant une dent de scie DPM, cela émettait une
 critique par franchissement (10 en 9 min vécues) → UNE critique par épisode.
 
@@ -108,7 +108,7 @@ critique par franchissement (10 en 9 min vécues) → UNE critique par épisode.
 - l'historique des recharges (package séparé, ventilation tarifaire
   Tempo) ;
 - la télémétrie borne enrichie (package REST sur l'API locale de la borne :
-  `/api/1/vitals` 2 s, `/api/1/lifetime` 10 min, `/api/1/version` 6 h —
+  `/api/1/vitals` 2 s, `/api/1/lifetime` 10 min, `/api/1/version` 6 h -
   le PATRON est publiable, décodage `evse_state` sourcé communauté) ;
 - les entités nommées (`whale_*`, `olimex_portail_*`…) → à renommer en
   placeholders dans tout exemple publié.
@@ -126,7 +126,7 @@ critique par franchissement (10 en 9 min vécues) → UNE critique par épisode.
    vérifié (sinon : pause « orpheline » jamais reprise).
 5. Plateformes non rechargeables (`filter`, `statistics`, `rest:`) → lissage
    en template à déclencheur (buffer en attribut), rechargeable à chaud.
-6. `context.parent_id` vide = action humaine (UI/app/télécommande) — le
+6. `context.parent_id` vide = action humaine (UI/app/télécommande) - le
    critère du « rallumage manuel » qui lève les mémos de délestage.
 7. Capteurs dérivés TOUJOURS avec `availability` (un 0 transitoire d'ESP au
    boot n'est jamais un retour au calme).

@@ -1,6 +1,6 @@
 # =============================================================================
-# Tesla LoadPilot — example entry file: CHARGER NODE, SINGLE-PHASE install
-# (Kincony KC868-A6 board — same hardware as the three-phase reference).
+# Tesla LoadPilot - example entry file: CHARGER NODE, SINGLE-PHASE install
+# (Kincony KC868-A6 board - same hardware as the three-phase reference).
 #
 # Derived from charger-kc868-a6.yaml with `phase_count: "1"`: phases B/C are
 # forced to 0 by the core (contract §2 still publishes 6 quantities on UDP),
@@ -13,7 +13,7 @@
 # and the HACS integration are released in lockstep and the integration
 # raises a Repair issue on version skew.
 #
-# SAFETY: the RS485 wiring happens next to 230 V inside the wallbox —
+# SAFETY: the RS485 wiring happens next to 230 V inside the wallbox -
 # wallbox breaker OFF before opening the cover. Never OTA-flash this node
 # while a charge is in progress (the reboot publishes main_breaker = charge
 # blocked until the first measure).
@@ -34,14 +34,14 @@ substitutions:
   meter_node_name: loadpilot-meter
   # Max Conductor Limit exactly as set in the Tesla One installer menu (A).
   twc_conductor_limit_a: "21"
-  # Your service breaker (A) — fail-safe value.
+  # Your service breaker (A) - fail-safe value.
   main_breaker_limit_a: "40"
   # Default grid-contract limit (A) (runtime-adjustable in HA).
   # France single-phase 9 kVA -> 45 A.
   contract_limit_default_a: "45"
   # SINGLE-PHASE install: B/C measures forced to 0 by the core.
   phase_count: "1"
-  # HA mirror entities (backup measure path) — single-phase uses L1 only.
+  # HA mirror entities (backup measure path) - single-phase uses L1 only.
   # The B/C defaults inherited from twc-core.yaml are ignored (phases forced
   # to 0), no need to override them.
   ha_current_a_entity: sensor.loadpilot_meter_current_l1

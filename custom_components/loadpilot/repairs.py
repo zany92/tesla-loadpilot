@@ -6,7 +6,7 @@ Issues raised by the coordinator (never blocking regulation, D4):
 - source_failsafe_<entry_id>: no healthy measure source, the node publishes
   main_breaker and the charge is blocked (this is the SAFE behaviour);
 - charger_node_missing_<entry_id>: no entity of the configured charger node
-  exists at all (node renamed / deleted / never adopted) — the firmware
+  exists at all (node renamed / deleted / never adopted) - the firmware
   keeps regulating on its own (D2), but HA is blind to it.
 
 All are informational: the fix is updating the pinned ESPHome package / the

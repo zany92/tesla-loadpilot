@@ -1,6 +1,6 @@
-# Dashboards — Lovelace + UX copy
+# Dashboards - Lovelace + UX copy
 
-Owned by the **UX designer** (see /CONTRACTS.md — file list and constraints).
+Owned by the **UX designer** (see /CONTRACTS.md - file list and constraints).
 
 Consumes ONLY the entity/service contract tables from /CONTRACTS.md (never
 the specialist's source files). No Tesla imagery of any kind; original SVG
