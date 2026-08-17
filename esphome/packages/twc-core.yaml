@@ -1,15 +1,26 @@
 # =============================================================================
 # Tesla LoadPilot — twc-core.yaml (board-agnostic charger-node core)
 #
-# Extracted from the production-validated "PVi1-GRADE (17/08/2026)" block.
-# The control law is FIRMWARE: it needs neither Home Assistant nor any cloud
-# (ARCHITECTURE.md D2). This package contains everything that regulates and
-# protects; boards/<board>.yaml adds pins/network only.
+# Extracted from the production-validated "PVi1-GRADE v2 CO-VARIANT
+# (17/08/2026 evening, flash #2)" block. The control law is FIRMWARE: it
+# needs neither Home Assistant nor any cloud (ARCHITECTURE.md D2). This
+# package contains everything that regulates and protects;
+# boards/<board>.yaml adds pins/network only.
 #
-# Law (measured, docs/40_LOI_DE_COMMANDE.md — do NOT "improve" it):
-#   avail_p = clamp(contract_limit × (1 − buffer%) − bias − measure_p, 0, L)
-#   pub     = L − min(avail_1..3)          (identical on the 3 CT channels)
-#   escalation: 120 s at zero avail → publish L + 0.1 (clean forced stop)
+# Law v2 "co-variant" (measured, docs/40_LOI_DE_COMMANDE.md +
+# docs/DESIGN_LOI_COVARIANTE.md — do NOT "improve" it):
+#   o_raw = worst_phase + bias + (L − budget),  budget = contract × (1 − b%)
+#   out of constraint (o_raw ≤ L): pub = o_raw    (shifted reality, gain 1,
+#     zero delay — the published value is NEVER a dead flat: ±0.05 dither)
+#   in constraint  (o_raw > L):    pub = L + clamp(gain × excess, 0.1, emax)
+#     — the level above L IS the measured slow-down signal (micro-law:
+#     L+0.1 → ~−1 A/s; L exactly → HOLD; below L → recovery). The 120 s
+#     escalation timer remains as a floor/safety net only.
+#   pub is published identically on the 3 CT channels (symmetric).
+#   Input firewall (docs/DESIGN_ANTI_GLITCH.md): R1 physical floor with the
+#   contactor closed (an incomer can never read below the charger's own
+#   branch); R2 sudden drops > 5 A confirmed by 2 samples before being
+#   believed (rises always pass immediately — the safe direction).
 #   fail-safe: no healthy source → publish main_breaker (margin 0, charge
 #   blocked) — also the boot state. Source priority: UDP > HA mirror > failsafe.
 #
@@ -45,6 +56,29 @@ substitutions:
   bias_max_a: "16"
   # 1 (single-phase: B/C measures forced to 0) or 3.
   phase_count: "3"
+
+  # --- Co-variant law knobs (flash #2, docs/DESIGN_LOI_COVARIANTE.md) ------
+  # Compression gain above L (runtime-adjustable via "Law Echo Gain";
+  # restore_value false: the law must always boot at its validated default).
+  law_gain_default: "0.5"
+  # Max excursion above L (A) — runtime-adjustable via "Law Max Excursion".
+  law_emax_default: "1.0"
+  # Minimum nudge above L (A): the smallest slow-down signal, and the floor
+  # applied by the escalation net and by "Charge Stop". NOT a knob.
+  law_nudge_min_a: "0.1"
+  # Permanent alternating dither amplitude (A, 1 Hz): the published value is
+  # never twice the same — insurance against any momentarily flat source
+  # (a static value is what latches the wallbox distrust state). NOT a knob.
+  law_dither_a: "0.05"
+
+  # --- Input firewall (anti-glitch, docs/DESIGN_ANTI_GLITCH.md) ------------
+  # R1: with the wallbox contactor closed each incomer phase carries at
+  # least the vehicle minimum (~6 A AC) — a lower reading is physically
+  # impossible and would latch distrust (measured: a 0.6 A / 2 s glitch did).
+  vehicle_floor_a: "6.0"
+  # R2: a drop larger than this (A, sample-to-sample) must repeat on 2
+  # consecutive samples before being believed. Rises pass immediately.
+  glitch_drop_a: "5.0"
 
   # --- Loop timings (measured, see docs/40_LOI_DE_COMMANDE.md §5) -----------
   recompute_interval: 1000ms
@@ -461,7 +495,9 @@ binary_sensor:
       if (!seen_all || id(udp_last_ok_ms) == 0) return false;
       return (millis() - id(udp_last_ok_ms)) < (uint32_t)${udp_fresh_ms};
 
-  # 120 s escalation in progress (publishing L + 0.1 to force a clean stop).
+  # 120 s escalation net engaged (constraint sustained for 120 s; under the
+  # co-variant law the slow-down signal is already active from the first
+  # second of constraint — this flag marks the safety net only).
   - platform: template
     name: "Escalation Active"
     id: twc_escalation_active
@@ -534,20 +570,53 @@ switch:
     on_turn_off:
       - script.execute: recompute_ct
 
+  # Direct STOP: immediately publishes the stop order (L + nudge, dithered)
+  # without waiting for the bias ramp or the 120 s escalation. Never restored
+  # at boot (RESTORE_DEFAULT_OFF): a deliberate stop must never become a
+  # phantom state after an OTA/reboot.
+  - platform: template
+    id: twc_charge_stop
+    name: "Charge Stop"
+    icon: "mdi:octagon"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: recompute_ct
+    on_turn_off:
+      - script.execute: recompute_ct
+
+  # Meter-absent test switch: total Modbus silence (the slave address moves
+  # to 245 — the wallbox gets NO reply at all = meter unplugged), to
+  # exercise the documented "loss of meter → 6 A max output" fallback
+  # (docs/DESIGN_METER_ABSENT.md, set_address() verified on ESPHome source).
+  # Reversible at runtime. Never restored at boot.
+  - platform: template
+    id: twc_meter_absent
+    name: "Meter Absent (test)"
+    icon: "mdi:meter-electric-outline"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - lambda: 'id(twc_meter_server)->set_address(245);'
+    on_turn_off:
+      - lambda: 'id(twc_meter_server)->set_address(1);'
+
 select:
   # Signal mode (commissioning ladder):
   #   RAW       — publish the raw measure (+bias): plain Neurio emulation.
   #   OMBRE-MAX — publish RAW, compute the law as a shadow (observe first).
-  #   ACTIF-MAX — publish the worst-phase symmetric clamped law (production).
-  # Boots/restores to ACTIF-MAX: after a power cycle the node must come back
-  # regulating, not observing.
+  #   ACTIF-MAX — publish the worst-phase symmetric co-variant law (production).
+  # ALWAYS boots in ACTIF-MAX (restore_value false): a silent post-OTA
+  # return to RAW was the dangerous mode (measured: 2 grid cut-offs in one
+  # morning). The boot semantics stay safe whatever the mode: pub =
+  # main_breaker until the first healthy measure.
   - platform: template
     name: "Signal Mode"
     id: twc_mode_signal
     options: ["RAW", "OMBRE-MAX", "ACTIF-MAX"]
     initial_option: "ACTIF-MAX"
     optimistic: true
-    restore_value: true
+    restore_value: false
     icon: "mdi:waveform"
 
 number:
@@ -608,10 +677,90 @@ number:
       then:
         - script.execute: recompute_ct
 
+  # Co-variant law: compression gain above L. In constraint the published
+  # value is L + clamp(gain × excess, nudge_min, emax). restore_value false
+  # ON PURPOSE: after any reboot the law runs at its validated defaults —
+  # a forgotten tuning experiment must never survive a power cycle.
+  - platform: template
+    id: twc_law_gain
+    name: "Law Echo Gain"
+    icon: "mdi:tune"
+    min_value: 0.1
+    max_value: 1.0
+    step: 0.05
+    restore_value: false
+    initial_value: ${law_gain_default}
+    optimistic: true
+
+  # Co-variant law: maximum excursion above L (A). Bounds the worst-phase
+  # protection-integral exposure (~20 A·s budget: L+1 sustained ≈ 20 s).
+  - platform: template
+    id: twc_law_emax
+    name: "Law Max Excursion"
+    icon: "mdi:arrow-expand-up"
+    unit_of_measurement: "A"
+    min_value: 0.1
+    max_value: 1.0
+    step: 0.1
+    restore_value: false
+    initial_value: ${law_emax_default}
+    optimistic: true
+
 globals:
-  # ===== PVi1-grade: zero control state beyond capped_since_ms. =====
-  # Every extra internal state in earlier estimator designs created its own
-  # bug (measured lesson) — do not add any.
+  # ===== PVi1-grade: zero CONTROL state beyond capped_since_ms. =====
+  # Every extra internal control state in earlier estimator designs created
+  # its own bug (measured lesson) — do not add any. The fg_* block below is
+  # INPUT-FILTERING state (anti-glitch firewall), not control state.
+  # ---- Anti-glitch firewall state, per phase: last believed value
+  # (current/power) + pending drop candidate + confirmation counter. ----
+  - id: fg_last_i_a
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+  - id: fg_last_i_b
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+  - id: fg_last_i_c
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+  - id: fg_last_p_a
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: fg_last_p_b
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: fg_last_p_c
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: fg_pend_a
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+  - id: fg_pend_b
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+  - id: fg_pend_c
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+  - id: fg_n_a
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: fg_n_b
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: fg_n_c
+    type: int
+    restore_value: no
+    initial_value: "0"
   - id: twc_bias_applied
     type: float
     restore_value: no
@@ -959,59 +1108,109 @@ script:
             pub_pb = m_pb + bias * voltage;
             pub_pc = m_pc + bias * voltage;
           }
-          // ===== PVi1-GRADE BLOCK (17/08) — memoryless worst-phase law =====
-          // Wallbox service = SYMMETRIC functional of the 3 channels;
-          // protection = WORST PHASE (bite ~21.3 A in <=5 s, cut at ~20 A.s
-          // of excess integral). => publish WORST-PHASE SYMMETRICALLY:
-          // min = mean = max, the service loop engages exactly at the true
-          // constraint whatever the exact functional is. Trip impossible by
-          // construction: pub <= L (except the deliberate L+0.1 escalation
-          // after 120 s at zero avail). NO vehicle estimator: m_* INCLUDES
-          // the vehicle -> the published value follows it 1:1 (correlation
-          // intact — PVi1 lesson: never dilute).
+          // ===== PVi1-GRADE v2 "CO-VARIANT" BLOCK (17/08 evening) =====
+          // docs/DESIGN_LOI_COVARIANTE.md variant A + DESIGN_ANTI_GLITCH.md.
+          // Measured lesson: the v1 clamp froze the published value in
+          // saturation -> "lying meter" -> wallbox DISTRUST state (latched,
+          // everything ignored). The co-variant law NEVER has a dead value:
+          // out of constraint pub = shifted reality (gain 1, zero delay);
+          // in constraint pub = L + clamp(gain*excess, nudge_min, emax) —
+          // the level above L IS the measured slow-down signal (micro-law:
+          // L+0.1 -> ~-1 A/s; L exactly -> HOLD; below L -> recovery).
+          // Permanent +/-dither. Trip: impossible -> improbable by dynamics
+          // (~20 A.s worst-phase integral budget vs seconds of exposure).
+          // Upstream firewall: R1 physical floor with contactor closed (an
+          // incomer can never carry less than the wallbox branch); R2 drops
+          // > glitch_drop_a confirmed by 2 samples (the measured 0.6 A / 2 s
+          // glitch that latched distrust: dead on arrival).
           {
             const float L = ${twc_conductor_limit_a};
+            const uint32_t bnow = millis();
+            const float dth = ((bnow / 1000) % 2 == 0) ? ${law_dither_a}f : -${law_dither_a}f;
             float climit = id(twc_contract_limit).state;
             if (std::isnan(climit) || climit <= 0.0f) climit = ${contract_limit_default_a};
             float bpct = id(twc_buffer_pct).state;
             if (std::isnan(bpct) || bpct < 0.0f || bpct > 30.0f) bpct = ${buffer_default_pct};
             // Shared resource = grid contract reduced by the buffer: the
-            // vehicle only exploits (1-b) of the margin. Constant — active
-            // from the first cycle, no warm-up, no step possible in steady
-            // state.
+            // vehicle only exploits (1-b) of the margin.
             const float budget = climit * (1.0f - bpct / 100.0f);
+            float kg = id(twc_law_gain).state;
+            if (std::isnan(kg) || kg < 0.1f || kg > 1.0f) kg = ${law_gain_default};
+            float emax = id(twc_law_emax).state;
+            if (std::isnan(emax) || emax < 0.1f || emax > 1.0f) emax = ${law_emax_default};
             const float bias = id(twc_bias_applied);
             auto mode_idx = id(twc_mode_signal).active_index();
             const int midx = mode_idx.has_value() ? (int)mode_idx.value() : 2;
             const bool law_active = (midx == 2);   // ACTIF-MAX
             bool esc = false;
             if (have_measure && id(twc_control_enabled).state) {
-              float mm[3] = { m_a, m_b, m_c };
-              float av[3];
-              for (int i = 0; i < 3; i++) {
-                float a = budget - bias - mm[i];
-                if (a > L) a = L;
-                if (a < 0.0f) a = 0.0f;
-                av[i] = a;
+              // ---- Anti-glitch input firewall (currents decide; powers
+              // follow their phase's decision) ----
+              float mi[3] = { m_a, m_b, m_c };
+              float mp[3] = { m_pa, m_pb, m_pc };
+              float* fli[3] = { &id(fg_last_i_a), &id(fg_last_i_b), &id(fg_last_i_c) };
+              float* flp[3] = { &id(fg_last_p_a), &id(fg_last_p_b), &id(fg_last_p_c) };
+              float* fpd[3] = { &id(fg_pend_a), &id(fg_pend_b), &id(fg_pend_c) };
+              int* fn[3] = { &id(fg_n_a), &id(fg_n_b), &id(fg_n_c) };
+              const float DROP_A = ${glitch_drop_a}f, TOL = 1.0f;
+              const int N_CONFIRM = 2;
+              const int n_ph = three_phase ? 3 : 1;
+              for (int i = 0; i < n_ph; i++) {
+                float x = mi[i];
+                if (std::isnan(*fli[i])) { *fli[i] = x; *flp[i] = mp[i]; continue; }
+                if (std::isnan(x)) { mi[i] = *fli[i]; mp[i] = *flp[i]; continue; }
+                if (x >= *fli[i] - DROP_A) {          // rise or gentle drop
+                  *fpd[i] = NAN; *fn[i] = 0;
+                  *fli[i] = x; *flp[i] = mp[i];       // zero latency
+                } else {                               // sudden drop
+                  if (std::isnan(*fpd[i]) || std::fabs(x - *fpd[i]) > TOL) {
+                    *fpd[i] = x; *fn[i] = 1;           // new candidate
+                  } else {
+                    (*fn[i])++;
+                  }
+                  if (*fn[i] >= N_CONFIRM) {           // drop confirmed
+                    *fli[i] = std::min(x, *fpd[i]); *flp[i] = mp[i];
+                    *fpd[i] = NAN; *fn[i] = 0;
+                  }
+                  mi[i] = *fli[i]; mp[i] = *flp[i];    // held -> last value
+                }
               }
-              float av_min = std::min(av[0], std::min(av[1], av[2]));
-              float o_sym = L - av_min;
-              // PVi1 escalation: sustained zero avail 120 s -> deliberate
-              // hard stop (the wallbox ramps toward "zero avail" in minutes
-              // and can hold a residual forever; L+0.1 forces the stop).
-              if (av_min <= 0.0f) {
-                if (id(capped_since_ms) == 0) id(capped_since_ms) = millis();
-                if (millis() - id(capped_since_ms) >= (uint32_t)${escalation_timeout_ms}) {
-                  o_sym = L + 0.1f;
+              // R1: physical floor with the contactor closed (fail-open:
+              // no reliable mirror -> no floor).
+              const bool ctc_ok = id(twc_contactor_seen) && id(twc_contactor_available);
+              if (ctc_ok && id(twc_contactor_closed)) {
+                for (int i = 0; i < n_ph; i++)
+                  if (mi[i] < ${vehicle_floor_a}f) mi[i] = ${vehicle_floor_a}f;
+              }
+              // ---- Co-variant law (worst phase, symmetric) ----
+              float worst = std::max(mi[0], std::max(mi[1], mi[2]));
+              float o_raw = worst + bias + (L - budget);
+              float e = o_raw - L;
+              float o;
+              if (e <= 0.0f) {                        // OUT OF CONSTRAINT
+                o = o_raw;                            // shifted reality, gain 1
+                id(capped_since_ms) = 0;
+              } else {                                 // IN CONSTRAINT
+                float exc = kg * e;
+                if (exc < ${law_nudge_min_a}f) exc = ${law_nudge_min_a}f;
+                if (exc > emax) exc = emax;
+                o = L + exc;
+                if (id(capped_since_ms) == 0) id(capped_since_ms) = bnow;
+                // Escalation timer kept as a floor/safety net only: the
+                // slow-down signal is already active from the first second
+                // of constraint (pub >= L + nudge_min by construction).
+                if (bnow - id(capped_since_ms) >= (uint32_t)${escalation_timeout_ms}) {
+                  o = std::max(o, L + ${law_nudge_min_a}f);
                   esc = true;
                 }
-              } else {
-                id(capped_since_ms) = 0;
               }
-              id(shadow_pub_a) = o_sym;
+              if (id(twc_charge_stop).state) o = std::max(o, L + ${law_nudge_min_a}f);
+              o += dth;                                // never a dead value
+              if (o < 0.0f) o = 0.0f;
+              id(shadow_pub_a) = o;
               if (law_active) {
-                pub_a = pub_b = pub_c = o_sym;
-                pub_pa = pub_pb = pub_pc = o_sym * voltage;
+                pub_a = pub_b = pub_c = o;
+                pub_pa = pub_pb = pub_pc = o * voltage;
               }
             } else {
               id(capped_since_ms) = 0;
@@ -1047,6 +1246,8 @@ modbus:
 
 modbus_server:
   - modbus_id: wallconn_modbus
+    # id required by the "Meter Absent (test)" switch (set_address at runtime).
+    id: twc_meter_server
     address: 1
     registers:
       - { address: 1, value_type: U_WORD, read_lambda: "return 0x3078;" }

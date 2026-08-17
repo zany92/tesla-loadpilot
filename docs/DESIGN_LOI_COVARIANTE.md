@@ -1,6 +1,17 @@
 # DESIGN — Loi de publication pire-phase TOUJOURS CO-VARIANTE (flash n° 2)
 
-> **Statut : DESIGN, rien n'est flashé.** Prépare le flash n° 2 du nœud
+> **IMPLÉMENTÉ le 17/08 soir (flash n° 2) — VALIDÉ EN RÉEL le soir même**
+> (19:06-19:43) : danse d'équilibre ±1 A à la frontière du budget (régime
+> normal, pas une défiance), descente continue 16→12+ A sous échelon
+> +4 clims (pente publiée L+0,95), cascade complète
+> descente→pause→relâche→reprise autonome de session. Le plan d'ombre §6
+> a été court-circuité par la validation directe. Voir `BEHAVIOR.md` §8
+> (« Evening validation ») et TESTPLAN §A (relevé 17/08). Porté dans le
+> firmware générique `esphome/packages/twc-core.yaml` (numbers « Law Echo
+> Gain » 0,5 / « Law Max Excursion » 1,0). Le texte ci-dessous est
+> conservé tel quel (état d'esprit AVANT flash).
+>
+> ~~**Statut : DESIGN, rien n'est flashé.**~~ Préparait le flash n° 2 du nœud
 > `kc868-a6-1` (ESPHome 2026.7.4). Remplace le cœur du bloc
 > « PVi1-GRADE v1.1 » (lambda `recompute_ct`,
 > `/config/esphome/kc868-a6-1.yaml` l. ~1382-1442) : le clamp ≤ 21 +

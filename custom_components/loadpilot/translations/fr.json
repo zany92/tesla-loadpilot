@@ -2,55 +2,83 @@
   "config": {
     "step": {
       "user": {
-        "title": "Nœuds LoadPilot",
-        "description": "[UX_COPY.md en attente] Noms des deux nœuds ESPHome et topologie du site.",
+        "title": "Bienvenue dans Tesla LoadPilot",
+        "description": "LoadPilot ajuste la charge de votre véhicule pour que votre maison ne dépasse jamais votre abonnement électrique. Tout fonctionne en local, sans cloud. LoadPilot repose sur deux petits boîtiers ESP32 déjà installés via ESPHome : un près de la borne (il lui parle), un près du compteur (il mesure). Si vous avez suivi le guide sans renommer, gardez les valeurs proposées.",
         "data": {
-          "charger_node": "Nom du nœud borne",
-          "meter_node": "Nom du nœud compteur",
-          "phases": "Phases",
+          "charger_node": "Boîtier borne",
+          "meter_node": "Boîtier compteur",
+          "phases": "Type d'installation",
           "country_profile": "Profil compteur"
+        },
+        "data_description": {
+          "charger_node": "Nom ESPHome du boîtier relié à la borne (défaut : loadpilot-twc).",
+          "meter_node": "Nom ESPHome du boîtier qui lit votre compteur (défaut : loadpilot-meter).",
+          "country_profile": "Les profils marqués « aperçu » sont des squelettes firmware, pas encore validés en production."
         }
       },
       "limits": {
-        "title": "Limites électriques",
-        "description": "[UX_COPY.md en attente] Écrites dans les réglages résidents du nœud (le firmware les héberge).",
+        "title": "Votre abonnement électrique",
+        "description": "Ces deux réglages sont ce qui protège votre disjoncteur d'abonnement. Ils sont écrits dans le boîtier borne lui-même et restent actifs même si Home Assistant est éteint.",
         "data": {
-          "contract_limit_a": "Limite d'abonnement par phase (A)",
-          "buffer_pct": "Buffer de sécurité (%)"
+          "contract_preset": "Puissance souscrite (France)",
+          "contract_limit_a": "Limite d'abonnement (ampères par phase)",
+          "buffer_pct": "Réserve de sécurité (%)"
+        },
+        "data_description": {
+          "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement — ou « Autre » pour saisir les ampères vous-même ci-dessous.",
+          "contract_limit_a": "En France : 6 kVA monophasé = 30 A · 9 kVA = 45 A · 12 kVA = 60 A · 15 kVA = 75 A · 18 kVA = 90 A. En triphasé, par phase : 6 kVA = 10 A · 9 kVA = 15 A · 12 kVA = 20 A · 15 kVA = 25 A · 18 kVA = 30 A.",
+          "buffer_pct": "Avec 10 % de réserve, la voiture n'exploite que 90 % de votre abonnement : le reste absorbe les à-coups (démarrage d'un four, d'une pompe) sans faire disjoncter."
         }
       },
       "mirror": {
-        "title": "Chemin de mesure de secours",
-        "description": "[UX_COPY.md en attente] Entités miroir Home Assistant optionnelles (doivent correspondre aux substitutions ESPHome).",
+        "title": "Secours si le lien direct est coupé",
+        "description": "En temps normal, le boîtier compteur parle directement au boîtier borne. Si ce lien tombe, Home Assistant peut relayer les mesures en secours. Facultatif mais recommandé. Sans secours, si le lien direct ET Home Assistant sont indisponibles, la charge est bloquée par sécurité (votre abonnement n'est jamais dépassé).",
         "data": {
-          "current_l1": "Courant L1",
-          "current_l2": "Courant L2",
-          "current_l3": "Courant L3",
-          "power_l1": "Puissance L1",
-          "power_l2": "Puissance L2",
-          "power_l3": "Puissance L3"
+          "current_l1": "Courant, phase 1",
+          "current_l2": "Courant, phase 2",
+          "current_l3": "Courant, phase 3",
+          "power_l1": "Puissance, phase 1",
+          "power_l2": "Puissance, phase 2",
+          "power_l3": "Puissance, phase 3"
+        },
+        "data_description": {
+          "current_l1": "Choisissez les entités issues de votre boîtier compteur."
         }
       }
     },
+    "error": {
+      "budget_too_small": "Avec ces réglages, il ne reste que {budget_a} A par phase pour toute la maison — la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve.",
+      "tri_limit_suspicious": "{contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé — auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? Validez de nouveau sans rien changer pour confirmer."
+    },
     "abort": {
-      "already_configured": "Ce nœud borne est déjà configuré."
+      "already_configured": "Ce boîtier borne LoadPilot est déjà configuré."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Options LoadPilot",
+        "description": "Les modifications sont écrites directement dans le boîtier borne. Pour changer de profil compteur ou de boîtiers, supprimez puis réinstallez l'intégration.",
         "data": {
-          "contract_limit_a": "Limite d'abonnement par phase (A)",
-          "buffer_pct": "Buffer de sécurité (%)",
-          "current_l1": "Courant L1",
-          "current_l2": "Courant L2",
-          "current_l3": "Courant L3",
-          "power_l1": "Puissance L1",
-          "power_l2": "Puissance L2",
-          "power_l3": "Puissance L3"
+          "contract_preset": "Puissance souscrite (France)",
+          "contract_limit_a": "Limite d'abonnement (ampères par phase)",
+          "buffer_pct": "Réserve de sécurité (%)",
+          "current_l1": "Courant, phase 1",
+          "current_l2": "Courant, phase 2",
+          "current_l3": "Courant, phase 3",
+          "power_l1": "Puissance, phase 1",
+          "power_l2": "Puissance, phase 2",
+          "power_l3": "Puissance, phase 3"
+        },
+        "data_description": {
+          "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement — ou « Autre » pour saisir les ampères vous-même ci-dessous.",
+          "buffer_pct": "Avec 10 % de réserve, la voiture n'exploite que 90 % de votre abonnement : le reste absorbe les à-coups sans faire disjoncter."
         }
       }
+    },
+    "error": {
+      "budget_too_small": "Avec ces réglages, il ne reste que {budget_a} A par phase pour toute la maison — la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve.",
+      "tri_limit_suspicious": "{contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé — auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? Validez de nouveau sans rien changer pour confirmer."
     }
   },
   "selector": {
@@ -62,10 +90,29 @@
     },
     "country_profile": {
       "options": {
-        "fr_tic": "France — Linky TIC (éprouvé en production)",
-        "dsmr_p1": "NL/BE — DSMR 5 P1 (squelette)",
-        "sml_de": "DE/AT — tête IR SML (squelette)",
-        "ct_clamps": "Universel — pinces CT (squelette)"
+        "fr_tic": "France — Linky (TIC)",
+        "dsmr_p1": "Pays-Bas / Belgique — DSMR P1 (aperçu)",
+        "sml_de": "Allemagne / Autriche — SML (aperçu)",
+        "ct_clamps": "Universel — pinces ampèremétriques (aperçu)"
+      }
+    },
+    "contract_preset": {
+      "options": {
+        "custom": "Autre (saisir la limite en ampères)",
+        "mono_6": "6 kVA monophasé — 30 A",
+        "mono_9": "9 kVA monophasé — 45 A",
+        "mono_12": "12 kVA monophasé — 60 A",
+        "mono_15": "15 kVA monophasé — 75 A",
+        "mono_18": "18 kVA monophasé — 90 A",
+        "mono_24": "24 kVA monophasé — 120 A",
+        "tri_6": "6 kVA triphasé — 10 A par phase",
+        "tri_9": "9 kVA triphasé — 15 A par phase",
+        "tri_12": "12 kVA triphasé — 20 A par phase",
+        "tri_15": "15 kVA triphasé — 25 A par phase",
+        "tri_18": "18 kVA triphasé — 30 A par phase",
+        "tri_24": "24 kVA triphasé — 40 A par phase",
+        "tri_30": "30 kVA triphasé — 50 A par phase",
+        "tri_36": "36 kVA triphasé — 60 A par phase"
       }
     }
   },
@@ -96,22 +143,22 @@
   },
   "services": {
     "set_bias": {
-      "name": "Régler le biais",
-      "description": "[UX_COPY.md en attente] Écrit la cible de biais (la rampe reste dans le firmware).",
+      "name": "Régler le ralentissement de charge (biais)",
+      "description": "Ralentit volontairement le véhicule en réservant des ampères pour le reste de la maison. 0 = aucun ralentissement, 16 = charge en pause. La valeur est appliquée en douceur — la rampe est gérée par le boîtier borne.",
       "fields": {
         "amps": {
-          "name": "Ampères",
-          "description": "Cible de biais, 0 à 16 A par pas de 0,5 A."
+          "name": "Ampères réservés",
+          "description": "Ampères retirés au véhicule, par phase (0 à 16, pas de 0,5)."
         }
       }
     },
     "pause": {
-      "name": "Pause",
-      "description": "[UX_COPY.md en attente] Biais plein : pause de charge propre."
+      "name": "Mettre la charge en pause",
+      "description": "Met la charge du véhicule en pause proprement en réservant tout le budget (biais 16 A). Le véhicule s'arrête en 2 minutes environ, sans erreur. Reprise via « Reprendre la charge »."
     },
     "resume": {
-      "name": "Reprise",
-      "description": "[UX_COPY.md en attente] Biais remis à 0."
+      "name": "Reprendre la charge",
+      "description": "Relâche la pause (biais remis à 0). Le véhicule reprend la charge de lui-même en quelques minutes."
     }
   },
   "issues": {

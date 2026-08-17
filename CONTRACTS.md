@@ -170,3 +170,12 @@ Noms de nœuds par défaut : `loadpilot-twc` (borne), `loadpilot-meter`
 - Toute incohérence découverte entre une table §3/§4 et la réalité du code
   se signale à l'orchestrateur — on corrige LE CONTRAT ou LE CODE, jamais
   silencieusement l'un des deux.
+
+### Ajout ratifié le 17/08 soir (loi v2 co-variante, flash n°2)
+
+| Entité | Type | Contrat |
+|---|---|---|
+| Law Echo Gain (`number`, 0,1–1,0, défaut 0,5) | réglage runtime | gain de compression de l'excès au-dessus de L |
+| Law Max Excursion (`number`, 0,1–1,0 A, défaut 1,0) | réglage runtime | excursion max du publié au-dessus de L |
+| Charge Stop (`switch`, OFF au boot) | commande | ordre d'arrêt immédiat (publié ≥ L+0,1), jamais restauré |
+| Meter Absent (`switch`, OFF au boot) | test/maintenance | silence Modbus total (adresse 245) — repli 6 A borne |

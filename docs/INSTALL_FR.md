@@ -131,7 +131,7 @@ publiées à 0, le reste de la chaîne fonctionne tel quel.
    - piège n°1 du nœud borne : **jamais `logger: level: VERBOSE`** — les
      logs bloquants font rater la deadline de réponse Modbus (~66 ms) et
      la borne n'obtient plus une seule réponse ([`20_FIRMWARE.md`](20_FIRMWARE.md) §2.2) ;
-   - `Linky Source Active` = UDP et `Linky UDP Fresh` = on (si le réseau
+   - `Source Active` = UDP et `UDP Fresh` = on (si le réseau
      bloque le broadcast LAN→WLAN, passez l'UDP en unicast vers l'IP du
      nœud borne — une seule destination à la fois).
 
@@ -218,15 +218,19 @@ firmware/intégration (les deux canaux s'installent sur le **même tag**).
 
 ## 6. Premiers tests — TOUJOURS en ombre d'abord
 
-Le firmware expose un sélecteur de mode de signal. **Ne passez jamais
-directement en actif** :
+Le firmware expose un sélecteur de mode de signal (`Signal Mode`, trois
+positions : `RAW`, `OMBRE-MAX`, `ACTIF-MAX`). **Attention : tel que
+livré, le nœud démarre en `ACTIF-MAX`** (voir la note en fin de section) —
+votre **premier geste après le flash** est donc de passer le sélecteur en
+`RAW`, puis de gravir l'échelle ci-dessous. **Ne restez jamais en actif
+sans avoir observé l'ombre d'abord** :
 
 1. **Dry-run : mode `OMBRE-MAX`.** La borne continue de voir la mesure
-   brute (RAW) ; les capteurs « Shadow » montrent ce que le bloc
-   pire-phase-symétrique-clampé PUBLIERAIT. Pendant une charge réelle,
-   vérifiez sur plusieurs dizaines de minutes :
+   brute (RAW) ; le capteur « Shadow Published Current » montre ce que le
+   bloc pire-phase-symétrique-clampé PUBLIERAIT (une seule valeur : la
+   publication est symétrique sur les trois phases par construction).
+   Pendant une charge réelle, vérifiez sur plusieurs dizaines de minutes :
    - shadow ≤ limite en permanence (clamp) ;
-   - les 3 voies shadow identiques (symétrie) ;
    - aucune valeur aberrante (NaN, 0 transitoire au boot).
 2. **Activation : mode `ACTIF-MAX`**, de préférence charge en cours et
    maison chargée (le scénario nominal). Attendu (validation de référence,
@@ -236,16 +240,24 @@ directement en actif** :
 3. **Abandon immédiat si** : la borne ignore le signal > 2 min, TOUTE
    ouverture de contacteur, polling interrompu > 30 s → retour `RAW` et
    analyse avant de retenter.
-4. **Testez le fail-safe** : coupez le nœud compteur → `Linky Source
-   Active` doit passer UDP → HA → FAILSAFE et la charge se bloquer en
+4. **Testez le fail-safe** : coupez le nœud compteur → `Source Active`
+   doit passer UDP → HA → FAILSAFE et la charge se bloquer en
    ~10 s. C'est le comportement attendu, pas un bug.
 5. Testez le **kill-switch maître** : OFF = la borne retrouve son
    comportement d'usine (publication 0 A = marge maximale), sans toucher
    au câblage.
 
-> Note : le sélecteur ne survit pas au reboot (démarrage = RAW, défaut
-> sûr). `TODO-sync` : le nom exact des modes dans les paquets extraits
-> pourra évoluer — cette section suit le firmware de référence.
+> Note — comportement au démarrage : le sélecteur **survit au reboot**
+> (`restore_value`) et le firmware est **livré avec `ACTIF-MAX` en
+> position initiale**. C'est un choix assumé pour un site en production :
+> après une coupure de courant, le nœud doit revenir en train de
+> RÉGULER, pas en observation. Conséquence pour une PREMIÈRE
+> installation : au tout premier boot, le nœud est déjà en `ACTIF-MAX` —
+> sans danger électrique (la loi clampe sous votre limite d'abonnement),
+> mais cela court-circuite l'échelle de tests ci-dessus. D'où la
+> consigne en tête de section : passez en `RAW` immédiatement après le
+> flash, et ne revenez en `ACTIF-MAX` qu'une fois l'ombre validée. Une
+> fois en production, le mode choisi est conservé à travers les reboots.
 
 ## 7. Attention véhicule : l'abandon silencieux
 

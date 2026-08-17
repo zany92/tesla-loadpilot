@@ -1,6 +1,15 @@
 # DESIGN — Pare-feu de vraisemblance des mesures (anti-glitch, flash n° 2)
 
-> **Statut : DESIGN, rien n'est flashé.** Filtre d'ENTRÉE du nœud
+> **IMPLÉMENTÉ le 17/08 soir (flash n° 2) — déployé et ACTIF** (R1
+> plancher 6 A contacteur fermé + R2 confirmation 2 échantillons des
+> chutes > 5 A). Validation indirecte : soirée entière sans entrée en
+> défiance ; le rejeu d'un glitch réel type 11:37 n'a pas encore été
+> provoqué. Porté dans le firmware générique
+> `esphome/packages/twc-core.yaml` (substitutions `vehicle_floor_a`,
+> `glitch_drop_a`). Le texte ci-dessous est conservé tel quel (état
+> d'esprit AVANT flash).
+>
+> ~~**Statut : DESIGN, rien n'est flashé.**~~ Filtre d'ENTRÉE du nœud
 > `kc868-a6-1` : s'applique aux mesures par phase (`m_p`) AVANT
 > `recompute_ct`, quelle que soit la source active (UDP / miroir HA).
 > Ne touche ni la loi de publication ni le fail-safe.

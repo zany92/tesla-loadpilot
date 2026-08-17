@@ -155,6 +155,9 @@ cohérence est faite au fil de l'eau (erreurs de champ) ET au récapitulatif
 | 12 kVA | 60 | 20 |
 | 15 kVA | 75 | 25 |
 | 18 kVA | 90 | 30 |
+| 24 kVA | 120 | 40 |
+| 30 kVA | — *(offre inexistante en mono, et > 120 A firmware)* | 50 |
+| 36 kVA | — *(idem)* | 60 |
 
 - Le libellé du preset montre TOUJOURS la conversion (« 12 kVA triphasé —
   20 A par phase ») : l'utilisateur apprend la grandeur qu'il retrouvera
@@ -167,12 +170,16 @@ cohérence est faite au fil de l'eau (erreurs de champ) ET au récapitulatif
 
 **Validations de champ (étape 3) :**
 
+*(aligné 17/08 sur le firmware, source de vérité : `twc-core.yaml` —
+les bornes des champs SONT les bornes firmware, les erreurs dédiées
+`limit_out_of_range`/`buffer_out_of_range` sont remplacées par ces bornes)*
+
 | Règle | Erreur (clé) | Pourquoi |
 |---|---|---|
-| `contract_limit_a` entre 10 et 100 | `limit_out_of_range` | en dessous de 10 A la charge est impossible, au-dessus de 100 A la saisie est très probablement en kVA ou en W |
-| `buffer_pct` entre 0 et 50 | `buffer_out_of_range` | au-delà de 50 % le réglage n'a plus de sens |
+| `contract_limit_a` entre 6 et 120 | — (borne du sélecteur) | enveloppe du réglage firmware (`Contract Limit` 6-120 A) ; la saisie improbable en kVA/W est rattrapée par les deux règles ci-dessous |
+| `buffer_pct` entre 0 et 30 | — (borne du sélecteur) | le firmware borne ET clampe la réserve à 30 % (`Buffer Pct` 0-30) — un 0-50 côté UX n'était pas implémentable |
 | `limit×(1−buffer) < 8 A` | `budget_too_small` | budget insuffisant pour démarrer une charge (~6 A min + marge) — message : « Avec ces réglages, il ne reste que X A pour toute la maison ; la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve. » |
-| tri + `contract_limit_a > 40` | avertissement `tri_limit_suspicious` (non bloquant) | l'utilisateur a probablement saisi le total 3 phases ou la valeur mono |
+| tri + `contract_limit_a > 40` | avertissement `tri_limit_suspicious` (non bloquant : revalider sans changement confirme) | l'utilisateur a probablement saisi le total 3 phases ou la valeur mono |
 
 ### 2.4 Étape 4 — `mirror` : le secours par Home Assistant
 

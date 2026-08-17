@@ -26,9 +26,16 @@
 
 ## A. Site pilote (prod Loupiac) — non-régression de l'extraction
 
-Le site tourne aujourd'hui sur `kc868-a6-1.yaml` (bloc PVi1-GRADE 17/08).
-Objectif : prouver que `twc-core.yaml` + `boards/kc868-a6.yaml` +
-`providers/teleinfo-fr.yaml` reproduisent EXACTEMENT le comportement validé.
+Le site tourne aujourd'hui sur `kc868-a6-1.yaml` (bloc **PVi1-GRADE v2
+co-variant**, flash n°2 du 17/08 soir). Objectif : prouver que
+`twc-core.yaml` + `boards/kc868-a6.yaml` + `providers/teleinfo-fr.yaml`
+reproduisent EXACTEMENT le comportement validé.
+
+> **Annotation 17/08 soir** : plusieurs cas A* ont déjà été JOUÉS EN RÉEL
+> sur le firmware site (le comportement cible est donc mesuré, traces à
+> l'appui) — voir le relevé sous le tableau. Cela ne dispense PAS de
+> rejouer ces cas sur le core EXTRAIT : c'est la non-régression de
+> l'extraction qui est l'objet de ce volet, et elle reste à faire.
 
 | # | Test | Attendu | Échec si |
 |---|---|---|---|
@@ -44,7 +51,23 @@ Objectif : prouver que `twc-core.yaml` + `boards/kc868-a6.yaml` +
 | A10 | Kill-switch OFF pendant 10 min | publication 0 A constante, la borne retombe au comportement d'usine (curseur appli), état HA `off` | la borne reste bridée |
 | A11 | 24 h en `ACTIF-MAX` (usage normal) | zéro reboot nœud, zéro cycle contacteur, UDP Age p99 < 2 s | reboot spontané, watchdog |
 
-## B. Installation from-scratch (répétition de l'expérience utilisateur)
+### Relevé des cas déjà joués en réel sur le site pilote (firmware site, 17/08)
+
+Traces (scratchpad de session, à archiver avec la campagne) :
+`test_pvi1grade.log` (11:21-11:35, v1), `test_soir_v3.log` (18:34-19:43,
+soirée complète), `test_v2_covariant.log` et `test_v2_toutes_clims.log`
+(19:30-19:39, v2). Référence narrative : `BEHAVIOR.md` §8 (+ entrée
+« Evening validation »).
+
+| # | Statut au 17/08 soir | Résultat mesuré |
+|---|---|---|
+| A4 | ✅ joué (équivalent) | OMBRE-MAX tenu ~1 h 30 en charge réelle (fenêtre de cure 16:30-18:00) : publié = brut honnête, aucune anomalie |
+| A5 | ✅ joué | v1 11:21-11:35 : modulation douce 16→11,1, paliers tenus, remontée ~1 A/30 s, lifetime contacteur 470 inchangé (`test_pvi1grade.log`) ; rejoué sous v2 le soir (danse d'équilibre ±1 A à la frontière = régime NORMAL v2, ne pas le prendre pour une défiance) |
+| A6 | ✅ joué (v2) | échelon +4 clims 19:35+ : descente CONTINUE 16→12+ A sous pente publiée L+0,95 (~21,95), zéro plafond, zéro coupure (`test_v2_toutes_clims.log`) |
+| A7 | ◐ partiel | le filet L+0,1 lui-même est validé borne confiante : ordre 21,1 exécuté en ~5 s (18:49:46, `test_soir_v3.log`) — mais la procédure exacte A7 (baisser Contract Limit, attendre 120 s, vérifier `Escalation Active`) reste à jouer sur le core extrait. Caveat mesuré : en défiance, le même ordre a été ignoré 8 min (midi) |
+| A8 | ◐ partiel | biais 16 posé/relâché en cascade réelle 19:30-19:34 ; la rampe EN charge (0,5/1 A par 5 s) validée les jours précédents sur site, à rejouer via `loadpilot.set_bias` |
+| A9 | ✅ joué (v2) | relâche biais 16→0 INSTANTANÉE contacteur ouvert (19:34:29) suivie de la REPRISE AUTONOME de session (cycle 478, sans app) — cascade complète descente→pause→relâche→reprise (`test_v2_toutes_clims.log`) |
+| A1-A3, A10, A11 | ⬜ à jouer | dépendent du flash du core EXTRAIT (jamais flashé à ce jour) |
 
 Sur une instance HA VIERGE (VM) + les deux ESP32 de rechange si possible :
 

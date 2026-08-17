@@ -1,6 +1,13 @@
 # DESIGN — Switch « compteur absent » : faire TAIRE le serveur Modbus à chaud
 
-> **Statut : ÉTUDE DE FAISABILITÉ — verdict : OUI, voie propre trouvée.**
+> **IMPLÉMENTÉ le 17/08 soir (flash n° 2) — PAS ENCORE TESTÉ.** Le switch
+> (`set_address(245)` / retour `set_address(1)`, livré OFF, jamais
+> restauré au boot) compile et est en place sur le site (ESPHome 2026.7.4)
+> et dans le firmware générique `esphome/packages/twc-core.yaml`
+> (« Meter Absent (test) », id `twc_meter_server` sur le serveur Modbus).
+> Le test du repli documenté « loss of meter → 6 A max » reste à jouer.
+>
+> ~~**Statut : ÉTUDE DE FAISABILITÉ — verdict : OUI, voie propre trouvée.**~~
 > Objectif : pouvoir simuler à chaud la disparition du compteur émulé pour
 > tester (puis éventuellement exploiter) le repli documenté de la borne :
 > « loss of meter connection → 6 A maximum output » (app note DPM Tesla,

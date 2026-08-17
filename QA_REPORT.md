@@ -38,9 +38,15 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
 
 ---
 
-## MAJEURS (fond — non corrigés par la QA, à arbitrer)
+## MAJEURS (fond) — M1/M2/M4 corrigés le 17/08 soir ; M3 reste à trancher
 
-### M1 — Les entity_id dérivés dépendent de la langue de l'instance HA
+### M1 — Les entity_id dérivés dépendent de la langue de l'instance HA — ✅ corrigé (17/08 soir)
+> Résumé : `_attr_suggested_object_id` anglais épinglé sur les 5 capteurs
+> dérivés (`loadpilot_state`, `loadpilot_headroom_l1/2/3`,
+> `loadpilot_worst_phase`) dans `sensor.py` ; `has_entity_name` +
+> `translation_key` conservés pour l'affichage ; cohérence vérifiée avec
+> les deux dashboards (ids identiques). Reste à verrouiller par le test
+> B10 du TESTPLAN sur instance FR.
 - Fichiers : `custom_components/loadpilot/sensor.py:64` (`_attr_has_entity_name`
   + `translation_key`) + `translations/fr.json`.
 - HA génère l'entity_id depuis le nom TRADUIT au moment de la création :
@@ -52,7 +58,14 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
   le test B10 du TESTPLAN. Les entités ESPHome (§3.1/§3.2) ne sont pas
   touchées (noms anglais côté firmware).
 
-### M2 — INSTALL_FR.md décrit l'ANCIEN firmware de référence, pas l'extrait
+### M2 — INSTALL_FR.md décrit l'ANCIEN firmware de référence, pas l'extrait — ✅ corrigé (17/08 soir)
+> Résumé : §6 réécrit — le boot est bien `ACTIF-MAX` (restore, choix
+> assumé site en prod) avec consigne explicite « premier geste après le
+> flash = passer en RAW » pour réconcilier l'échelle de commissioning ;
+> « 3 voies shadow » → capteur unique « Shadow Published Current »
+> (publication symétrique) ; « Linky Source Active »/« Linky UDP Fresh »
+> → « Source Active »/« UDP Fresh » (noms du package twc-core.yaml —
+> la prod Loupiac garde ses anciens noms, hors sujet pour le guide).
 - Fichier : `docs/INSTALL_FR.md:194` : « le sélecteur ne survit pas au
   reboot (démarrage = RAW, défaut sûr) » — FAUX pour `twc-core.yaml:544`
   (select `restore_value: true`, `initial_option: ACTIF-MAX`, choix
@@ -80,7 +93,18 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
   le cas C6 du TESTPLAN : NO-GO tant qu'il n'est pas tranché (au besoin :
   invalider les capteurs en NAN via un watchdog `teleinfo` sans trame).
 
-### M4 — Divergences UX ↔ implémentation (rendez-vous d'intégration n°1)
+### M4 — Divergences UX ↔ implémentation (rendez-vous d'intégration n°1) — ✅ corrigé (17/08 soir)
+> Résumé : source de vérité = firmware (buffer 0-30, limite 6-120) —
+> UX.md/UX_COPY.md alignés (0-50 supprimé, erreurs *_out_of_range
+> remplacées par les bornes de champ) ; validations implémentées dans
+> `config_flow.py` (+ options flow) : `budget_too_small` (< 8 A bloquant)
+> et `tri_limit_suspicious` (> 40 A tri, non bloquant, confirmable en
+> revalidant) ; presets kVA France ajoutés (mono 6-24, tri 6-36, aide de
+> saisie — stockage inchangé en A/phase) pour le profil `fr_tic` ; tous
+> les `[UX_COPY.md pending]` remplacés par les textes UX_COPY réels
+> (EN/FR, arbres de clés identiques). Restent en TODO explicite
+> (const.py) : parcours 5 étapes (step electrical dédié, récap confirm,
+> test d'existence des nœuds) + demandes `paused`/`charger_current`.
 - Buffer : UX 0–50 % (`dashboards/UX.md:173`, `UX_COPY.md:116`) vs
   firmware/flow 0–30 % (`twc-core.yaml:601`, `config_flow.py:98`) — la loi
   clampe aussi à 30 (héritée prod). Trancher UNE valeur (30 recommandé) et

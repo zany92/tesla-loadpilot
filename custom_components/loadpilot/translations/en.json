@@ -2,55 +2,83 @@
   "config": {
     "step": {
       "user": {
-        "title": "LoadPilot nodes",
-        "description": "[UX_COPY.md pending] Names of the two ESPHome nodes and site topology.",
+        "title": "Welcome to Tesla LoadPilot",
+        "description": "LoadPilot adjusts your vehicle's charging so your home never exceeds your electricity contract. Everything runs locally — no cloud. LoadPilot relies on two small ESP32 nodes already set up with ESPHome: one next to the wall connector (it talks to it), one next to the meter (it measures). If you followed the guide without renaming, keep the suggested values.",
         "data": {
-          "charger_node": "Charger node name",
-          "meter_node": "Meter node name",
-          "phases": "Phases",
+          "charger_node": "Charger node",
+          "meter_node": "Meter node",
+          "phases": "Installation type",
           "country_profile": "Meter profile"
+        },
+        "data_description": {
+          "charger_node": "ESPHome device name of the node wired to the wall connector (default: loadpilot-twc).",
+          "meter_node": "ESPHome device name of the node reading your meter (default: loadpilot-meter).",
+          "country_profile": "Profiles marked “preview” ship as firmware skeletons and have not been validated in production yet."
         }
       },
       "limits": {
-        "title": "Electrical limits",
-        "description": "[UX_COPY.md pending] Written to the node-resident knobs (the firmware hosts them).",
+        "title": "Your electricity contract",
+        "description": "These two settings are what keeps your main breaker happy. They are written into the charger node itself and keep working even when Home Assistant is off.",
         "data": {
-          "contract_limit_a": "Grid contract limit per phase (A)",
+          "contract_preset": "Subscribed power (France)",
+          "contract_limit_a": "Contract limit (amps per phase)",
           "buffer_pct": "Safety buffer (%)"
+        },
+        "data_description": {
+          "contract_preset": "Pick your subscribed power to fill in the limit for you — or choose “Other” and enter the amps yourself below.",
+          "contract_limit_a": "In France: 6 kVA single-phase = 30 A · 9 kVA = 45 A · 12 kVA = 60 A · 15 kVA = 75 A · 18 kVA = 90 A. Three-phase, per phase: 6 kVA = 10 A · 9 kVA = 15 A · 12 kVA = 20 A · 15 kVA = 25 A · 18 kVA = 30 A.",
+          "buffer_pct": "With a 10% buffer, the car only uses 90% of your contract: the rest absorbs surges (an oven or a pump starting) without tripping the breaker."
         }
       },
       "mirror": {
-        "title": "Backup measure path",
-        "description": "[UX_COPY.md pending] Optional Home Assistant mirror entities (must match the ESPHome substitutions).",
+        "title": "Backup if the direct link goes down",
+        "description": "Normally the meter node talks directly to the charger node. If that link goes down, Home Assistant can relay the measurements as a backup. Optional but recommended. Without it, if both the direct link and Home Assistant are unavailable, charging is blocked for safety (your contract is never exceeded).",
         "data": {
-          "current_l1": "Current L1",
-          "current_l2": "Current L2",
-          "current_l3": "Current L3",
-          "power_l1": "Power L1",
-          "power_l2": "Power L2",
-          "power_l3": "Power L3"
+          "current_l1": "Current, phase 1",
+          "current_l2": "Current, phase 2",
+          "current_l3": "Current, phase 3",
+          "power_l1": "Power, phase 1",
+          "power_l2": "Power, phase 2",
+          "power_l3": "Power, phase 3"
+        },
+        "data_description": {
+          "current_l1": "Pick the entities coming from your meter node."
         }
       }
     },
+    "error": {
+      "budget_too_small": "With these settings only {budget_a} A per phase remain for the whole house — the car will never be able to charge. Check the limit (in amps PER PHASE) and the buffer.",
+      "tri_limit_suspicious": "{contract_limit_a} A per phase on three-phase is unusually high — did you enter the three-phase total, or a single-phase figure? Submit again without changing it to confirm."
+    },
     "abort": {
-      "already_configured": "This charger node is already configured."
+      "already_configured": "This LoadPilot charger node is already configured."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "LoadPilot options",
+        "description": "Changes are written straight into the charger node. To change the country profile or the nodes, remove and re-add the integration.",
         "data": {
-          "contract_limit_a": "Grid contract limit per phase (A)",
+          "contract_preset": "Subscribed power (France)",
+          "contract_limit_a": "Contract limit (amps per phase)",
           "buffer_pct": "Safety buffer (%)",
-          "current_l1": "Current L1",
-          "current_l2": "Current L2",
-          "current_l3": "Current L3",
-          "power_l1": "Power L1",
-          "power_l2": "Power L2",
-          "power_l3": "Power L3"
+          "current_l1": "Current, phase 1",
+          "current_l2": "Current, phase 2",
+          "current_l3": "Current, phase 3",
+          "power_l1": "Power, phase 1",
+          "power_l2": "Power, phase 2",
+          "power_l3": "Power, phase 3"
+        },
+        "data_description": {
+          "contract_preset": "Pick your subscribed power to fill in the limit for you — or choose “Other” and enter the amps yourself below.",
+          "buffer_pct": "With a 10% buffer, the car only uses 90% of your contract: the rest absorbs surges without tripping the breaker."
         }
       }
+    },
+    "error": {
+      "budget_too_small": "With these settings only {budget_a} A per phase remain for the whole house — the car will never be able to charge. Check the limit (in amps PER PHASE) and the buffer.",
+      "tri_limit_suspicious": "{contract_limit_a} A per phase on three-phase is unusually high — did you enter the three-phase total, or a single-phase figure? Submit again without changing it to confirm."
     }
   },
   "selector": {
@@ -62,10 +90,29 @@
     },
     "country_profile": {
       "options": {
-        "fr_tic": "France — Linky TIC (production-proven)",
-        "dsmr_p1": "NL/BE — DSMR 5 P1 (skeleton)",
-        "sml_de": "DE/AT — SML IR head (skeleton)",
-        "ct_clamps": "Universal — CT clamps (skeleton)"
+        "fr_tic": "France — Linky (TIC)",
+        "dsmr_p1": "Netherlands / Belgium — DSMR P1 (preview)",
+        "sml_de": "Germany / Austria — SML (preview)",
+        "ct_clamps": "Universal — CT clamps (preview)"
+      }
+    },
+    "contract_preset": {
+      "options": {
+        "custom": "Other (enter the limit in amps)",
+        "mono_6": "6 kVA single-phase — 30 A",
+        "mono_9": "9 kVA single-phase — 45 A",
+        "mono_12": "12 kVA single-phase — 60 A",
+        "mono_15": "15 kVA single-phase — 75 A",
+        "mono_18": "18 kVA single-phase — 90 A",
+        "mono_24": "24 kVA single-phase — 120 A",
+        "tri_6": "6 kVA three-phase — 10 A per phase",
+        "tri_9": "9 kVA three-phase — 15 A per phase",
+        "tri_12": "12 kVA three-phase — 20 A per phase",
+        "tri_15": "15 kVA three-phase — 25 A per phase",
+        "tri_18": "18 kVA three-phase — 30 A per phase",
+        "tri_24": "24 kVA three-phase — 40 A per phase",
+        "tri_30": "30 kVA three-phase — 50 A per phase",
+        "tri_36": "36 kVA three-phase — 60 A per phase"
       }
     }
   },
@@ -96,22 +143,22 @@
   },
   "services": {
     "set_bias": {
-      "name": "Set bias",
-      "description": "[UX_COPY.md pending] Write the bias target (the ramp stays in firmware).",
+      "name": "Set charging slowdown (bias)",
+      "description": "Deliberately slows the vehicle down by reserving amps for the rest of the house. 0 = no slowdown, 16 = charging paused. The value ramps smoothly — the ramp is handled by the charger node.",
       "fields": {
         "amps": {
-          "name": "Amps",
-          "description": "Bias target, 0 to 16 A in 0.5 A steps."
+          "name": "Reserved amps",
+          "description": "Amps taken away from the vehicle, per phase (0 to 16, step 0.5)."
         }
       }
     },
     "pause": {
-      "name": "Pause",
-      "description": "[UX_COPY.md pending] Full bias: clean charge pause."
+      "name": "Pause charging",
+      "description": "Cleanly pauses vehicle charging by reserving the full budget (bias 16 A). The vehicle stops in about 2 minutes without error. Resume with “Resume charging”."
     },
     "resume": {
-      "name": "Resume",
-      "description": "[UX_COPY.md pending] Bias back to 0."
+      "name": "Resume charging",
+      "description": "Releases the pause (bias back to 0). The vehicle resumes charging on its own within a few minutes."
     }
   },
   "issues": {

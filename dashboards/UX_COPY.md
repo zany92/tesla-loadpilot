@@ -76,11 +76,15 @@ options (`selector.contract_preset.options.*`):
 | `mono_12` | 12 kVA single-phase — 60 A | 12 kVA monophasé — 60 A |
 | `mono_15` | 15 kVA single-phase — 75 A | 15 kVA monophasé — 75 A |
 | `mono_18` | 18 kVA single-phase — 90 A | 18 kVA monophasé — 90 A |
+| `mono_24` | 24 kVA single-phase — 120 A | 24 kVA monophasé — 120 A |
 | `tri_6` | 6 kVA three-phase — 10 A per phase | 6 kVA triphasé — 10 A par phase |
 | `tri_9` | 9 kVA three-phase — 15 A per phase | 9 kVA triphasé — 15 A par phase |
 | `tri_12` | 12 kVA three-phase — 20 A per phase | 12 kVA triphasé — 20 A par phase |
 | `tri_15` | 15 kVA three-phase — 25 A per phase | 15 kVA triphasé — 25 A par phase |
 | `tri_18` | 18 kVA three-phase — 30 A per phase | 18 kVA triphasé — 30 A par phase |
+| `tri_24` | 24 kVA three-phase — 40 A per phase | 24 kVA triphasé — 40 A par phase |
+| `tri_30` | 30 kVA three-phase — 50 A per phase | 30 kVA triphasé — 50 A par phase |
+| `tri_36` | 36 kVA three-phase — 60 A per phase | 36 kVA triphasé — 60 A par phase |
 | `custom` | Other (enter the limit in amps) | Autre (saisir la limite en ampères) |
 
 ### 1.4 `config.step.mirror` — Home Assistant backup path
@@ -112,8 +116,8 @@ Single-phase installs: only the two L1 fields are shown.
 |---|---|---|
 | `error.charger_not_found` | Charger node not found. It must be adopted in ESPHome and visible in Home Assistant before this step (see the firmware guide). | Boîtier borne introuvable. Il doit être adopté dans ESPHome et visible dans Home Assistant avant cette étape (voir le guide firmware). |
 | `error.meter_not_found` | Meter node not found. It must be adopted in ESPHome and visible in Home Assistant before this step (see the firmware guide). | Boîtier compteur introuvable. Il doit être adopté dans ESPHome et visible dans Home Assistant avant cette étape (voir le guide firmware). |
-| `error.limit_out_of_range` | Enter a limit between 10 and 100 amps PER PHASE. Values above 100 usually mean the figure was entered in kVA or watts. | Saisissez une limite entre 10 et 100 ampères PAR PHASE. Au-delà de 100, la valeur a probablement été saisie en kVA ou en watts. |
-| `error.buffer_out_of_range` | The safety buffer must be between 0 and 50%. | La réserve de sécurité doit être comprise entre 0 et 50 %. |
+| ~~`error.limit_out_of_range`~~ | *(dropped 17/08 — the field is hard-bounded 6-120 A, the firmware envelope; implausible kVA/W entries are caught by `budget_too_small` and `tri_limit_suspicious`)* | *(supprimée 17/08 — le champ est borné 6-120 A, enveloppe firmware ; les saisies improbables en kVA/W sont rattrapées par `budget_too_small` et `tri_limit_suspicious`)* |
+| ~~`error.buffer_out_of_range`~~ | *(dropped 17/08 — the field is hard-bounded 0-30%, matching the firmware `Buffer Pct` knob and the law's clamp)* | *(supprimée 17/08 — le champ est borné 0-30 %, aligné sur le réglage firmware `Buffer Pct` et le clamp de la loi)* |
 | `error.budget_too_small` | With these settings only {budget_a} A per phase remain for the whole house — the car will never be able to charge. Check the limit (in amps PER PHASE) and the buffer. | Avec ces réglages, il ne reste que {budget_a} A par phase pour toute la maison — la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve. |
 | `error.mirror_entity_invalid` | This entity does not provide a numeric measurement. Pick a current (A) or power (VA/W) sensor. | Cette entité ne fournit pas une mesure numérique. Choisissez un capteur de courant (A) ou de puissance (VA/W). |
 | `abort.already_configured` | This LoadPilot charger node is already configured. | Ce boîtier borne LoadPilot est déjà configuré. |
@@ -123,7 +127,7 @@ limit > 40 A):
 
 | Key | EN | FR |
 |---|---|---|
-| `warn.tri_limit_suspicious` | {contract_limit_a} A per phase on three-phase is unusually high — did you enter the three-phase total, or a single-phase figure? | {contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé — auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? |
+| `warn.tri_limit_suspicious` | {contract_limit_a} A per phase on three-phase is unusually high — did you enter the three-phase total, or a single-phase figure? Submit again without changing it to confirm. | {contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé — auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? Validez de nouveau sans rien changer pour confirmer. |
 
 ---
 

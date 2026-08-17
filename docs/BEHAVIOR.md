@@ -141,6 +141,35 @@ emulated meter is durably ignored. **MEASURED on our installation
   wallbox's own branch current, and never let the published signal stop
   echoing the vehicle's ramps** — even under saturation.
 
+### Recovery protocol (MEASURED, 17 Aug 2026 evening)
+
+The controlled re-test announced above was run through the afternoon and
+evening of 17 Aug. Outcome:
+
+- **What restored trust (MEASURED once, attribution partially confounded)**
+  — the combination of: a **wallbox power-cycle** (breaker off/on), then
+  **~2 h of honest, 1:1-correlated published signal** (shadow mode), then
+  a **first session start with the house calm** (so the vehicle's opening
+  ramp is fully echoed, never absorbed by saturation). Hard evidence: the
+  very same **L + 0.1 stop order that had been ignored for 8 minutes at
+  noon was executed in ~5 s in the evening** (18:49:46, ~1 A/s descent),
+  and the whole §8-evening validation then ran flawlessly. The
+  power-cycle and the honest-signal cure sit in the same recovery window,
+  so their individual contributions are **not yet separated** — a
+  power-cycle alone with a short cure (< 1 h) was tested and did NOT
+  recover (but the post-reboot session started under saturation, which may
+  have re-latched distrust at that very second). To be refined at the next
+  distrust episode.
+- **Requalification of earlier "distrust" readings (MEASURED)** — several
+  episodes previously read as "the wallbox is deaf" actually had the
+  published value **at or below L (≤ 21.0)**. That is the nominal HOLD of
+  the micro-law (published = L ⇔ hold the current plateau), not distrust:
+  a clamp AT the limit cannot command a descent. **Only ignored orders
+  strictly above L (≥ L + 0.1 sustained) prove distrust.** Any distrust
+  detector must therefore trigger on `published > L` ignored, never on
+  "no reaction at published ≤ L" — our first detector threshold (20.85)
+  produced exactly that false positive and was recalibrated (21.45).
+
 ### Independent corroboration (REPORTED)
 
 - **PVi1 (TMC, 9 Aug 2026, fw 26.18 — our exact version)** — arrives at
@@ -226,8 +255,21 @@ Vehicle-side behaviours (Tesla), measured through the wallbox:
 
 ## 7. The architectural consequence: clamped worst-phase symmetric publication
 
-This is the project's landing point, and it follows mechanically from
-§1–§4:
+> **Superseded on 17 Aug 2026 evening (flash #2)**: the hard clamp below
+> was replaced by the **co-variant law** (`DESIGN_LOI_COVARIANTE.md`,
+> variant A) after the clamp itself was shown to manufacture the distrust
+> state of §4 (a saturated flat value absorbs the vehicle's ramp echo).
+> The co-variant law keeps everything in this section except the flat:
+> out of constraint it publishes the shifted reality unchanged; in
+> constraint it publishes `L + clamp(gain × excess, 0.1, emax)` with a
+> permanent ±0.05 dither — the published value is never dead, and the
+> level above L is itself the measured slow-down signal (L+0.1 → ~−1 A/s;
+> L exactly → HOLD; below L → recovery). Trip goes from "impossible by
+> construction" to "improbable by dynamics" (~20 A·s integral budget vs
+> seconds of exposure). Measured validation: §8, evening entry.
+
+This was the project's first landing point, and it follows mechanically
+from §1–§4:
 
 ```
 avail_p  = budget − bias − measure_p        (per phase, clamped to [0 ; L])
@@ -281,6 +323,39 @@ Outcome: contactor cycles **470, unchanged** (zero cuts), **zero bites**,
 recovery — **the 26.18 wallbox CAN hold a plateau below the vehicle's
 demand** when the published signal is bounded ≤ limit. Two real household
 load steps absorbed without a single event.
+
+### Evening validation — co-variant law, flash #2 (17 Aug 2026, 19:06–19:43, MEASURED)
+
+The v2 co-variant law (§7 banner) was flashed at 19:06 and validated live
+the same evening, with trust freshly restored (recovery protocol, §4).
+All entries below are **MEASURED** (3 s traces `test_soir_v3.log`,
+`test_v2_covariant.log`, `test_v2_toutes_clims.log`):
+
+- **The "balance dance" is the NORMAL v2 regime — do not mistake it for
+  distrust.** Under co-variant publication, at the budget frontier the
+  vehicle holds **±1 A around the exact equilibrium** (`budget − house`,
+  15–16 A observed) while the published value oscillates around L
+  (20.9–21.4 observed). This is the law working: each crossing above L is
+  a real slow-down nudge, each return below L is a real release. Our
+  first distrust detector (threshold 20.85) flagged this dance as
+  distrust — false positive; the recalibrated criterion is *ignored*
+  orders above L (21.45 / 120 s / vehicle > 9 A).
+- **Continuous descent under sustained constraint (the v1 clamp's blind
+  spot, fixed).** A +4 air-conditioner load step drove the vehicle
+  **16 → 12+ A in one continuous descent** under a published slope at
+  L + 0.95 (~21.95 observed) — no plateau at 15 A, no frozen published
+  value, no distrust entry. The wallbox followed the compressed excess
+  signal exactly as the micro-law predicts.
+- **Full cascade demonstrated end-to-end without a human**: vehicle
+  descent under the law → still insufficient → HA-layer pause posed at
+  45 s (bias 16: the vehicle was stopped BEFORE any household equipment
+  was shed — "vehicle first" executed to the letter) → load step ends →
+  bias released (16 → 0 instantly, contactor open rule) → **AUTONOMOUS
+  session resume at the second of the release** (contactor cycle 478, no
+  app interaction). The vehicle's silent give-up (§5) did not trigger.
+- Wallbox events over the whole evening: the only contactor cycles are
+  the expected session stop/start of the cascade — zero protection cuts,
+  zero bites, zero distrust entries.
 
 ## 9. Negative results (assumed, and published on purpose)
 

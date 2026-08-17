@@ -59,7 +59,15 @@ async def async_setup_entry(
 class LoadPilotBaseSensor(
     CoordinatorEntity[LoadPilotCoordinator], SensorEntity
 ):
-    """Common device/base for the derived sensors."""
+    """Common device/base for the derived sensors.
+
+    Entity ids are CONTRACTUAL (/CONTRACTS.md §3.3): every subclass pins an
+    English ``_attr_suggested_object_id``. Without it, HA derives the object
+    id from the TRANSLATED friendly name at creation time — on a French
+    instance sensor.loadpilot_state would be born sensor.loadpilot_etat,
+    breaking the dashboards and the docs. ``has_entity_name`` +
+    ``translation_key`` stay in place for the DISPLAY name only.
+    """
 
     _attr_has_entity_name = True
 
@@ -81,6 +89,7 @@ class LoadPilotStateSensor(LoadPilotBaseSensor):
     """Regulation state (contract: sensor.loadpilot_state)."""
 
     _attr_translation_key = "state"
+    _attr_suggested_object_id = "loadpilot_state"  # contract §3.3, language-proof
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = [
         STATE_REGULATING,
@@ -131,6 +140,8 @@ class LoadPilotHeadroomSensor(LoadPilotBaseSensor):
         super().__init__(coordinator, entry)
         self._phase = phase
         self._attr_translation_key = f"headroom_{phase}"
+        # Contract §3.3, language-proof entity id.
+        self._attr_suggested_object_id = f"loadpilot_headroom_{phase}"
         self._attr_unique_id = f"{entry.entry_id}_headroom_{phase}"
 
     @property
@@ -149,6 +160,7 @@ class LoadPilotWorstPhaseSensor(LoadPilotBaseSensor):
     """Name of the phase with the least headroom (contract §3.3)."""
 
     _attr_translation_key = "worst_phase"
+    _attr_suggested_object_id = "loadpilot_worst_phase"  # contract §3.3
     _attr_device_class = SensorDeviceClass.ENUM
 
     def __init__(

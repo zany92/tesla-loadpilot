@@ -127,6 +127,45 @@ SOURCE_BOOT = "BOOT"
 
 PHASE_NAMES = ["l1", "l2", "l3"]
 
+# --- Config-flow validation & presets (UX.md §2.3, aligned on firmware) ----
+# The number-selector bounds mirror the FIRMWARE knobs (twc-core.yaml):
+# contract limit 6..120 A (hardware envelope of the node-resident number),
+# buffer 0..30 % (the law clamps at 30 as well — 0..50 in early UX drafts
+# was never implementable). The UX "10..100 A" range is a PLAUSIBILITY rule,
+# implemented as validation below, not as a hard selector bound.
+MIN_CHARGE_BUDGET_A = 8.0        # limit×(1−buffer) under this: the car can never charge (~6 A min + margin)
+TRI_LIMIT_SUSPICIOUS_A = 40.0    # 3-phase, per-phase limit above this: probably a kVA or 3-phase-total entry
+
+# French kVA presets (standard Enedis pairs) — input helper ONLY: what is
+# stored stays CONF_CONTRACT_LIMIT_A in amps per phase (UX.md §2.3).
+# Single-phase stops at 24 kVA (120 A): 30/36 kVA single-phase offers do not
+# exist and would exceed the 120 A firmware bound.
+CONF_CONTRACT_PRESET = "contract_preset"
+CONTRACT_PRESET_CUSTOM = "custom"
+CONTRACT_PRESETS_MONO_A = {
+    "mono_6": 30.0,
+    "mono_9": 45.0,
+    "mono_12": 60.0,
+    "mono_15": 75.0,
+    "mono_18": 90.0,
+    "mono_24": 120.0,
+}
+CONTRACT_PRESETS_TRI_A = {
+    "tri_6": 10.0,
+    "tri_9": 15.0,
+    "tri_12": 20.0,
+    "tri_15": 25.0,
+    "tri_18": 30.0,
+    "tri_24": 40.0,
+    "tri_30": 50.0,
+    "tri_36": 60.0,
+}
+CONTRACT_PRESETS_A = {**CONTRACT_PRESETS_MONO_A, **CONTRACT_PRESETS_TRI_A}
+# TODO(UX.md §2.0): the full 5-step onboarding (dedicated `electrical` step,
+# `confirm` recap screen, charger/meter node-existence checks with
+# charger_not_found/meter_not_found errors) is NOT implemented yet — the
+# flow is 3 steps + presets/validations. Tracked for v0.1.0.
+
 # --- Repairs issue ids ----------------------------------------------------
 ISSUE_FW_VERSION_SKEW = "firmware_version_skew"
 ISSUE_SOURCE_FAILSAFE = "source_failsafe"
