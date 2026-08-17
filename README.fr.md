@@ -4,6 +4,8 @@
 
 🇬🇧 [English version](README.md)
 
+![Tesla LoadPilot : le compteur Linky à l'arrivée électrique, deux nœuds ESP32 qui comblent la distance par un lien chiffré, et la borne qui charge la voiture dans le garage](docs/assets/hero.png)
+
 **Gestion dynamique de charge 100 % locale, sans cloud, pour le Tesla Wall Connector Gen 3, pilotée par le compteur du fournisseur.** La borne ajuste sa puissance en temps réel à ce que la maison laisse disponible, pour n'importe quel véhicule, y compris ceux de vos invités : pas d'API véhicule, pas de cloud constructeur, pas de compteur d'énergie supplémentaire à acheter.
 
 > Statut : **bêta privée, version 0.1.0**, en production sur un unique site pilote (France, triphasé 15 kVA, ~2000 épisodes instrumentés). Non publié, pas encore installable par des tiers. Voir [RELEASE_NOTES_0.1.0.md](RELEASE_NOTES_0.1.0.md).
