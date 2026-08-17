@@ -1,0 +1,25 @@
+10:54:45 cont=False evse=4 car=0.1/0.0/0.0 cycles=465
+10:55:00 cont=False evse=4 car=0.1/0.0/0.0 cycles=465
+10:55:15 cont=False evse=4 car=0.1/0.0/0.0 cycles=465
+10:55:30 cont=False evse=4 car=0.1/0.0/0.0 cycles=465
+10:55:45 cont=False evse=4 car=0.1/0.0/0.0 cycles=465
+10:56:00 cont=False evse=9 car=0.1/0.0/0.0 cycles=465
+10:56:15 cont=True evse=11 car=4.0/0.0/0.1 cycles=465
+10:56:30 cont=True evse=11 car=14.1/14.1/14.2 cycles=465
+10:56:45 cont=True evse=11 car=0.3/0.0/0.1 cycles=465
+10:57:01 cont=True evse=11 car=7.7/7.7/0.1 cycles=465
+10:57:16 cont=False evse=7 car=0.1/0.0/0.0 cycles=465
+10:57:31 cont=True evse=11 car=0.7/0.0/0.1 cycles=465
+10:57:46 cont=True evse=11 car=12.6/12.7/12.8 cycles=468
+10:58:01 cont=True evse=11 car=0.3/0.0/0.1 cycles=468
+10:58:16 cont=True evse=11 car=6.9/6.9/0.1 cycles=468
+10:58:31 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+10:58:46 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+10:59:01 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+10:59:17 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+10:59:32 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+10:59:47 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+11:00:02 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+11:00:17 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+11:00:32 cont=False evse=9 car=0.1/0.0/0.0 cycles=468
+FIN watch
