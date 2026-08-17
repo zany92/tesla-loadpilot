@@ -77,10 +77,14 @@ The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on 
 
 **Hardware (pilot bill of materials, France):**
 
-- Tesla Wall Connector Gen 3, firmware 26.18 (the calibration reference; **freeze the charger's firmware updates**, e.g. by blocking its WAN access, see the runbook).
-- Charger side: a Kincony KC868-A6 (or any ESP32 with an RS485 transceiver) wired to the wall connector's RS485 terminals.
-- Meter side: an Olimex ESP32-POE with a TIC receiver hat (Hallard design) on the Linky's I1/I2 terminals. Any board with a serial input works.
-- Twisted pair for RS485 (shielded 1.5 mm2 recommended by Tesla, 120 m max; short unterminated runs are fine in practice).
+| Part | Role | Notes | Links |
+|---|---|---|---|
+| Tesla Wall Connector Gen 3 | The charger being steered | Firmware 26.18 is the calibration reference. **Freeze its firmware updates** (e.g. block its WAN access at the router), see the runbook. | [Product page](https://www.tesla.com/wall-connector) |
+| Kincony KC868-A6 | Charger-side ESP32 node (Neurio emulation) | ESP32 board with an onboard RS485 transceiver (MAX13487E, hardware auto-direction), relays and inputs as a bonus. Any ESP32 plus a MAX485-class transceiver works too. | [Hardware details](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [KinCony store](https://www.kincony.com/) |
+| Olimex ESP32-POE | Meter-side ESP32 node | Powered over Ethernet next to the meter; any ESP32 with a free UART works. | [Product page](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
+| Teleinfo (TIC) receiver shield, Charles Hallard design | Reads the Linky's TIC output (I1/I2 terminals) | Opto-isolated serial receiver, ESP32-compatible. Sold assembled. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
+| RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; short unterminated runs are fine in practice (measured on the pilot). | Tesla app note, see [docs/INSTALL_FR.md](docs/INSTALL_FR.md) |
+| (Optional) Tesla Neurio W2 meter | Reference instrument only | Useful to sniff genuine meter traffic or as an A/B test against the emulation. Not needed for LoadPilot itself: your utility meter replaces it. | [Example EU reseller](https://www.wallboxdiscounter.com/fr/tesla-neurio-energy-meter.html) |
 
 **Software:**
 
