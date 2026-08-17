@@ -106,7 +106,7 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
 > étapes » est levé : ✅ implémenté par la passe correctifs du 17/08 soir
 > (détail en fin de section MINEURS) ; restent les demandes
 > `paused`/`charger_current` et les sélecteurs de devices ESPHome
-> (UX_COPY.md §Demandes, post-v0.1.0).
+> (UX_COPY.md §Demandes, post-v1.0.0).
 - Buffer : UX 0–50 % (`dashboards/UX.md:173`, `UX_COPY.md:116`) vs
   firmware/flow 0–30 % (`twc-core.yaml:601`, `config_flow.py:98`) - la loi
   clampe aussi à 30 (héritée prod). Trancher UNE valeur (30 recommandé) et
@@ -117,7 +117,7 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
 - Parcours : UX spécifie 5 étapes (electrical avec presets kVA, confirm
   récapitulatif) - implémenté en 3 étapes sans presets ni confirmation.
   Les demandes UX (état `paused`, `charger_current`) sont proprement
-  tracées dans UX_COPY.md §Demandes - à arbitrer avant v0.1.0.
+  tracées dans UX_COPY.md §Demandes - à arbitrer avant v1.0.0.
 - Textes `[UX_COPY.md pending]` dans `translations/{en,fr}.json` : connus,
   mais aucune release tant qu'ils sont visibles.
 

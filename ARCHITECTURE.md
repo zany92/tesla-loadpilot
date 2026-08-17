@@ -27,7 +27,7 @@ packages:
     files:
       - esphome/packages/twc-core.yaml
       - esphome/packages/boards/kc868-a6.yaml
-    ref: v0.1.0          # ALWAYS a tag, never main
+    ref: v1.0.0          # ALWAYS a tag, never main
 ```
 
 Why:

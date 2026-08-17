@@ -1,6 +1,6 @@
 # Tesla LoadPilot - Plan de test avant publication
 
-> Propriété QA. Campagne à dérouler AVANT le premier tag public `v0.1.0`.
+> Propriété QA. Campagne à dérouler AVANT le premier tag public `v1.0.0`.
 > Trois volets : (A) non-régression sur le site pilote (déjà en prod),
 > (B) installation from-scratch depuis le repo, (C) cas limites / pannes.
 > Chaque cas indique : préparation, action, attendu, critère d'échec.

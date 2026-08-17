@@ -1,8 +1,8 @@
-# Tesla LoadPilot 0.1.0
+# Tesla LoadPilot 1.0.0
 
 First tagged release. One SemVer tag covers the whole repository: the HACS
 integration and the ESPHome firmware packages ship in lockstep and both
-report version `0.1.0`.
+report version `1.0.0`.
 
 Tesla LoadPilot is local, cloud-free charging power regulation for the
 Tesla Wall Connector Gen 3: an ESP32 emulates the discontinued Neurio meter
@@ -10,7 +10,7 @@ on the wallbox's RS485 bus and feeds it real per-phase measurements taken at
 the utility meter, so the wallbox's own load management modulates the
 vehicle without ever tripping.
 
-**Status: private beta.** Validated on a single pilot site (France,
+**Status: first public release.** Validated on a single pilot site (France,
 three-phase 15 kVA, Linky meter, TWC firmware 26.18). The repository is
 private; nothing is published to HACS or home-assistant/brands yet.
 
