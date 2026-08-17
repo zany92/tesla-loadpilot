@@ -21,8 +21,10 @@
 #   contactor closed (an incomer can never read below the charger's own
 #   branch); R2 sudden drops > 5 A confirmed by 2 samples before being
 #   believed (rises always pass immediately — the safe direction).
-#   fail-safe: no healthy source → publish main_breaker (margin 0, charge
-#   blocked) — also the boot state. Source priority: UDP > HA mirror > failsafe.
+#   fail-safe: no healthy source → publish main_breaker ± dither (margin 0,
+#   charge blocked; DITHERED — a static value would trip distrust and undo
+#   the fail-safe) — also the boot state. Source priority: UDP > HA mirror >
+#   failsafe.
 #
 # Attribution: core inspiration PVi1 (github.com/PVi1/esphome-twc-control);
 # Neurio/Generac register map: gist by LucaTNT.
@@ -498,6 +500,8 @@ binary_sensor:
   # 120 s escalation net engaged (constraint sustained for 120 s; under the
   # co-variant law the slow-down signal is already active from the first
   # second of constraint — this flag marks the safety net only).
+  # ON only when the net is actually PUBLISHED, i.e. in ACTIF-MAX (in
+  # RAW/OMBRE-MAX the law runs as a shadow and this flag stays OFF).
   - platform: template
     name: "Escalation Active"
     id: twc_escalation_active
@@ -1092,8 +1096,16 @@ script:
             // A genuinely dead meter must BLOCK: publish consumption =
             // main_breaker (full service capacity) -> margin 0.
             ESP_LOGW("meter", "No healthy measure source (UDP stale, HA mirror/API down) -> publishing main_breaker, charge blocked");
-            pub_a = pub_b = pub_c = main_breaker;
-            pub_pa = pub_pb = pub_pc = main_breaker * voltage;
+            // (MEASURED 17/08 evening) Dither the fail-safe too: a STATIC
+            // published value trips the wallbox's plausibility check into
+            // DISTRUST (docs/BEHAVIOR.md §Distrust), after which it ignores
+            // the meter and resumes at full demand — the exact opposite of
+            // what a fail-safe is for. Alive = believed = charge actually
+            // blocked. Recompute runs at ${recompute_interval}, so the
+            // alternation actually ticks even with no incoming measure.
+            const float fs_dth = ((millis() / 1000) % 2 == 0) ? ${law_dither_a}f : -${law_dither_a}f;
+            pub_a = pub_b = pub_c = main_breaker + fs_dth;
+            pub_pa = pub_pb = pub_pc = (main_breaker + fs_dth) * voltage;
           } else {
             // NORMAL: real per-phase current + power, import-positive.
             // + BIAS: publishing measure + X A forces the wallbox to lower
@@ -1216,7 +1228,12 @@ script:
               id(capped_since_ms) = 0;
               id(shadow_pub_a) = pub_a;
             }
-            id(escalation_state) = esc;
+            // Contract §3.1: "Escalation Active" means the L+0.1 floor IS
+            // being PUBLISHED. In RAW/OMBRE-MAX the law only runs as a
+            // shadow — the timer may fire internally but nothing is acting
+            // on the wallbox, so the flag stays OFF (the shadow effect
+            // remains visible on "Shadow Published Current").
+            id(escalation_state) = esc && law_active;
           }
           id(meter_source) = source;
           id(ct1_current_a) = pub_a;

@@ -3,23 +3,31 @@
     "step": {
       "user": {
         "title": "Welcome to Tesla LoadPilot",
-        "description": "LoadPilot adjusts your vehicle's charging so your home never exceeds your electricity contract. Everything runs locally — no cloud. LoadPilot relies on two small ESP32 nodes already set up with ESPHome: one next to the wall connector (it talks to it), one next to the meter (it measures). If you followed the guide without renaming, keep the suggested values.",
+        "description": "LoadPilot adjusts your vehicle's charging so your home never exceeds your electricity contract. Everything runs locally — no cloud. First, tell us which meter your installation uses.",
         "data": {
-          "charger_node": "Charger node",
-          "meter_node": "Meter node",
-          "phases": "Installation type",
           "country_profile": "Meter profile"
         },
         "data_description": {
-          "charger_node": "ESPHome device name of the node wired to the wall connector (default: loadpilot-twc).",
-          "meter_node": "ESPHome device name of the node reading your meter (default: loadpilot-meter).",
           "country_profile": "Profiles marked “preview” ship as firmware skeletons and have not been validated in production yet."
         }
       },
-      "limits": {
+      "nodes": {
+        "title": "Your two LoadPilot nodes",
+        "description": "LoadPilot relies on two small ESP32 nodes already set up with ESPHome: one next to the wall connector (it talks to it), one next to the meter (it measures). If you followed the guide without renaming, keep the suggested values.",
+        "data": {
+          "charger_node": "Charger node",
+          "meter_node": "Meter node"
+        },
+        "data_description": {
+          "charger_node": "ESPHome device name of the node wired to the wall connector (default: loadpilot-twc).",
+          "meter_node": "ESPHome device name of the node reading your meter (default: loadpilot-meter)."
+        }
+      },
+      "electrical": {
         "title": "Your electricity contract",
         "description": "These two settings are what keeps your main breaker happy. They are written into the charger node itself and keep working even when Home Assistant is off.",
         "data": {
+          "phases": "Installation type",
           "contract_preset": "Subscribed power (France)",
           "contract_limit_a": "Contract limit (amps per phase)",
           "buffer_pct": "Safety buffer (%)"
@@ -44,9 +52,15 @@
         "data_description": {
           "current_l1": "Pick the entities coming from your meter node."
         }
+      },
+      "confirm": {
+        "title": "Check before enabling",
+        "description": "Meter: {country_profile}. Installation: {phases}-phase. Contract: {contract_limit_a} A per phase, {buffer_pct}% buffer — that leaves a budget of {budget_a} A per phase for the whole house, car included. These settings are written into the charger node: they stay active even when Home Assistant is off. Regulation itself is enabled from the LoadPilot card, not here."
       }
     },
     "error": {
+      "charger_not_found": "Charger node not found. It must be adopted in ESPHome and visible in Home Assistant before this step (see the firmware guide).",
+      "meter_not_found": "Meter node not found. It must be adopted in ESPHome and visible in Home Assistant before this step (see the firmware guide).",
       "budget_too_small": "With these settings only {budget_a} A per phase remain for the whole house — the car will never be able to charge. Check the limit (in amps PER PHASE) and the buffer.",
       "tri_limit_suspicious": "{contract_limit_a} A per phase on three-phase is unusually high — did you enter the three-phase total, or a single-phase figure? Submit again without changing it to confirm."
     },
@@ -180,6 +194,17 @@
           "confirm": {
             "title": "No healthy measure source",
             "description": "The charger node is in fail-safe: both the UDP feed and the HA mirror are down, so it publishes full consumption and blocks charging (safe behaviour). Restore the meter node or the mirror entities, then confirm."
+          }
+        }
+      }
+    },
+    "charger_node_missing": {
+      "title": "Charger node not found in Home Assistant",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Charger node not found in Home Assistant",
+            "description": "No entity of the charger node “{charger_node}” exists in Home Assistant (node offline since before startup, renamed, or removed from ESPHome). The node itself keeps regulating on its own — the control law lives in its firmware — but Home Assistant can no longer observe or adjust it. Restore the node under this exact name (or remove and re-add the integration with the right name), then confirm."
           }
         }
       }

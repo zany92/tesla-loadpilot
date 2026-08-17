@@ -16,6 +16,11 @@
 #   Gauge maxima are set for a 20 A/phase contract (12 kVA three-phase in
 #   France). Set "max" to YOUR contract limit per phase, and the severity
 #   thresholds to roughly 10% / 25% of it.
+#   KNOWN LIMIT: the Home Assistant core gauge card only accepts a static
+#   number for "max" — it cannot follow number.loadpilot_twc_contract_limit.
+#   Making it dynamic would require a HACS template card, which this view
+#   deliberately avoids (core cards only). Adjust manually if your contract
+#   changes.
 #
 # This project is not affiliated with, endorsed by, or sponsored by Tesla, Inc.
 # ---------------------------------------------------------------------------

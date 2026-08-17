@@ -2,12 +2,12 @@
   "domain": "loadpilot",
   "name": "Tesla LoadPilot",
   "after_dependencies": ["esphome"],
-  "codeowners": ["@OWNER_TBD"],
+  "codeowners": ["@zany92"],
   "config_flow": true,
-  "documentation": "https://github.com/OWNER_TBD/tesla-loadpilot",
+  "documentation": "https://github.com/zany92/tesla-loadpilot",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/OWNER_TBD/tesla-loadpilot/issues",
+  "issue_tracker": "https://github.com/zany92/tesla-loadpilot/issues",
   "requirements": [],
   "version": "0.1.0"
 }

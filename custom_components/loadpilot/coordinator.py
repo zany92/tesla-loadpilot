@@ -30,6 +30,7 @@ from .const import (
     DEFAULT_CONTRACT_LIMIT_A,
     DEFAULT_PHASES,
     DOMAIN,
+    ISSUE_CHARGER_NODE_MISSING,
     ISSUE_FW_VERSION_SKEW,
     ISSUE_SOURCE_FAILSAFE,
     PHASE_NAMES,
@@ -262,6 +263,33 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
         """Raise/clear Repairs issues (never blocks regulation, D4)."""
         entry_id = self.config_entry.entry_id
 
+        # Charger node entirely absent: NONE of the tracked entities exists
+        # in the state machine (never registered / renamed / deleted). This
+        # is different from "unavailable" (registered entities keep a state
+        # object): it means the configured node name no longer matches
+        # anything. The firmware keeps regulating on its own (D2) — HA just
+        # cannot observe or adjust it.
+        missing_issue = f"{ISSUE_CHARGER_NODE_MISSING}_{entry_id}"
+        node_present = any(
+            self.hass.states.get(entity_id) is not None
+            for entity_id in self.tracked_entities.values()
+        )
+        if not node_present:
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                missing_issue,
+                is_fixable=True,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key=ISSUE_CHARGER_NODE_MISSING,
+                translation_placeholders={
+                    "charger_node": self.config_entry.data[CONF_CHARGER_NODE],
+                },
+                learn_more_url="https://github.com/zany92/tesla-loadpilot",
+            )
+        else:
+            ir.async_delete_issue(self.hass, DOMAIN, missing_issue)
+
         # Firmware / integration version skew.
         skew_issue = f"{ISSUE_FW_VERSION_SKEW}_{entry_id}"
         if (
@@ -280,7 +308,7 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
                     "fw_version": data.fw_version,
                     "integration_version": self.integration_version,
                 },
-                learn_more_url="https://github.com/OWNER_TBD/tesla-loadpilot",
+                learn_more_url="https://github.com/zany92/tesla-loadpilot",
             )
         elif data.fw_version is not None:
             ir.async_delete_issue(self.hass, DOMAIN, skew_issue)

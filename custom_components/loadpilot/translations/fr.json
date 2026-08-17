@@ -3,23 +3,31 @@
     "step": {
       "user": {
         "title": "Bienvenue dans Tesla LoadPilot",
-        "description": "LoadPilot ajuste la charge de votre véhicule pour que votre maison ne dépasse jamais votre abonnement électrique. Tout fonctionne en local, sans cloud. LoadPilot repose sur deux petits boîtiers ESP32 déjà installés via ESPHome : un près de la borne (il lui parle), un près du compteur (il mesure). Si vous avez suivi le guide sans renommer, gardez les valeurs proposées.",
+        "description": "LoadPilot ajuste la charge de votre véhicule pour que votre maison ne dépasse jamais votre abonnement électrique. Tout fonctionne en local, sans cloud. Commencez par indiquer le compteur de votre installation.",
         "data": {
-          "charger_node": "Boîtier borne",
-          "meter_node": "Boîtier compteur",
-          "phases": "Type d'installation",
           "country_profile": "Profil compteur"
         },
         "data_description": {
-          "charger_node": "Nom ESPHome du boîtier relié à la borne (défaut : loadpilot-twc).",
-          "meter_node": "Nom ESPHome du boîtier qui lit votre compteur (défaut : loadpilot-meter).",
           "country_profile": "Les profils marqués « aperçu » sont des squelettes firmware, pas encore validés en production."
         }
       },
-      "limits": {
+      "nodes": {
+        "title": "Vos deux boîtiers LoadPilot",
+        "description": "LoadPilot repose sur deux petits boîtiers ESP32 déjà installés via ESPHome : un près de la borne (il lui parle), un près du compteur (il mesure). Si vous avez suivi le guide sans renommer, gardez les valeurs proposées.",
+        "data": {
+          "charger_node": "Boîtier borne",
+          "meter_node": "Boîtier compteur"
+        },
+        "data_description": {
+          "charger_node": "Nom ESPHome du boîtier relié à la borne (défaut : loadpilot-twc).",
+          "meter_node": "Nom ESPHome du boîtier qui lit votre compteur (défaut : loadpilot-meter)."
+        }
+      },
+      "electrical": {
         "title": "Votre abonnement électrique",
         "description": "Ces deux réglages sont ce qui protège votre disjoncteur d'abonnement. Ils sont écrits dans le boîtier borne lui-même et restent actifs même si Home Assistant est éteint.",
         "data": {
+          "phases": "Type d'installation",
           "contract_preset": "Puissance souscrite (France)",
           "contract_limit_a": "Limite d'abonnement (ampères par phase)",
           "buffer_pct": "Réserve de sécurité (%)"
@@ -44,9 +52,15 @@
         "data_description": {
           "current_l1": "Choisissez les entités issues de votre boîtier compteur."
         }
+      },
+      "confirm": {
+        "title": "Vérifiez avant d'activer",
+        "description": "Compteur : {country_profile}. Installation : {phases} phase(s). Abonnement : {contract_limit_a} A par phase, réserve {buffer_pct} % — soit un budget de {budget_a} A par phase pour toute la maison, voiture comprise. Ces réglages sont écrits dans le boîtier borne : ils restent actifs même si Home Assistant est éteint. L'activation de la régulation se fait depuis la carte LoadPilot, pas ici."
       }
     },
     "error": {
+      "charger_not_found": "Boîtier borne introuvable. Il doit être adopté dans ESPHome et visible dans Home Assistant avant cette étape (voir le guide firmware).",
+      "meter_not_found": "Boîtier compteur introuvable. Il doit être adopté dans ESPHome et visible dans Home Assistant avant cette étape (voir le guide firmware).",
       "budget_too_small": "Avec ces réglages, il ne reste que {budget_a} A par phase pour toute la maison — la voiture ne pourra jamais charger. Vérifiez la limite (en ampères PAR PHASE) et la réserve.",
       "tri_limit_suspicious": "{contract_limit_a} A par phase en triphasé, c'est inhabituellement élevé — auriez-vous saisi le total des 3 phases, ou une valeur monophasée ? Validez de nouveau sans rien changer pour confirmer."
     },
@@ -180,6 +194,17 @@
           "confirm": {
             "title": "Aucune source de mesure saine",
             "description": "Le nœud borne est en sécurité : le flux UDP et le miroir HA sont tombés, il publie une consommation pleine et bloque la charge (comportement sûr). Rétablissez le nœud compteur ou les entités miroir, puis confirmez."
+          }
+        }
+      }
+    },
+    "charger_node_missing": {
+      "title": "Boîtier borne introuvable dans Home Assistant",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Boîtier borne introuvable dans Home Assistant",
+            "description": "Aucune entité du boîtier borne « {charger_node} » n'existe dans Home Assistant (boîtier hors ligne depuis avant le démarrage, renommé, ou retiré d'ESPHome). Le boîtier continue de réguler seul — la loi de commande vit dans son firmware — mais Home Assistant ne peut plus l'observer ni le régler. Rétablissez le boîtier sous ce nom exact (ou supprimez puis réinstallez l'intégration avec le bon nom), puis confirmez."
           }
         }
       }

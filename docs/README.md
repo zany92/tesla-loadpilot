@@ -15,6 +15,7 @@ Two layers, two languages:
 | Document | Purpose |
 |---|---|
 | [`BEHAVIOR.md`](BEHAVIOR.md) | **The measured behaviour model of the TWC Gen 3 DPM** (fw 26.18) — service loop, protection, plausibility, the distrust state, vehicle session quirks, the resulting control law, the 17 Aug 2026 validation, and the negative results. English companion to `40_LOI_DE_COMMANDE.md` |
+| [`RUNBOOK_INCIDENTS.md`](RUNBOOK_INCIDENTS.md) | Operator runbook: the three lived failure modes (distrust, closed-loop yo-yo, refused start) — signatures, remedies, recovery protocol |
 | [`ROADMAP.md`](ROADMAP.md) | France → other countries (DSMR 5 next), boards, other EVSEs, BLE, richer UI |
 | [`INSTALL_FR.md`](INSTALL_FR.md) | *(French)* Complete France installation guide: TIC wiring, flashing, Tesla One commissioning, shadow-mode first tests, safety warnings |
 

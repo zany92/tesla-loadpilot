@@ -2,6 +2,12 @@
 
 Field labels/descriptions come from translations/ — the UX designer owns the
 copy (dashboards/UX_COPY.md); this module only defines keys and validation.
+
+Flow layout (UX.md §2.0, five steps):
+  user (country profile) -> nodes (the two ESP32 nodes, existence-checked)
+  -> electrical (phases + contract limit + buffer, kVA presets for fr_tic)
+  -> mirror (optional HA backup path, L1-only when single-phase)
+  -> confirm (recap, then create the entry).
 """
 
 from __future__ import annotations
@@ -16,7 +22,7 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
@@ -59,17 +65,18 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Labels used in the confirm-step recap placeholder {country_profile}.
+# Deliberately language-neutral-ish (proper nouns / protocol names): HA
+# description placeholders cannot vary per viewer language.
+_PROFILE_RECAP_LABELS = {
+    "fr_tic": "France — Linky (TIC)",
+    "dsmr_p1": "DSMR P1",
+    "sml_de": "SML",
+    "ct_clamps": "CT clamps",
+}
+
 STEP_USER_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_CHARGER_NODE, default=CHARGER_NODE_DEFAULT_NAME): TextSelector(),
-        vol.Required(CONF_METER_NODE, default=METER_NODE_DEFAULT_NAME): TextSelector(),
-        vol.Required(CONF_PHASES, default=str(DEFAULT_PHASES)): SelectSelector(
-            SelectSelectorConfig(
-                options=["1", "3"],
-                mode=SelectSelectorMode.DROPDOWN,
-                translation_key="phases",
-            )
-        ),
         vol.Required(
             CONF_COUNTRY_PROFILE, default=DEFAULT_COUNTRY_PROFILE
         ): SelectSelector(
@@ -82,27 +89,68 @@ STEP_USER_SCHEMA = vol.Schema(
     }
 )
 
+STEP_NODES_SCHEMA = vol.Schema(
+    {
+        vol.Required(
+            CONF_CHARGER_NODE, default=CHARGER_NODE_DEFAULT_NAME
+        ): TextSelector(),
+        vol.Required(
+            CONF_METER_NODE, default=METER_NODE_DEFAULT_NAME
+        ): TextSelector(),
+    }
+)
+
+
+def _node_entities_present(hass: HomeAssistant, node_name: str) -> bool:
+    """True when at least one entity of the given ESPHome node exists.
+
+    ESPHome object_ids are prefixed with the slugified node name (that is
+    exactly how the coordinator builds its tracked entity ids), so a single
+    prefix scan is the honest existence test — the node must be adopted in
+    ESPHome and visible in HA before the flow proceeds (UX.md §2.2).
+    """
+    prefix = f"{slugify(node_name)}_"
+    return any(
+        entity_id.split(".", 1)[1].startswith(prefix)
+        for entity_id in hass.states.async_entity_ids()
+    )
+
+
+def _phases_selector() -> SelectSelector:
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=["1", "3"],
+            mode=SelectSelectorMode.DROPDOWN,
+            translation_key="phases",
+        )
+    )
+
 
 def _limits_schema(
     contract_limit: float = DEFAULT_CONTRACT_LIMIT_A,
     buffer_pct: int = DEFAULT_BUFFER_PCT,
     *,
-    phases: int = DEFAULT_PHASES,
+    phases: Optional[int] = None,
     with_presets: bool = False,
 ) -> vol.Schema:
-    """Electrical-limits schema.
+    """Electrical-limits schema (limit + buffer, optional kVA presets).
 
     Selector bounds are the FIRMWARE bounds (twc-core.yaml): contract limit
     6..120 A, buffer 0..30 % — the plausibility rules (UX.md §2.3) live in
     ``_validate_limits``. ``with_presets`` adds the French kVA helper
     dropdown (fr_tic profile): a preset OVERRIDES the amps field; what is
-    stored is always ``contract_limit_a`` in amps per phase.
+    stored is always ``contract_limit_a`` in amps per phase. ``phases``
+    filters the preset list (None = both, config flow: phases is picked on
+    the same screen so the full list is shown, as in the UX.md mockup).
     """
     schema: dict[Any, Any] = {}
     if with_presets:
-        presets = (
-            CONTRACT_PRESETS_MONO_A if phases == 1 else CONTRACT_PRESETS_TRI_A
-        )
+        if phases == 1:
+            presets: list[str] = list(CONTRACT_PRESETS_MONO_A)
+        elif phases == 3:
+            presets = list(CONTRACT_PRESETS_TRI_A)
+        else:
+            presets = list(CONTRACT_PRESETS_A)
         schema[
             vol.Required(CONF_CONTRACT_PRESET, default=CONTRACT_PRESET_CUSTOM)
         ] = SelectSelector(
@@ -133,6 +181,27 @@ def _limits_schema(
         )
     )
     return vol.Schema(schema)
+
+
+def _electrical_schema(
+    contract_limit: float,
+    buffer_pct: int,
+    phases_default: int,
+    with_presets: bool,
+) -> vol.Schema:
+    """Config-flow electrical step: installation type + limits (UX.md §2.3)."""
+    schema = vol.Schema(
+        {
+            vol.Required(
+                CONF_PHASES, default=str(phases_default)
+            ): _phases_selector()
+        }
+    )
+    return schema.extend(
+        _limits_schema(
+            contract_limit, buffer_pct, phases=None, with_presets=with_presets
+        ).schema
+    )
 
 
 def _resolve_limit(user_input: dict[str, Any]) -> float:
@@ -172,15 +241,29 @@ def _validate_limits(
     return errors, placeholders
 
 
-def _mirror_schema(defaults: Optional[dict[str, str]] = None) -> vol.Schema:
-    """Optional 6-entity backup measure path (mirror wiring is documented,
-    physically configured in the ESPHome substitutions)."""
+def _mirror_keys_for(phases: int) -> list[str]:
+    """Single-phase mirror is L1-only (firmware forces B/C to 0)."""
+    if phases == 1:
+        return [key for key in MIRROR_KEYS if key.endswith("_l1")]
+    return list(MIRROR_KEYS)
+
+
+def _mirror_schema(
+    defaults: Optional[dict[str, str]] = None, *, phases: int = DEFAULT_PHASES
+) -> vol.Schema:
+    """Optional backup measure path (mirror wiring is documented, physically
+    configured in the ESPHome substitutions).
+
+    Every field is ``vol.Optional`` with a ``suggested_value`` (never a
+    Required with default): a previously saved entity is pre-filled but can
+    be CLEARED in the options flow — clearing removes it from the mapping.
+    """
     defaults = defaults or {}
     schema: dict[Any, Any] = {}
-    for key in MIRROR_KEYS:
+    for key in _mirror_keys_for(phases):
         device_class = "current" if key.startswith("current") else "apparent_power"
         marker = (
-            vol.Required(key, default=defaults[key])
+            vol.Optional(key, description={"suggested_value": defaults[key]})
             if key in defaults
             else vol.Optional(key)
         )
@@ -204,37 +287,55 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: Optional[dict[str, Any]] = None
     ) -> ConfigFlowResult:
-        """Step 1 — node names, phase topology, country profile."""
+        """Step 1 — country / meter profile (UX.md §2.1)."""
+        if user_input is not None:
+            self._data = {
+                CONF_COUNTRY_PROFILE: user_input[CONF_COUNTRY_PROFILE],
+            }
+            return await self.async_step_nodes()
+
+        return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA)
+
+    async def async_step_nodes(
+        self, user_input: Optional[dict[str, Any]] = None
+    ) -> ConfigFlowResult:
+        """Step 2 — the two ESPHome nodes, existence-checked (UX.md §2.2)."""
         errors: dict[str, str] = {}
         if user_input is not None:
             charger_node = user_input[CONF_CHARGER_NODE].strip()
+            meter_node = user_input[CONF_METER_NODE].strip()
             await self.async_set_unique_id(slugify(charger_node))
             self._abort_if_unique_id_configured()
-            self._data = {
-                CONF_CHARGER_NODE: charger_node,
-                CONF_METER_NODE: user_input[CONF_METER_NODE].strip(),
-                CONF_PHASES: int(user_input[CONF_PHASES]),
-                CONF_COUNTRY_PROFILE: user_input[CONF_COUNTRY_PROFILE],
-            }
-            return await self.async_step_limits()
+            if not _node_entities_present(self.hass, charger_node):
+                errors[CONF_CHARGER_NODE] = "charger_not_found"
+            if not _node_entities_present(self.hass, meter_node):
+                errors[CONF_METER_NODE] = "meter_not_found"
+            if not errors:
+                self._data[CONF_CHARGER_NODE] = charger_node
+                self._data[CONF_METER_NODE] = meter_node
+                return await self.async_step_electrical()
 
         return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors
+            step_id="nodes", data_schema=STEP_NODES_SCHEMA, errors=errors
         )
 
-    async def async_step_limits(
+    async def async_step_electrical(
         self, user_input: Optional[dict[str, Any]] = None
     ) -> ConfigFlowResult:
-        """Step 2 — electrical limits (written to the node-resident knobs)."""
+        """Step 3 — installation type + electrical limits (UX.md §2.3).
+
+        The limits are later written to the NODE-RESIDENT knobs (D2).
+        """
         errors: dict[str, str] = {}
         placeholders: dict[str, str] = {}
-        phases: int = self._data.get(CONF_PHASES, DEFAULT_PHASES)
         with_presets = (
             self._data.get(CONF_COUNTRY_PROFILE) == COUNTRY_PROFILE_FR_TIC
         )
+        phases = self._data.get(CONF_PHASES, DEFAULT_PHASES)
         limit = DEFAULT_CONTRACT_LIMIT_A
         buffer_pct = DEFAULT_BUFFER_PCT
         if user_input is not None:
+            phases = int(user_input[CONF_PHASES])
             limit = _resolve_limit(user_input)
             buffer_pct = int(user_input[CONF_BUFFER_PCT])
             errors, placeholders = _validate_limits(
@@ -243,15 +344,14 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
             if errors.get(CONF_CONTRACT_LIMIT_A) == "tri_limit_suspicious":
                 self._tri_warned_limit = limit
             if not errors:
+                self._data[CONF_PHASES] = phases
                 self._data[CONF_CONTRACT_LIMIT_A] = limit
                 self._data[CONF_BUFFER_PCT] = buffer_pct
                 return await self.async_step_mirror()
 
         return self.async_show_form(
-            step_id="limits",
-            data_schema=_limits_schema(
-                limit, buffer_pct, phases=phases, with_presets=with_presets
-            ),
+            step_id="electrical",
+            data_schema=_electrical_schema(limit, buffer_pct, phases, with_presets),
             errors=errors,
             description_placeholders=placeholders or None,
         )
@@ -259,17 +359,43 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_mirror(
         self, user_input: Optional[dict[str, Any]] = None
     ) -> ConfigFlowResult:
-        """Step 3 — optional HA-mirror entities (backup measure path)."""
+        """Step 4 — optional HA-mirror entities (backup measure path)."""
+        phases: int = self._data.get(CONF_PHASES, DEFAULT_PHASES)
         if user_input is not None:
             self._data[CONF_MIRROR_ENTITIES] = {
-                key: user_input[key] for key in MIRROR_KEYS if key in user_input
+                key: user_input[key]
+                for key in _mirror_keys_for(phases)
+                if key in user_input
             }
+            return await self.async_step_confirm()
+
+        return self.async_show_form(
+            step_id="mirror", data_schema=_mirror_schema(phases=phases)
+        )
+
+    async def async_step_confirm(
+        self, user_input: Optional[dict[str, Any]] = None
+    ) -> ConfigFlowResult:
+        """Step 5 — recap before creating the entry (UX.md §2.5)."""
+        if user_input is not None:
             return self.async_create_entry(
                 title=self._data[CONF_CHARGER_NODE], data=self._data
             )
 
+        limit = float(self._data[CONF_CONTRACT_LIMIT_A])
+        buffer_pct = float(self._data[CONF_BUFFER_PCT])
+        budget = limit * (1 - buffer_pct / 100)
+        profile = self._data.get(CONF_COUNTRY_PROFILE, DEFAULT_COUNTRY_PROFILE)
         return self.async_show_form(
-            step_id="mirror", data_schema=_mirror_schema()
+            step_id="confirm",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "country_profile": _PROFILE_RECAP_LABELS.get(profile, profile),
+                "phases": str(self._data.get(CONF_PHASES, DEFAULT_PHASES)),
+                "contract_limit_a": f"{limit:g}",
+                "buffer_pct": f"{buffer_pct:g}",
+                "budget_a": f"{budget:.1f}",
+            },
         )
 
     @staticmethod
@@ -317,27 +443,28 @@ class LoadPilotOptionsFlow(OptionsFlow):
             )
             if errors.get(CONF_CONTRACT_LIMIT_A) == "tri_limit_suspicious":
                 self._tri_warned_limit = current_limit
+            # A cleared entity selector is simply absent from user_input:
+            # rebuilding the mapping from what was submitted is what makes
+            # the mirror REMOVABLE here.
+            current_mirror = {
+                key: user_input[key]
+                for key in _mirror_keys_for(phases)
+                if key in user_input
+            }
             if not errors:
                 options = {
                     CONF_CONTRACT_LIMIT_A: current_limit,
                     CONF_BUFFER_PCT: current_buffer,
-                    CONF_MIRROR_ENTITIES: {
-                        key: user_input[key]
-                        for key in MIRROR_KEYS
-                        if key in user_input
-                    },
+                    CONF_MIRROR_ENTITIES: current_mirror,
                 }
                 return self.async_create_entry(title="", data=options)
-            current_mirror = {
-                key: user_input[key] for key in MIRROR_KEYS if key in user_input
-            }
 
         schema = _limits_schema(
             current_limit,
             current_buffer,
             phases=phases,
             with_presets=with_presets,
-        ).extend(_mirror_schema(current_mirror).schema)
+        ).extend(_mirror_schema(current_mirror, phases=phases).schema)
         return self.async_show_form(
             step_id="init",
             data_schema=schema,

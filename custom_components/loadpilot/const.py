@@ -161,10 +161,11 @@ CONTRACT_PRESETS_TRI_A = {
     "tri_36": 60.0,
 }
 CONTRACT_PRESETS_A = {**CONTRACT_PRESETS_MONO_A, **CONTRACT_PRESETS_TRI_A}
-# TODO(UX.md §2.0): the full 5-step onboarding (dedicated `electrical` step,
-# `confirm` recap screen, charger/meter node-existence checks with
-# charger_not_found/meter_not_found errors) is NOT implemented yet — the
-# flow is 3 steps + presets/validations. Tracked for v0.1.0.
+# UX.md §2.0 5-step onboarding: IMPLEMENTED (user -> nodes -> electrical ->
+# mirror -> confirm, with charger_not_found/meter_not_found existence checks).
+# Still open (post-v0.1.0, tracked in UX_COPY.md §Demandes): ESPHome device
+# SELECTORS instead of free-text node names, and the `paused` /
+# `charger_current` entity requests.
 
 # --- Repairs issue ids ----------------------------------------------------
 ISSUE_FW_VERSION_SKEW = "firmware_version_skew"

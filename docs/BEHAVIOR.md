@@ -78,6 +78,17 @@ Independent of the service loop, the protection keys on the **maximum CT**
   mean < 21 (down to mean 11–16) and **zero counter-example** requiring
   mean ≥ 21: the protection never averages.
 - Shortest measured `max > 21` duration leading to a cut: **43 s**.
+- **Dead band above L (MEASURED 17/08 evening)** — the wallbox tolerated
+  **~70 s at published L + 0.45..0.55 with NO pilot reaction at all**, and
+  frank traction (a clear, sustained descent) was only observed from
+  **≥ ~L + 0.9**. The excess integral is likewise tolerant at +0.5:
+  **35 A·s accumulated at that level without a cut**. Consequence for the
+  model: the **~20 A·s integral budget of the cut holds for excesses
+  ≥ ~1 A** — do not extrapolate it linearly into the L+0.1..L+0.5 zone,
+  where both service and protection are far more forgiving than the
+  micro-law's nominal −1 A/s at L + 0.1 suggests. Any escalation or
+  co-variant gain tuning that lands the published value in that dead band
+  is simply ignored.
 
 ## 3. Plausibility: 1:1 correlation, never dilute
 
@@ -96,6 +107,16 @@ same amount**.
   a wallbox rejection.
 - Design rule: **the published signal must track the vehicle current 1:1 —
   never diluted, never delayed on that component.**
+- **The gain has a plausibility FLOOR (MEASURED 17/08 evening, 20:30)** —
+  PVi1's never-dilute rule is now quantified on our installation: an
+  anti-yo-yo softening of the co-variant law (gain 0.5 → 0.25, emax
+  1.0 → 0.5) produced an **effective gain < ~0.5 on the charger component
+  while in constraint** — a 4:1 dilution, the "averaging" error in
+  disguise. One vehicle start-up ramp partially absorbed under the lowered
+  ceiling was enough to **latch distrust in a single ramp** (published
+  pinned 21.45 → 21.85 for 3 min while the car sat frozen at 12.1, bias-16
+  pause ignored). Rule: **never lower the in-constraint gain below ~0.5**;
+  treat yo-yo with the law's shape (variant B), never with the gain.
 
 ## 4. The distrust state: when the wallbox stops believing the meter
 
@@ -137,6 +158,15 @@ emulated meter is durably ignored. **MEASURED on our installation
   event flag. A controlled re-test (1–2 h of honest signal, then
   re-engage) is in progress, and a detector now timestamps every
   entry/exit of the state.
+- **"Honoured at standstill, ignored in-session" CONFIRMED locally
+  (MEASURED 17/08 evening)** — the community signature (§ Independent
+  corroboration below) is now measured on our installation: during a
+  session-level distrust episode, the **charge-start gate stayed
+  meter-driven**. Start refusal at published > L − 5 and acceptance at
+  published < L − 5 both worked exactly per the micro-law while every
+  in-session order was being ignored. Distrust therefore disables the
+  in-session regulation path only, not the admission check — which also
+  means a start refusal is NEVER evidence that trust is back.
 - Operating invariant that follows: **never publish a value below the
   wallbox's own branch current, and never let the published signal stop
   echoing the vehicle's ramps** — even under saturation.
@@ -356,6 +386,28 @@ All entries below are **MEASURED** (3 s traces `test_soir_v3.log`,
 - Wallbox events over the whole evening: the only contactor cycles are
   the expected session stop/start of the cascade — zero protection cuts,
   zero bites, zero distrust entries.
+
+### Later that evening — the closed-loop yo-yo (MEASURED 17/08, ~20:20)
+
+The balance dance above is benign, but under a **sustained** constraint the
+v2 law at gain 0.5 / emax 1.0 can degenerate into a genuine closed-loop
+limit cycle:
+
+- **Signature (MEASURED)** — vehicle current cycling **±2.5 A** with a
+  period of **~20 s**, the published value crossing L on every excursion;
+  after **7 excursions** the worst-phase excess integral (§2) accumulated
+  to the cut threshold and the **contactor opened**. This is not distrust
+  (every order was honoured — it is the loop obeying too well) and not the
+  ~55 s RAW bang-bang of §6: it is a faster, law-shaped oscillation proper
+  to the co-variant feedback at that gain couple.
+- **What NOT to do (MEASURED, lesson learned the same evening)** — lowering
+  the gain to damp it creates the dilution of §3 (gain floor) and latches
+  distrust: strictly worse. Gain 0.5 / emax 1.0 stays the validated couple.
+- **Status** — the fix under design is **variant B** of the co-variant law
+  (asymmetric response / one-cycle-in-two nudges, cf.
+  `DESIGN_LOI_COVARIANTE.md`), which reshapes the descent signal instead of
+  weakening it. Until it lands, a sustained-constraint episode should be
+  resolved by the HA-layer pause (bias), not by letting the loop hunt.
 
 ## 9. Negative results (assumed, and published on purpose)
 

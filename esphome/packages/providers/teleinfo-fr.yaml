@@ -8,8 +8,18 @@
 #   lky_ia/ib/ic  = per-phase current (A), sub-ampere (SINSTS/URMS computed)
 #   lky_pa/pb/pc  = per-phase apparent power (VA)
 # 1 Hz full resend (heartbeat) + immediate incremental packet on any change.
-# On sensor failure the node goes SILENT (heartbeat stops -> the charger node
-# falls back HA mirror, then fail-safe). Never repeat a frozen value.
+#
+# TIC WATCHDOG (MEASURED 17/08 evening — QA M3): the ESPHome `teleinfo`
+# component has NO invalidation timeout. A dead TIC hat with a live ESP32
+# does NOT make the node silent: the sensors keep their last state and
+# packet_transport resends the FROZEN sextuplet at 1 Hz forever — the charger
+# node would judge the UDP feed fresh indefinitely, and the HA mirror is
+# frozen by the same failure (neither fallback ever trips). Fix at the
+# source: no SINSTS frame for ${tic_timeout_ms} ms -> publish NAN on the 6
+# broadcast quantities. The charger node's NAN guard then does the rest in
+# cascade (udp_fresh drops within its window, HA mirrors go unavailable,
+# fail-safe = charge blocked). Recovery is automatic on the first valid
+# frame. Never repeat a frozen value.
 #
 # Hardware: TIC hat (e.g. Hallard "WeMos TeleInfo"), RX only.
 # Network is board-specific: add `ethernet:` or `wifi:` in your entry file
@@ -29,6 +39,13 @@ substitutions:
   # 500 ms: stick to the continuous TIC frames (~1/s in standard mode) to
   # minimise publication latency; throttled copies keep the recorder quiet.
   tic_update_interval: 500ms
+  # TIC watchdog: silence threshold (ms) before the 6 broadcast quantities
+  # are invalidated to NAN. 15 s ~= 15 missed frames at the standard-mode
+  # ~1 Hz cadence — immune to occasional frame loss, short enough that the
+  # charger node's fail-safe arms before the wallbox can drift far (total
+  # blind window = this + the receiver freshness window, ~20 s, covered by
+  # the wallbox's slow ramp).
+  tic_timeout_ms: "15000"
 
 esphome:
   name: ${node_name}
@@ -150,6 +167,8 @@ sensor:
       then:
         # Recompute the sub-ampere current on EVERY SINSTS update.
         - component.update: tic_current_calc_1
+        # TIC watchdog heartbeat (SINSTS is present in every standard frame).
+        - lambda: 'id(tic_last_frame_ms) = millis();'
   - platform: teleinfo
     tag_name: "SINSTS2"
     id: tic_sinsts2
@@ -157,6 +176,7 @@ sensor:
     on_value:
       then:
         - component.update: tic_current_calc_2
+        - lambda: 'id(tic_last_frame_ms) = millis();'
   - platform: teleinfo
     tag_name: "SINSTS3"
     id: tic_sinsts3
@@ -164,6 +184,7 @@ sensor:
     on_value:
       then:
         - component.update: tic_current_calc_3
+        - lambda: 'id(tic_last_frame_ms) = millis();'
 
   # ---------------------------------------------------------------------------
   # Sub-ampere computed currents I = SINSTS_N / URMS_N (internal; broadcast
@@ -268,6 +289,16 @@ binary_sensor:
     id: tic_link_status
     internal: true
 
+  # TIC watchdog liveness, exposed to HA for operator alerting: the node
+  # itself can be perfectly healthy while the TIC hat is dead — this is the
+  # only signal that distinguishes the two.
+  - platform: template
+    name: "TIC Alive"
+    device_class: connectivity
+    lambda: |-
+      if (id(tic_last_frame_ms) == 0) return {};
+      return (millis() - id(tic_last_frame_ms)) < ${tic_timeout_ms};
+
   # Generic overload signal (/CONTRACTS.md §3.2, OPTIONAL): Linky STGE bit 7
   # = "reference-power overshoot IN PROGRESS", observed by the meter itself.
   - platform: template
@@ -299,3 +330,40 @@ text_sensor:
 button:
   - platform: restart
     name: "Restart"
+
+# =============================================================================
+# TIC WATCHDOG (QA M3, deployed 17/08): see header. Without it, a dead hat on
+# a live ESP32 means frozen values resent at 1 Hz — the worst failure mode a
+# meter can present to the wallbox (stale-but-fresh-looking measure).
+# Publishing NAN at the source lets every downstream guard (charger-node NAN
+# check, HA availability) trip on its own, with automatic recovery.
+# =============================================================================
+globals:
+  - id: tic_last_frame_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: tic_dead_flagged
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+interval:
+  - interval: 2s
+    then:
+      - lambda: |-
+          if (id(tic_last_frame_ms) == 0) return;   // no frame seen yet
+          const bool dead = (millis() - id(tic_last_frame_ms)) > ${tic_timeout_ms};
+          if (dead && !id(tic_dead_flagged)) {
+            id(tic_dead_flagged) = true;
+            ESP_LOGW("tic", "TIC silent for %s ms -> invalidating the 6 broadcast quantities (NAN)", "${tic_timeout_ms}");
+            id(tic_sinsts1).publish_state(NAN);
+            id(tic_sinsts2).publish_state(NAN);
+            id(tic_sinsts3).publish_state(NAN);
+            id(tic_current_calc_1).publish_state(NAN);
+            id(tic_current_calc_2).publish_state(NAN);
+            id(tic_current_calc_3).publish_state(NAN);
+          } else if (!dead && id(tic_dead_flagged)) {
+            id(tic_dead_flagged) = false;
+            ESP_LOGI("tic", "TIC back — real measures republished");
+          }

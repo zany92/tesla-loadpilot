@@ -144,7 +144,7 @@ SemVer tag for the whole repo):
 # your charger-node YAML in the ESPHome dashboard
 packages:
   loadpilot:
-    url: https://github.com/OWNER_TBD/tesla-loadpilot   # TODO-sync: final owner
+    url: https://github.com/zany92/tesla-loadpilot   # TODO-sync: final owner
     files:
       - esphome/packages/twc-core.yaml
       - esphome/packages/boards/kc868-a6.yaml

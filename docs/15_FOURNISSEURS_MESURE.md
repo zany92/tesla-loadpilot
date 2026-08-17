@@ -23,9 +23,18 @@ Exigences qualité :
   §5 : à 3 s la borne rebondit, à 15 s elle pompe en bang-bang) ;
 - **pas de zéros d'init** : ne diffuser une grandeur qu'une fois réellement
   mesurée (le cœur s'en protège aussi par ses drapeaux `*_seen`) ;
-- en panne de capteur : **se taire** (le heartbeat cesse, le cœur bascule
-  sur le miroir HA puis le fail-safe) — ne JAMAIS diffuser une dernière
-  valeur figée.
+- en panne de capteur : **invalider en NAN** — ne JAMAIS laisser diffuser
+  une dernière valeur figée. **CORRECTION 17/08 (QA M3, mesuré sur source
+  ESPHome)** : la version initiale de cette exigence disait « se taire » ;
+  c'est IMPOSSIBLE avec `packet_transport`, dont le heartbeat 1 s réémet
+  TOUT l'état courant, figé ou pas (`send_data_(true)`), et un capteur
+  sans nouvelle donnée garde son dernier état (le composant `teleinfo` n'a
+  aucun timeout). Le mécanisme correct : un watchdog côté provider publie
+  `NAN` sur les 6 grandeurs après un silence capteur (cf. le watchdog TIC
+  de `teleinfo-fr.yaml`, `tic_timeout_ms` 15 s) ; les NAN sont diffusés
+  tels quels, et la garde `!isnan` du cœur cesse de rafraîchir
+  `udp_last_ok_ms` → bascule miroir HA puis fail-safe. Tout nouveau
+  provider DOIT implémenter un watchdog équivalent sur sa source.
 
 Squelette minimal d'un provider :
 

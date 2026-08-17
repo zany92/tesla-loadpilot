@@ -100,8 +100,9 @@ depuis les fichiers du spécialiste (à la fin, ou balisés TODO-sync).
 `custom_components/loadpilot/{manifest.json,const.py,__init__.py}` (état
 squelette — le spécialiste HA en prend la suite SAUF renommages),
 READMEs de zone (`esphome/packages/`, `esphome/examples/`, `dashboards/`).
-`manifest.json` : remplacer `OWNER_TBD` quand le compte de publication est
-tranché (question ouverte Vincent).
+`manifest.json` : `OWNER_TBD` remplacé par `zany92`
+(github.com/zany92/tesla-loadpilot, tranché 17/08 — appliqué dans tout le
+repo par la passe correctifs).
 
 ## 2. Contrat UDP provider → cœur (rappel, figé)
 
@@ -179,3 +180,18 @@ Noms de nœuds par défaut : `loadpilot-twc` (borne), `loadpilot-meter`
 | Law Max Excursion (`number`, 0,1–1,0 A, défaut 1,0) | réglage runtime | excursion max du publié au-dessus de L |
 | Charge Stop (`switch`, OFF au boot) | commande | ordre d'arrêt immédiat (publié ≥ L+0,1), jamais restauré |
 | Meter Absent (`switch`, OFF au boot) | test/maintenance | silence Modbus total (adresse 245) — repli 6 A borne |
+
+### Ajout ratifié le 17/08 soir (n°2, passe QA) — entités de mise en service
+
+Présentes dans `twc-core.yaml` depuis l'extraction (INSTALL_FR s'appuie
+dessus) ; ratifiées ici plutôt que supprimées (QA mineur 1).
+
+| Entité | Type | Contrat |
+|---|---|---|
+| Signal Mode (`select` : RAW / OMBRE-MAX / ACTIF-MAX, boot = ACTIF-MAX, jamais restauré) | mise en service | échelle de commissioning : RAW = mesure brute (+biais, émulation Neurio pure) ; OMBRE-MAX = publie RAW, calcule la loi en ombre ; ACTIF-MAX = publie la loi (production) |
+| Shadow Published Current (`sensor` A, diagnostic) | observabilité | ce que publierait ACTIF-MAX — calcul en ombre en RAW/OMBRE-MAX, suit la publication en ACTIF-MAX |
+
+Sémantique associée (corrigée par la passe QA) : `Escalation Active`
+(§3.1) n'est ON que si le plancher L+0,1 est effectivement PUBLIÉ, donc
+uniquement en ACTIF-MAX — en RAW/OMBRE-MAX l'effet reste visible sur
+Shadow Published Current, le drapeau reste OFF.

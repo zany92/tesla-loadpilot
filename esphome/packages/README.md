@@ -24,9 +24,13 @@ packages/
 ```
 
 Extraction sources: `esphome/kc868-a6-1.yaml` (charger node, "PVi1-GRADE
-17/08" block) and `esphome/olimex-portail.yaml` (provider). Both are already
-sanitised (`!secret`), but re-check on every extraction: NO secret, NO
-Loupiac-specific entity id, everything variable as `substitutions`.
+17/08" block) and `esphome/olimex-portail.yaml` (provider). Those two files
+were only PARTIALLY sanitised (`!secret` for ssid/password/api key, but the
+production XXTEA UDP key was committed in clear — see QA B1: history rewrite
+and key rotation required before any public push; the files are gone from
+the working tree). Treat every extraction as unsanitised until proven
+otherwise: NO secret, NO Loupiac-specific entity id, everything variable as
+`substitutions`.
 Entity names produced here are CONTRACTUAL — table in /CONTRACTS.md.
 `twc-core.yaml` must expose `loadpilot_fw_version` (text sensor = package
 version) for skew detection.

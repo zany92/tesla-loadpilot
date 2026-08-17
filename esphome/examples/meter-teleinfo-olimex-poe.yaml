@@ -7,7 +7,7 @@
 # =============================================================================
 packages:
   loadpilot:
-    url: https://github.com/OWNER_TBD/tesla-loadpilot
+    url: https://github.com/zany92/tesla-loadpilot
     files:
       - esphome/packages/providers/teleinfo-fr.yaml
     ref: v0.1.0          # ALWAYS a tag, never main
