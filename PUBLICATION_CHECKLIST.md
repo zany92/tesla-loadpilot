@@ -2,18 +2,21 @@
 
 The repo stays private until EVERY box is ticked. Status 17 Aug 2026, midnight.
 
-- [ ] **PVi1 licensing/attribution resolved** : answer received on issue #1,
-  OR the courtesy window (2 weeks, until 31 Aug) has lapsed and the framing
-  has been reworked (our law documented as original work, PVi1 credited as
-  inspiration and prior art, no derived-code claim anywhere).
-- [ ] **LICENSE file** chosen and added (MIT presumed, decision pending the
-  point above).
+- [x] **PVi1 licensing resolved** : 17 Aug 21:12 UTC, PVi1 added an MIT
+  LICENSE to esphome-twc-control (based on Klangen82's) and answered on
+  issue #1. Verified via the GitHub API (spdx MIT).
+- [x] **LICENSE file** added : MIT, with an explicit attribution notice for
+  PVi1 and Klangen82 covering the derived ESPHome-node portions.
+- [ ] **Courtesy window (short)** : PVi1 asked for "a few days" to review
+  our data before commenting. Wait for his follow-up or until ~22 Aug
+  before flipping public; reply on issue #1 first (thanks + heads-up that
+  we will publish under MIT with attribution).
 - [ ] **Project name reviewed** : "Tesla LoadPilot" contains a trademark;
   decide keep (community precedent) vs rename, deliberately.
 - [ ] **Hero image retouched** : remove the TESLA lettering on the charger
   (and regenerate without the V1.0 caption while at it).
 - [ ] **CI re-hardened** : remove `continue-on-error` from the HACS job
-  (its repo-view checks pass once public + licensed), open the
+  (license now present; the remaining checks pass once public), open the
   home-assistant/brands PR for the logo.
 - [ ] **Secrets final sweep** : re-run the value-scan and gitleaks on the
   full history (history was already rewritten and the UDP key rotated on
