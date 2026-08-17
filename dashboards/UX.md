@@ -268,7 +268,7 @@ texte de l'écran.
 
 ### 3.1 La carte type (`loadpilot_card.yaml`)
 
-Inspirée de la page « Chargeur » du site pilote (docs/50_COUCHE_HA.md) :
+Inspirée de la page « Chargeur » du site pilote (docs/fr/50_COUCHE_HA.md) :
 un interrupteur, des pastilles d'état, les alertes seulement quand elles
 sont pertinentes (cartes conditionnelles), les réglages repliés en bas.
 

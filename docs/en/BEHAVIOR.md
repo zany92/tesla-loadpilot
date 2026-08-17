@@ -11,7 +11,7 @@
 > Every statement is labelled **MEASURED** (our data), **INFERRED** (deduced,
 > not directly tested) or **REPORTED** (external source). This is a condensed
 > English translation of the French reference document,
-> [`40_LOI_DE_COMMANDE.md`](40_LOI_DE_COMMANDE.md) - where the two differ,
+> [`40_LOI_DE_COMMANDE.md`](../fr/40_LOI_DE_COMMANDE.md) - where the two differ,
 > the French version (17 Aug 2026, definitive model) prevails.
 
 The wallbox runs two independent mechanisms on the meter signal it polls
@@ -416,7 +416,7 @@ vehicle's AC component through an estimator (gain α < 1 on transients) -
 was fully designed, implemented, tested in the field over several nights,
 and fixed six times before being **abandoned on 17 Aug 2026** in favour of
 the memoryless block above. The full study and its post-mortem epilogue are
-kept intact in [`60_ETUDE_SYNTHETISEUR.md`](60_ETUDE_SYNTHETISEUR.md)
+kept intact in [`60_ETUDE_SYNTHETISEUR.md`](../fr/60_ETUDE_SYNTHETISEUR.md)
 (French). Highlights:
 
 - **Structural failure pattern (MEASURED)**: each fix added internal state,

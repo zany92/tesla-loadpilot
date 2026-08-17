@@ -233,7 +233,7 @@ translates entity states.
    `sensor.loadpilot_twc_published_current_l1` with the honest label
    “Published to charger”. Request: a `sensor.loadpilot_twc_charger_current`
    (A, TWC-side) if the firmware can source it (e.g. local TWC vitals
-   pattern, docs/50_COUCHE_HA.md §6).
+   pattern, docs/fr/50_COUCHE_HA.md §6).
 2. **No explicit `paused` state.** `sensor.loadpilot_state` has no value
    for “paused by bias”. The cards infer it from
    `sensor.loadpilot_twc_bias_applied >= 15`, which is fragile. Request:

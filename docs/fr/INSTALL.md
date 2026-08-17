@@ -185,14 +185,14 @@ impossible. **Si votre installation le permet, bloquez les mises à jour
 automatiques de la borne** (pas de méthode officielle documentée -
 question communautaire ouverte). A minima, notez la version firmware
 avant/après toute MAJ et re-déroulez la validation
-([`BEHAVIOR.md`](BEHAVIOR.md) §8) après chaque changement.
+([`BEHAVIOR.md`](../en/BEHAVIOR.md) §8) après chaque changement.
 
 > ⚠️ **Invariant d'exploitation - ne publiez JAMAIS une valeur inférieure
 > au courant propre de la borne.** Un vrai compteur en tête d'installation
 > ne peut physiquement pas mesurer moins que ce que la borne tire
 > elle-même : le firmware le détecte et entre dans un **état de défiance**
 > où le compteur émulé est durablement ignoré (service, protection et
-> escalade compris) - voir [`BEHAVIOR.md`](BEHAVIOR.md) §4. Le bloc de
+> escalade compris) - voir [`BEHAVIOR.md`](../en/BEHAVIOR.md) §4. Le bloc de
 > publication de référence respecte cet invariant par construction (la
 > mesure publiée inclut la branche de la borne) ; toute modification
 > locale doit le préserver, y compris pendant les rampes du véhicule.
@@ -234,7 +234,7 @@ sans avoir observé l'ombre d'abord** :
    - aucune valeur aberrante (NaN, 0 transitoire au boot).
 2. **Activation : mode `ACTIF-MAX`**, de préférence charge en cours et
    maison chargée (le scénario nominal). Attendu (validation de référence,
-   [`BEHAVIOR.md`](BEHAVIOR.md) §8) : modulation douce sous la consigne,
+   [`BEHAVIOR.md`](../en/BEHAVIOR.md) §8) : modulation douce sous la consigne,
    paliers tenus, remontée ~1 A / 30 s, **zéro ouverture de contacteur**
    (notez le compteur de cycles lifetime avant/après).
 3. **Abandon immédiat si** : la borne ignore le signal > 2 min, TOUTE
@@ -265,7 +265,7 @@ Après ~3 démarrages de charge perturbés en quelques minutes, le véhicule
 Tesla **cesse de retenter** - sans aucune alerte côté borne (signature :
 `evse_state` 9). Relance via l'app ou débranchement/rebranchement. Si vos
 premiers essais multiplient les arrêts/reprises, c'est probablement ça -
-pas une panne. Détails : [`BEHAVIOR.md`](BEHAVIOR.md) §5.
+pas une panne. Détails : [`BEHAVIOR.md`](../en/BEHAVIOR.md) §5.
 
 ## 8. En cas de problème
 

@@ -59,7 +59,7 @@ every order is being honoured. BEHAVIOR §8 (evening addendum) and §2.
   (bias), don't let the loop hunt toward the integral cut.
 - Structural: variant B of the co-variant law (asymmetric response /
   one-cycle-in-two nudges) - under design, see
-  [`DESIGN_LOI_COVARIANTE.md`](DESIGN_LOI_COVARIANTE.md).
+  [`DESIGN_LOI_COVARIANTE.md`](../fr/DESIGN_LOI_COVARIANTE.md).
 
 ## 3. Charge start refused - usually not an incident
 

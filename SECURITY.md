@@ -54,4 +54,4 @@ ship a fix before publishing details.
 Electrical-safety caveat: this project supervises a 230 V charging
 appliance. Software mitigations never replace the electrical protections
 (breakers, RCDs) of the installation - see the safety warnings in the
-README and [`docs/INSTALL_FR.md`](docs/INSTALL_FR.md).
+README and [`docs/fr/INSTALL.md`](docs/fr/INSTALL.md).

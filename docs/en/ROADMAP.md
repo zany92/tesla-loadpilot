@@ -9,7 +9,7 @@
 ## 0.x - make the reference installation shippable (in progress)
 
 - [x] Measured behaviour model of the TWC Gen 3 DPM (fw 26.18) -
-  [`BEHAVIOR.md`](BEHAVIOR.md) / [`40_LOI_DE_COMMANDE.md`](40_LOI_DE_COMMANDE.md) - **done**
+  [`BEHAVIOR.md`](BEHAVIOR.md) / [`40_LOI_DE_COMMANDE.md`](../fr/40_LOI_DE_COMMANDE.md) - **done**
 - [x] Memoryless control law (worst-phase symmetric clamped publication,
   escalation, fail-safe) validated in production 17 Aug 2026 - **done**
 - [x] Encrypted UDP meter contract (port 18511, XXTEA + rolling code,
@@ -30,7 +30,7 @@
 ## Meter providers - France first, then the matrix
 
 Full eligibility matrix (cadence is the gate: per-phase currents at ~1 Hz):
-[`15_FOURNISSEURS_MESURE.md`](15_FOURNISSEURS_MESURE.md).
+[`15_FOURNISSEURS_MESURE.md`](../fr/15_FOURNISSEURS_MESURE.md).
 
 | Provider | Countries | Status |
 |---|---|---|
@@ -46,7 +46,7 @@ progress" as seen by the meter itself).
 
 ## Charger boards (Kincony family and beyond)
 
-Matrix and porting rules: [`20_FIRMWARE.md`](20_FIRMWARE.md) §2.9. The
+Matrix and porting rules: [`20_FIRMWARE.md`](../fr/20_FIRMWARE.md) §2.9. The
 core is board-agnostic; a board pack is pins + transceiver + network only.
 
 | Board | Status |
@@ -76,7 +76,7 @@ implementation for the foreseeable future.
   and contactor-open immediate apply.
 - **Vehicle-first policy in HA** (proportional API setpoint for the owned
   vehicle, anti-yo-yo guard, demand memo + projected release) -
-  **documented as a pattern** in [`50_COUCHE_HA.md`](50_COUCHE_HA.md);
+  **documented as a pattern** in [`50_COUCHE_HA.md`](../fr/50_COUCHE_HA.md);
   the reference implementation is installation-specific and will not ship
   as-is. Candidate for later blueprints/add-ons - explicitly *not* the
   product's spine.
@@ -112,7 +112,7 @@ ways they can move under us.
   Tesla account → More → "Tesla device settings", validated on 26.18) is
   unofficial and revocable by Tesla at any update. This is a fragile
   dependency of the whole install path - documented in
-  [`INSTALL_FR.md`](INSTALL_FR.md) §4.
+  [`INSTALL_FR.md`](../fr/INSTALL.md) §4.
 - **ESPHome breaking changes.** The community has already been bitten:
   ESPHome 2026.5.1 broke a comparable project's YAML via the
   `modbus_controller` → `modbus_server` migration (Klangen82's repo,

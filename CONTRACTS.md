@@ -45,11 +45,11 @@ Livrables :
   `providers/teleinfo-fr.yaml` (+ squelettes dsmr/sml/ct), `examples/`,
   `secrets.yaml.example`. Il supprime les deux YAML historiques une fois
   l'extraction terminée. Il PRODUIT les entités du §3 exactement.
-- Références obligatoires avant d'écrire : `docs/40_LOI_DE_COMMANDE.md`
-  (la loi, à transcrire sans « amélioration »), `docs/20_FIRMWARE.md`
+- Références obligatoires avant d'écrire : `docs/fr/40_LOI_DE_COMMANDE.md`
+  (la loi, à transcrire sans « amélioration »), `docs/fr/20_FIRMWARE.md`
   (pièges : VERBOSE interdit sur le nœud borne, deadline 66 ms,
   `rx_buffer_size: 1024`, text_sensor pour le miroir contacteur),
-  `docs/15_FOURNISSEURS_MESURE.md` (contrat UDP §1 - INTOUCHABLE).
+  `docs/fr/15_FOURNISSEURS_MESURE.md` (contrat UDP §1 - INTOUCHABLE).
 
 ### 1.2 UX designer - possède `dashboards/**`
 
@@ -106,7 +106,7 @@ repo par la passe correctifs).
 
 ## 2. Contrat UDP provider → cœur (rappel, figé)
 
-Défini dans `docs/15_FOURNISSEURS_MESURE.md` §1 : port **18511**,
+Défini dans `docs/fr/15_FOURNISSEURS_MESURE.md` §1 : port **18511**,
 `packet_transport` UDP chiffré XXTEA + rolling code, 6 grandeurs
 `lky_ia/ib/ic` (A) + `lky_pa/pb/pc` (VA), import positif, brut (jamais
 lissé), heartbeat 1 s + envoi immédiat sur changement, silence en panne.

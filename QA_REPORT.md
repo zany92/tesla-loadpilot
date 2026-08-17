@@ -9,7 +9,7 @@ interdite tant que B1 n'est pas traité.
 Corrections mécaniques appliquées par la QA (triviales, sans débat) :
 - `custom_components/loadpilot/manifest.json` - ordre des clés hassfest
   (domain, name, puis alphabétique) ;
-- `docs/TESTPLAN.md` - créé (livrable de mission).
+- `docs/fr/TESTPLAN.md` - créé (livrable de mission).
 
 Validations mécaniques : **py_compile 8/8 OK ; json.load 4/4 OK ; yaml
 safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
@@ -66,7 +66,7 @@ safe_load 14/14 OK** (tags `!secret`/`!lambda` enregistrés neutres,
 > (publication symétrique) ; « Linky Source Active »/« Linky UDP Fresh »
 > → « Source Active »/« UDP Fresh » (noms du package twc-core.yaml -
 > la prod Loupiac garde ses anciens noms, hors sujet pour le guide).
-- Fichier : `docs/INSTALL_FR.md:194` : « le sélecteur ne survit pas au
+- Fichier : `docs/fr/INSTALL.md:194` : « le sélecteur ne survit pas au
   reboot (démarrage = RAW, défaut sûr) » - FAUX pour `twc-core.yaml:544`
   (select `restore_value: true`, `initial_option: ACTIF-MAX`, choix
   argumenté du spécialiste : un site en prod doit re-réguler après coupure).

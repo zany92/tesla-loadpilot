@@ -15,10 +15,10 @@ packages/
 ├── boards/
 │   ├── kc868-a6.yaml        # VALIDATED reference (GPIO27/14, MAX13487E, WiFi)
 │   ├── esp32-s3-core.yaml   # compiled draft (GPIO16/15, W5500) - untested
-│   └── ...                  # per docs/20_FIRMWARE.md §2.9
+│   └── ...                  # per docs/fr/20_FIRMWARE.md §2.9
 └── providers/
     ├── teleinfo-fr.yaml     # France Linky TIC standard - production-proven
-    ├── dsmr-p1.yaml         # NL/BE - skeleton per docs/15_FOURNISSEURS_MESURE.md
+    ├── dsmr-p1.yaml         # NL/BE - skeleton per docs/fr/15_FOURNISSEURS_MESURE.md
     ├── sml-de.yaml          # DE/AT - skeleton, honest per-phase caveats
     └── ct-clamps.yaml       # universal fallback (ATM90E32 / PZEM)
 ```

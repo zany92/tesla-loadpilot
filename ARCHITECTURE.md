@@ -73,7 +73,7 @@ The two historical staged files (`esphome/kc868-a6-1.yaml`,
 
 ## D2 - ESP/HA boundary: the law never needs HA
 
-Hard rule, restated from the measured control law (`docs/40_LOI_DE_COMMANDE.md`
+Hard rule, restated from the measured control law (`docs/fr/40_LOI_DE_COMMANDE.md`
 §6–§10): **everything that keeps the charger regulated and the contract safe
 lives in firmware and keeps working with Home Assistant down, the cloud
 down, or both.**
@@ -104,7 +104,7 @@ Failure matrix (design intent, to be QA'd as such):
 1. **MeterProvider** - anything that ships the 6 quantities
    (`lky_ia/ib/ic` in A, `lky_pa/pb/pc` in VA, import-positive, raw) over
    the encrypted UDP contract (port 18511, XXTEA + rolling code, 1 Hz
-   heartbeat + immediate deltas). Contract spec: `docs/15_FOURNISSEURS_MESURE.md`
+   heartbeat + immediate deltas). Contract spec: `docs/fr/15_FOURNISSEURS_MESURE.md`
    §1. Eligibility gate is **cadence ~1 Hz per-phase**. Implementations:
    `teleinfo-fr.yaml` (proven in production), then `dsmr-p1.yaml`
    (NL/BE), `sml-de.yaml` (DE/AT, honest caveats), `ct-clamps.yaml`
@@ -116,7 +116,7 @@ Failure matrix (design intent, to be QA'd as such):
    exactly "consumes the 6 quantities + a limit, exposes published values":
    `twc-core.yaml` (logic) + `boards/<board>.yaml` (pins/transceiver/
    network only - KC868-A6 validated, ESP32-S3 core drafted, A4/A8/A16
-   pending per `docs/20_FIRMWARE.md` §2.9). A future charger type is a new
+   pending per `docs/fr/20_FIRMWARE.md` §2.9). A future charger type is a new
    core package, not a fork of this one.
 3. **Phase topology** - `phases: 1 | 3` in the config flow and as firmware
    substitution. Mono publishes phases B/C at 0; the worst-phase law
@@ -140,8 +140,8 @@ Failure matrix (design intent, to be QA'd as such):
 |---|---|---|
 | Home Assistant | 2025.12 (`hacs.json`) | current config-entry & Repairs APIs; matches HACS expectations |
 | ESPHome (both nodes) | 2025.2 | `udp` + `packet_transport` with XXTEA encryption & rolling code |
-| TWC Gen 3 firmware | 26.18 (calibration reference) | the entire measured law (`docs/40_LOI_DE_COMMANDE.md`); re-calibrate on TWC firmware change - stated prominently in docs |
-| Boards | KC868-A6 (validated) | others per matrix `docs/20_FIRMWARE.md` §2.9 |
+| TWC Gen 3 firmware | 26.18 (calibration reference) | the entire measured law (`docs/fr/40_LOI_DE_COMMANDE.md`); re-calibrate on TWC firmware change - stated prominently in docs |
+| Boards | KC868-A6 (validated) | others per matrix `docs/fr/20_FIRMWARE.md` §2.9 |
 
 ## System diagram
 

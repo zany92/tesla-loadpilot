@@ -22,12 +22,12 @@ private; nothing is published to HACS or home-assistant/brands yet.
   1.0 A). This removes the "frozen published value" failure mode that
   latched the wallbox's distrust state. Validated in closed loop on the
   pilot site on 17 Aug 2026 (load steps absorbed, autonomous session
-  recovery, zero contactor events). Design: `docs/DESIGN_LOI_COVARIANTE.md`.
+  recovery, zero contactor events). Design: `docs/fr/DESIGN_LOI_COVARIANTE.md`.
 - **Variant B (release drag)**: the asymmetric-release design that removes
   the exit yo-yo is fully specified with an inert-by-default kill switch
   (drag depth 0 restores the exact v2 law). It is delivered as design only
   in this release and is not part of the generic firmware packages. Design:
-  `docs/DESIGN_VARIANTE_B.md`.
+  `docs/fr/DESIGN_VARIANTE_B.md`.
 - **TIC watchdog (meter provider)**: without it, a dead TIC hat on a live
   ESP32 rebroadcasts frozen values forever and no fallback engages (proven
   by ESPHome source reading, QA finding M3). The watchdog (`tic_timeout_ms`,
@@ -38,14 +38,14 @@ private; nothing is published to HACS or home-assistant/brands yet.
   meter can never read below the wallbox's own draw). R2: sudden drops
   above 5 A must be confirmed by a second sample. Rises always pass
   immediately (the transient error is on the safe side). Design:
-  `docs/DESIGN_ANTI_GLITCH.md`.
+  `docs/fr/DESIGN_ANTI_GLITCH.md`.
 - **Direct STOP**: the `Charge Stop` switch immediately publishes the stop
   order (limit plus nudge, dithered). Never restored at boot: a deliberate
   stop cannot silently survive a reboot.
 - **Meter-absent test switch**: `Meter Absent (test)` silences the Modbus
   server at runtime (hot slave-address change) to exercise the wallbox's
   documented "loss of meter" 6 A fallback. Shipped OFF, never restored at
-  boot. Design: `docs/DESIGN_METER_ABSENT.md`.
+  boot. Design: `docs/fr/DESIGN_METER_ABSENT.md`.
 - Escalation stop (120 s at zero headroom publishes limit + 0.1 A,
   dithered), bias target with firmware-side ramp, fail-safe publication of
   the main breaker value with source priority UDP > HA mirror > fail-safe,
@@ -91,7 +91,7 @@ private; nothing is published to HACS or home-assistant/brands yet.
 - **Distrust layer is partially inferred**: the wallbox's latched distrust
   state is characterised from field episodes and community corroboration,
   with statements labelled MEASURED / INFERRED / REPORTED in
-  `docs/BEHAVIOR.md` section 4. Expect refinements at the next episode.
+  `docs/en/BEHAVIOR.md` section 4. Expect refinements at the next episode.
 - **Physical fault-injection tests remain**: the TIC watchdog was proven by
   source reading; the physical unplug test (TESTPLAN case C6, QA finding
   M3) and the meter-absent 6 A fallback test have not been run yet.
@@ -100,11 +100,11 @@ private; nothing is published to HACS or home-assistant/brands yet.
 
 ## Documentation
 
-- `docs/BEHAVIOR.md`: the measured behaviour model of the TWC Gen 3 load
+- `docs/en/BEHAVIOR.md`: the measured behaviour model of the TWC Gen 3 load
   management (English), including the distrust state (section 4).
-- `docs/RUNBOOK_INCIDENTS.md`: operator runbook for incidents.
-- `docs/TESTPLAN.md`: acceptance and fault-injection test plan.
-- `docs/INSTALL_FR.md`: step-by-step installation guide (French).
+- `docs/en/RUNBOOK_INCIDENTS.md`: operator runbook for incidents.
+- `docs/fr/TESTPLAN.md`: acceptance and fault-injection test plan.
+- `docs/fr/INSTALL.md`: step-by-step installation guide (French).
 
 ## Credits and license
 

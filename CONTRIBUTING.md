@@ -12,12 +12,12 @@ now are **field reports** - this is a measurement-driven project.
 
 1. **Testers with non-French meters** - DSMR 5 (NL/BE) is candidate #2;
    SML (DE/AT) and CT-clamp setups next. See the provider recipe in
-   [`docs/15_FOURNISSEURS_MESURE.md`](docs/15_FOURNISSEURS_MESURE.md) §4.
+   [`docs/fr/15_FOURNISSEURS_MESURE.md`](docs/fr/15_FOURNISSEURS_MESURE.md) §4.
 2. **Testers with untested Kincony boards** (A4/A8/A16, ESP32-S3 core) -
    porting rules and minimal QA checklist in
-   [`docs/20_FIRMWARE.md`](docs/20_FIRMWARE.md) §2.9.
+   [`docs/fr/20_FIRMWARE.md`](docs/fr/20_FIRMWARE.md) §2.9.
 3. **Behaviour reports on TWC firmware ≠ 26.18** - every constant in
-   [`docs/BEHAVIOR.md`](docs/BEHAVIOR.md) is calibration data for 26.18.
+   [`docs/en/BEHAVIOR.md`](docs/en/BEHAVIOR.md) is calibration data for 26.18.
    If your wallbox behaves differently, that is a finding, not a nuisance.
 
 ## Issue policy
@@ -34,7 +34,7 @@ sent back for it. Also include:
   applied bias;
 - for regulation issues: the contactor lifetime cycle counter before/after,
   and whether `evse_state` reached 9 (vehicle give-up - often mistaken for
-  a wallbox fault, see [`docs/BEHAVIOR.md`](docs/BEHAVIOR.md) §5).
+  a wallbox fault, see [`docs/en/BEHAVIOR.md`](docs/en/BEHAVIOR.md) §5).
 
 Please do **not** open issues asking how to hack the wallbox beyond its
 load-management interface, and never paste secrets (WiFi credentials, API

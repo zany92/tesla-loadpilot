@@ -46,7 +46,7 @@ flowchart LR
 
 ### The publication law (the heart of the project)
 
-Measured behavior of the Gen 3 firmware (see [docs/BEHAVIOR.md](docs/BEHAVIOR.md) for the full model with MEASURED/INFERRED/REPORTED labels):
+Measured behavior of the Gen 3 firmware (see [docs/en/BEHAVIOR.md](docs/en/BEHAVIOR.md) for the full model with MEASURED/INFERRED/REPORTED labels):
 
 - its *service* loop engages on a symmetric function of the three reported CTs, holds at exactly the limit, pulls the car down above it, lets it climb below it;
 - its *protection* watches the worst phase with an integral criterion;
@@ -85,14 +85,14 @@ The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on 
 | Kincony KC868-A6 | Charger-side ESP32 node (Neurio emulation) | ESP32 board with an onboard RS485 transceiver (MAX13487E, hardware auto-direction), relays and inputs as a bonus. Any ESP32 plus a MAX485-class transceiver works too. | [Hardware details](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [KinCony store](https://www.kincony.com/) |
 | Olimex ESP32-POE | Meter-side ESP32 node | Powered over Ethernet next to the meter; any ESP32 with a free UART works. | [Product page](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Teleinfo (TIC) receiver shield, Charles Hallard design | Reads the Linky's TIC output (I1/I2 terminals) | Opto-isolated serial receiver, ESP32-compatible. Sold assembled. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
-| RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; short unterminated runs are fine in practice (measured on the pilot). | Tesla app note, see [docs/INSTALL_FR.md](docs/INSTALL_FR.md) |
+| RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; short unterminated runs are fine in practice (measured on the pilot). | Tesla app note, see [docs/fr/INSTALL.md](docs/fr/INSTALL.md) |
 | (Optional) Tesla Neurio W2 meter | Reference instrument only | Useful to sniff genuine meter traffic or as an A/B test against the emulation. Not needed for LoadPilot itself: your utility meter replaces it. | [Example EU reseller](https://www.wallboxdiscounter.com/fr/tesla-neurio-energy-meter.html) |
 
 **Software:**
 
 - Home Assistant >= 2025.12, ESPHome >= 2025.2 (encrypted `packet_transport`).
 - The two firmware packages from [`esphome/packages/`](esphome/packages/) (charger core + a meter provider; France TIC is production-proven, DSMR/SML/CT-clamp providers are skeletons).
-- Commissioning through the Tesla app or Tesla One: on firmware >= 26.2 the external-meter menu is gated behind installer credentials, with a documented workaround (generic Tesla account, "Tesla device settings"), see [docs/INSTALL_FR.md](docs/INSTALL_FR.md).
+- Commissioning through the Tesla app or Tesla One: on firmware >= 26.2 the external-meter menu is gated behind installer credentials, with a documented workaround (generic Tesla account, "Tesla device settings"), see [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
 
 ## Configuration
 
@@ -119,8 +119,8 @@ The project's real asset is the measured behavior model of the wall connector, a
 
 - Service engages on the phase *average*, protection bites on the *worst phase* with an integral of ~20 A.s above the limit (for excursions >= 1 A; below +0.5 A the charger tolerates far more and mostly does nothing).
 - Full validated cascade, hands-off: cooking spike, continuous descent 16 to 12 A tracking the slope, pause when four ACs exceeded what the car could yield, automatic release, autonomous session resume, zero contactor cycles.
-- The distrust state is real, sticky and undocumented by Tesla: entries, non-recoveries and the working recovery protocol (power-cycle plus hours of honest signal plus a calm-house session start) are all in [docs/BEHAVIOR.md](docs/BEHAVIOR.md) section 4, with raw traces published alongside our findings on the upstream project's issue tracker.
-- Incident signatures and operator responses are catalogued in [docs/RUNBOOK_INCIDENTS.md](docs/RUNBOOK_INCIDENTS.md).
+- The distrust state is real, sticky and undocumented by Tesla: entries, non-recoveries and the working recovery protocol (power-cycle plus hours of honest signal plus a calm-house session start) are all in [docs/en/BEHAVIOR.md](docs/en/BEHAVIOR.md) section 4, with raw traces published alongside our findings on the upstream project's issue tracker.
+- Incident signatures and operator responses are catalogued in [docs/en/RUNBOOK_INCIDENTS.md](docs/en/RUNBOOK_INCIDENTS.md).
 
 ## Known limitations, honestly
 
@@ -129,7 +129,7 @@ The project's real asset is the measured behavior model of the wall connector, a
 - **Variant B (anti-oscillation tail) is designed and shipped but inert**: closed-loop validation is the next scheduled test. With the tail off, a house load hovering exactly at the budget can produce a +/-2.5 A limit cycle that ends in a protective cut.
 - **HA 2026.8 ignores `suggested_object_id`**: derived sensors may be created with translated ids on non-English instances; rename them once in the registry (documented in the release notes; a proper fix is being investigated).
 - **Licensing is not settled.** The publication law grew from the fundamentals of [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control) (no license file); a licensing and attribution conversation with the author is in progress and nothing derived is published. This repo stays private until that is resolved.
-- Remaining physical tests: TIC watchdog unplug test, meter-absent 6 A fallback test, from-scratch install campaign ([docs/TESTPLAN.md](docs/TESTPLAN.md)).
+- Remaining physical tests: TIC watchdog unplug test, meter-absent 6 A fallback test, from-scratch install campaign ([docs/fr/TESTPLAN.md](docs/fr/TESTPLAN.md)).
 
 ## Repository map
 
@@ -139,10 +139,10 @@ The project's real asset is the measured behavior model of the wall connector, a
 | `esphome/packages/` | The generic firmware: charger core (publication law) and meter providers. |
 | `esphome/examples/` | Ready-to-adapt node files (three-phase, single-phase, meter node). |
 | `dashboards/` | Lovelace cards (user face: one switch + live info; settings face). |
-| `docs/BEHAVIOR.md` | The measured TWC Gen 3 behavior model. Start here if you want the science. |
-| `docs/INSTALL_FR.md` | Full installation guide (French). |
-| `docs/RUNBOOK_INCIDENTS.md` | Operator playbook. |
-| `docs/TESTPLAN.md` | Validation campaign and GO/NO-GO criteria. |
+| `docs/en/BEHAVIOR.md` | The measured TWC Gen 3 behavior model. Start here if you want the science. |
+| `docs/fr/INSTALL.md` | Full installation guide (French). |
+| `docs/en/RUNBOOK_INCIDENTS.md` | Operator playbook. |
+| `docs/fr/TESTPLAN.md` | Validation campaign and GO/NO-GO criteria. |
 | `docs/DESIGN_*.md` | Design studies, including the negative results that shaped the law. |
 
 ## Credits
