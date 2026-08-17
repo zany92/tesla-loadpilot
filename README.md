@@ -98,6 +98,39 @@ The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on 
 - The two firmware packages from [`esphome/packages/`](esphome/packages/) (charger core + a meter provider; France TIC is production-proven, DSMR/SML/CT-clamp providers are skeletons).
 - Commissioning through the Tesla app or Tesla One: on firmware >= 26.2 the external-meter menu is gated behind installer credentials, with a documented workaround (generic Tesla account, "Tesla device settings"), see [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
 
+## Installation
+
+From zero to a regulating charger, in order:
+
+1. **Build the two nodes.** Wire the TIC receiver shield to the Linky's
+   I1/I2 terminals and to the meter-side ESP32; wire the charger-side
+   ESP32's RS485 transceiver to the wall connector's RS485 terminals
+   (shielded twisted pair, drain grounded panel-side).
+2. **Flash the firmware.** Start from [`esphome/examples/`](esphome/examples/)
+   (three-phase, single-phase and meter-node variants), set your
+   substitutions (contract limit, node names, encryption key) and flash
+   both nodes with ESPHome >= 2025.2.
+3. **Commission the emulated meter** in the Tesla app or Tesla One so the
+   wall connector adopts it as its Neurio. On firmware >= 26.2 the menu is
+   gated behind installer credentials; the workaround (generic Tesla
+   account, "Tesla device settings") is documented step by step in
+   [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
+4. **Install the integration.** In HACS: menu (three dots) > Custom
+   repositories > add `https://github.com/zany92/tesla-loadpilot` with
+   category *Integration*, then install and restart Home Assistant.
+   Manual alternative: copy `custom_components/loadpilot/` into your
+   `config/custom_components/` and restart.
+5. **Add the integration** (Settings > Devices and services > Add
+   integration > Tesla LoadPilot) and follow the 5-step config flow
+   described below.
+6. **Verify**: `sensor.loadpilot_state` must read `regulating`, and the
+   per-phase headrooms must match your contract minus the live house load.
+   Then plug the car in and watch the pilot follow the house.
+
+The full guide with photos, wiring details and the commissioning
+walkthrough is [docs/fr/INSTALL.md](docs/fr/INSTALL.md) (French; an
+English translation is on the roadmap).
+
 ## Configuration
 
 Everything user-facing happens in two places:
@@ -110,7 +143,7 @@ Everything user-facing happens in two places:
 | Buffer | 10 % | 0-30 % | Shifts the equilibrium below the contract. |
 | Law echo gain | 0.5 | **never below ~0.5** | Below that floor the charger's own ramps are diluted in the published signal and the plausibility layer rejects the meter (measured the hard way). |
 | Law max excursion | 1.0 A | 0.8-1.0 A | The charger has a dead band up to ~limit + 0.9: lower caps cost integral without effect. |
-| Tail (variant B) | 0 (inert) | 0-2.5 A | Anti-oscillation; enable deliberately, closed-loop validation pending. |
+| Tail (variant B) | 0 (inert) | 0-2.5 A | Anti-oscillation; validated in closed loop on the pilot (11 min pinned at the exact equilibrium, zero oscillation), runs at 2.0 A in production. |
 | Bias | 0 | 0-16 A | The pause lever; driven by the HA shedding logic, manual mode available. |
 | STOP switch | off | | Immediate stop order. |
 | Meter-absent switch | off | | Test switch: silences the Modbus server entirely (the charger falls back to its documented 6 A cap). |
@@ -119,20 +152,20 @@ Everything user-facing happens in two places:
 
 ## Observations from the pilot
 
-The project's real asset is the measured behavior model of the wall connector, assembled from ~5 days of instrumented episodes and cross-checked against every community source we could find. Highlights:
+The project's real asset is the measured behavior model of the wall connector, assembled from ~5 days of instrumented episodes and cross-checked against every community source I could find. Highlights:
 
 - Service engages on the phase *average*, protection bites on the *worst phase* with an integral of ~20 A.s above the limit (for excursions >= 1 A; below +0.5 A the charger tolerates far more and mostly does nothing).
 - Full validated cascade, hands-off: cooking spike, continuous descent 16 to 12 A tracking the slope, pause when four ACs exceeded what the car could yield, automatic release, autonomous session resume, zero contactor cycles.
-- The distrust state is real, sticky and undocumented by Tesla: entries, non-recoveries and the working recovery protocol (power-cycle plus hours of honest signal plus a calm-house session start) are all in [docs/en/BEHAVIOR.md](docs/en/BEHAVIOR.md) section 4, with raw traces published alongside our findings on the upstream project's issue tracker.
+- The distrust state is real, sticky and undocumented by Tesla: entries, non-recoveries and the working recovery protocol (power-cycle plus hours of honest signal plus a calm-house session start) are all in [docs/en/BEHAVIOR.md](docs/en/BEHAVIOR.md) section 4, with raw traces published alongside my findings on the upstream project's issue tracker.
 - Incident signatures and operator responses are catalogued in [docs/en/RUNBOOK_INCIDENTS.md](docs/en/RUNBOOK_INCIDENTS.md).
 
 ## Known limitations, honestly
 
 - **One pilot site, one firmware.** Everything is calibrated against TWC fw 26.18 on a French three-phase installation. The constants (dead band, integral, floors) may drift with Tesla updates; freeze your charger's firmware.
-- **The distrust layer is the structural risk.** Our law is designed to never trigger it, and the entry points we found are closed (impossible values, absorbed ramps, static fail-safe), but Tesla hardens this layer version after version and could close the commissioning workaround entirely.
-- **Variant B (anti-oscillation tail) is designed and shipped but inert**: closed-loop validation is the next scheduled test. With the tail off, a house load hovering exactly at the budget can produce a +/-2.5 A limit cycle that ends in a protective cut.
+- **The distrust layer is the structural risk.** The law is designed to never trigger it, and the entry points I found are closed (impossible values, absorbed ramps, static fail-safe), but Tesla hardens this layer version after version and could close the commissioning workaround entirely.
+- **With the tail off**, a house load hovering exactly at the budget can produce a +/-2.5 A limit cycle that ends in a protective cut. The decaying-tail variant closes it (validated in closed loop on the pilot); it ships inert and must be enabled deliberately.
 - **HA 2026.8 ignores `suggested_object_id`**: derived sensors may be created with translated ids on non-English instances; rename them once in the registry (documented in the release notes; a proper fix is being investigated).
-- **Licensing is not settled.** The publication law grew from the fundamentals of [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control) (no license file); a licensing and attribution conversation with the author is in progress and nothing derived is published. This repo stays private until that is resolved.
+- **Upstream lineage.** The publication law grew from the fundamentals of [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control), now MIT-licensed; this project is published under MIT with explicit attribution to PVi1 and Klangen82 (see [LICENSE](LICENSE)).
 - Remaining physical tests: TIC watchdog unplug test, meter-absent 6 A fallback test, from-scratch install campaign ([docs/fr/TESTPLAN.md](docs/fr/TESTPLAN.md)).
 
 ## Repository map

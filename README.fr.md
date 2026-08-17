@@ -98,6 +98,39 @@ Le budget vaut `limite contrat × (1 - tampon %)` : avec le tampon par défaut
 - Les deux paquets firmware de [`esphome/packages/`](esphome/packages/) (cœur borne + un fournisseur de mesure ; la TIC France est éprouvée en production, les fournisseurs DSMR/SML/pinces ampèremétriques sont des squelettes).
 - Mise en service via l'appli Tesla ou Tesla One : à partir du firmware 26.2, le menu du compteur externe est verrouillé derrière des identifiants installateur, avec un contournement documenté (compte Tesla générique, « Tesla device settings »), voir [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
 
+## Installation
+
+De zéro à une borne régulée, dans l'ordre :
+
+1. **Assembler les deux nœuds.** Câbler le récepteur TIC sur les bornes
+   I1/I2 du Linky et sur l'ESP32 côté compteur ; câbler le transceiver
+   RS485 de l'ESP32 côté borne sur le bornier RS485 du Wall Connector
+   (paire torsadée blindée, drain à la terre côté tableau).
+2. **Flasher les firmwares.** Partir de [`esphome/examples/`](esphome/examples/)
+   (variantes triphasé, monophasé et nœud compteur), renseigner les
+   substitutions (limite du contrat, noms des nœuds, clé de chiffrement)
+   et flasher les deux nœuds avec ESPHome >= 2025.2.
+3. **Mettre en service le compteur émulé** dans l'app Tesla ou Tesla One
+   pour que la borne l'adopte comme son Neurio. Sur firmware >= 26.2 le
+   menu est verrouillé derrière des identifiants installateur ; le
+   contournement (compte Tesla générique, « Tesla device settings ») est
+   documenté pas à pas dans [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
+4. **Installer l'intégration.** Dans HACS : menu (trois points) > Dépôts
+   personnalisés > ajouter `https://github.com/zany92/tesla-loadpilot`
+   en catégorie *Integration*, installer, puis redémarrer Home Assistant.
+   Alternative manuelle : copier `custom_components/loadpilot/` dans
+   `config/custom_components/` et redémarrer.
+5. **Ajouter l'intégration** (Paramètres > Appareils et services >
+   Ajouter une intégration > Tesla LoadPilot) et suivre le config flow en
+   5 étapes décrit ci-dessous.
+6. **Vérifier** : `sensor.loadpilot_state` doit afficher `regulating`, et
+   les marges par phase doivent correspondre au contrat moins la
+   consommation instantanée de la maison. Brancher alors la voiture et
+   regarder le pilote suivre la maison.
+
+Le guide complet avec photos, détails de câblage et mise en service est
+[docs/fr/INSTALL.md](docs/fr/INSTALL.md).
+
 ## Configuration
 
 Tout ce qui concerne l'utilisateur se joue à deux endroits :
@@ -132,7 +165,7 @@ Le vrai capital du projet, c'est le modèle de comportement mesuré du wall conn
 - **La couche de défiance est le risque structurel.** Notre loi est conçue pour ne jamais la déclencher, et les portes d'entrée que nous avons identifiées sont fermées (valeurs impossibles, rampes absorbées, fail-safe statique), mais Tesla durcit cette couche version après version et pourrait un jour fermer complètement le contournement de mise en service.
 - **La variante B (traînée anti-oscillation) est conçue et livrée, mais inerte** : sa validation en boucle fermée est le prochain essai au calendrier. Traînée coupée, une charge domestique qui flotte pile au budget peut entretenir un cycle limite de ±2,5 A qui finit en coupure de protection.
 - **HA 2026.8 ignore `suggested_object_id`** : les capteurs dérivés peuvent naître avec des identifiants traduits sur les instances non anglophones ; renommez-les une fois pour toutes dans le registre (documenté dans les notes de version ; un correctif propre est à l'étude).
-- **La licence n'est pas réglée.** La loi de publication a grandi sur les fondamentaux de [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control) (pas de fichier de licence) ; une discussion de licence et d'attribution est en cours avec l'auteur, et rien de dérivé n'est publié. Ce dépôt reste privé tant que ce point n'est pas tranché.
+- **Filiation amont.** La loi de publication a grandi sur les fondamentaux de [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control), désormais sous licence MIT ; ce projet est publié sous MIT avec une attribution explicite à PVi1 et Klangen82 (voir [LICENSE](LICENSE)).
 - Essais physiques restants : débranchement à chaud du chien de garde TIC, test du repli 6 A compteur absent, campagne d'installation de zéro ([docs/fr/TESTPLAN.md](docs/fr/TESTPLAN.md)).
 
 ## Plan du dépôt
