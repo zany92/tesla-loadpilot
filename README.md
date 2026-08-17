@@ -1,205 +1,144 @@
 # Tesla LoadPilot
 
-> **This project is not affiliated with, endorsed by, or sponsored by Tesla, Inc.**
-> "Tesla" and "Wall Connector" are trademarks of Tesla, Inc., used here only to
-> identify the hardware this project interoperates with. No Tesla imagery is
-> used or distributed in this repository.
+[![Validate](https://github.com/zany92/tesla-loadpilot/actions/workflows/validate.yml/badge.svg)](https://github.com/zany92/tesla-loadpilot/actions/workflows/validate.yml)
 
-**Local, cloud-free charging power regulation for the Tesla Wall Connector
-Gen 3** - the wallbox adapts its charging current in real time to your home's
-consumption, measured at the utility meter. Any meter, any country, any
-vehicle (guests included). France first, with the Linky meter proven in
-production.
+**Local, cloud-free dynamic load management for the Tesla Wall Connector Gen 3, driven by your utility meter.** The charger adapts its power to whatever the house leaves available, in real time, for any vehicle including guests' cars, with no vehicle API, no manufacturer cloud and no extra energy meter to buy.
 
-**Status: private beta.** The control law is validated in production
-(17 Aug 2026, reference installation in France, three-phase 15 kVA). The
-HACS integration and the generic ESPHome packages are being extracted from
-the reference firmware - nothing is published yet.
+> Status: **private beta, version 0.1.0**, running in production on a single pilot site (France, 15 kVA three-phase, ~2000 instrumented episodes). Not published, not installable by third parties yet. See [RELEASE_NOTES_0.1.0.md](RELEASE_NOTES_0.1.0.md).
 
-## The idea
+---
 
-The Wall Connector Gen 3 has a built-in dynamic load management feature
-(*Home Load Management*) that requires a Neurio meter - discontinued
-hardware. LoadPilot replaces it:
+## The problem
 
-- An **ESP32 next to the wallbox** emulates the Neurio meter on the TWC's
-  internal RS485 bus (Modbus RTU slave, reply < 66 ms) and feeds it the real
-  measurements of your service entrance.
-- An **ESP32 next to the utility meter** (France: Linky via the TIC serial
-  output) broadcasts per-phase currents and powers over **encrypted UDP**
-  (XXTEA, rolling code, port 18511) at ~1 Hz.
-- A **Home Assistant integration** (HACS) provides the config flow, derived
-  sensors, services and diagnostics - but it is *never* in the safety path.
-  Regulation and protection run entirely in firmware and keep working with
-  Home Assistant down, the cloud down, or both.
+A home EV charger on a fixed utility contract is a race condition: the oven starts while the car charges at full amps and the main breaker (or the utility's smart meter) cuts the whole house. The official answer is Tesla's Dynamic Power Management, which requires a Tesla-sold meter (Neurio W2 / Remote Meter, expensive and increasingly gated behind installer accounts) and only speaks Tesla. Cloud-based load managers need each vehicle's API, which excludes guests and other brands.
+
+LoadPilot takes a third path: **emulate the Tesla meter** on the charger's own RS485 bus, and feed it a carefully shaped version of the measurements your utility meter already produces. The wall connector then does what its firmware was built to do (modulate the pilot signal to the car) but against your real house consumption. The vehicle is irrelevant: any car that speaks J1772/Type 2 obeys, because it is the charger being steered, not the car.
+
+## What it does
+
+- **Car-first load shedding**: when the house needs power, the car yields first, in ~1 A steps, down to the vehicle floor, before any appliance is touched.
+- **Autonomous recovery**: when the house calms down, the charge climbs back on its own (measured: ~1 A / 30 s).
+- **Guest-proof**: works identically for any vehicle, because the lever is the charger.
+- **Survives everything above it**: the control loop lives in two ESP32s; Home Assistant, WiFi and the cloud can all die and the regulation keeps running on the meter-to-charger UDP path, with safe fallbacks at every stage.
+- **Instrumented**: a Home Assistant integration exposes the regulation state, per-phase headroom, worst phase, diagnostics, repair issues and services on top of the firmware.
+
+## How it works
 
 ```mermaid
 flowchart LR
     subgraph Meter side
-        LKY[Utility meter\nLinky TIC / DSMR / SML / CT clamps]
-        PROV[Meter provider node\nESP32 - Olimex ESP32-POE + TIC hat]
-        LKY -->|native protocol ~1 Hz| PROV
+        LKY[Utility meter\nLinky, TIC serial] --> M[ESP32 meter node\nOlimex ESP32-POE\n+ TIC receiver hat]
     end
-
     subgraph Charger side
-        CORE[Charger node - ESP32 Kincony KC868-A6\nworst-phase symmetric clamp\nbias+ramp / escalation 120 s / fail-safe]
-        TWC[Tesla Wall Connector Gen 3\nModbus RTU master, polls ~200 ms]
-        CORE -->|RS485, Neurio emulation\nreply < 66 ms| TWC
-        TWC -->|pilot signal| EV[Vehicle\nany brand, guests included]
+        C[ESP32 charger node\nKincony KC868-A6] -- RS485 Modbus\nNeurio emulation --> TWC[Tesla Wall Connector\nGen 3]
     end
-
-    PROV -- "UDP :18511, XXTEA\n6 quantities, 1 Hz + deltas\n(PRIMARY)" --> CORE
-
-    subgraph Home Assistant - optional, never in the safety path
-        INT[loadpilot integration\nconfig flow / derived sensors\nservices / Repairs]
-    end
-
-    PROV -.->|native API entities| INT
-    INT -.->|HA mirror = BACKUP source\n+ writes node-resident settings| CORE
-    CORE -.->|native API entities| INT
+    M -- encrypted UDP\nXXTEA, ~1 Hz, sub-amp --> C
+    M -. HA mirror\nfallback path .-> HA[Home Assistant\nLoadPilot integration]
+    HA -. observe + configure .-> C
+    TWC -- pilot signal --> CAR[Any vehicle]
 ```
 
-## The key result: a control law the wallbox cannot trip on
+1. The **meter node** reads the utility meter (France: Linky TIC, ~500 ms frames, sub-amp current resolution computed from SINSTS/URMS) and broadcasts the six per-phase quantities over encrypted UDP. A **TIC watchdog** invalidates everything to NAN if the meter link dies, so a frozen value can never masquerade as a fresh one.
+2. The **charger node** emulates a Neurio meter on the wall connector's RS485 bus (the charger polls it every ~190 ms). It picks the freshest source (UDP, then the HA mirror, then a fail-safe that reports full consumption and blocks charging) and publishes the **worst phase, symmetrically on all three CT registers**, shaped by the publication law below.
+3. The **wall connector** runs its own stock control loop against those readings and modulates the car.
 
-Nothing about the TWC Gen 3 load-management behaviour is documented by
-Tesla. This project **measured it** (firmware 26.18, hundreds of samples,
-57 contactor-cut episodes re-analysed): the service loop that modulates the
-vehicle is a *symmetric* function of the three published channels, while
-the protection that bites and trips watches the *worst* channel. The full
-characterisation - each statement labelled MEASURED / INFERRED / REPORTED -
-is in [`docs/BEHAVIOR.md`](docs/BEHAVIOR.md) (English) and
-[`docs/40_LOI_DE_COMMANDE.md`](docs/40_LOI_DE_COMMANDE.md) (French,
-reference version).
+### The publication law (the heart of the project)
 
-The resulting law is memoryless - about 30 lines, one internal timer:
+Measured behavior of the Gen 3 firmware (see [docs/BEHAVIOR.md](docs/BEHAVIOR.md) for the full model with MEASURED/INFERRED/REPORTED labels):
 
-```
-avail_p = clamp(contract_limit × (1 − buffer%) − bias − measure_p, 0, L)   per phase
-publish = L − min(avail_1, avail_2, avail_3)     identical on all 3 channels
-```
+- its *service* loop engages on a symmetric function of the three reported CTs, holds at exactly the limit, pulls the car down above it, lets it climb below it;
+- its *protection* watches the worst phase with an integral criterion;
+- a *plausibility* layer distrusts the meter within seconds if the reported values ever look impossible (below the charger's own draw) or stop echoing the charger's own ramps. Once distrusted, the meter is ignored entirely, sometimes for hours.
 
-- **The protection cannot trip by construction**: the published signal is
-  clamped ≤ L (the Max Conductor Limit), so the worst-phase protection never
-  sees an excess - bites and contactor trips disappear.
-- Publishing the worst phase **symmetrically** means min = mean = max, so
-  the service loop engages at the true constraint whatever its exact
-  (unknown) functional is.
-- A deliberate stop uses **escalation**: after 120 s at zero availability
-  the node publishes L + 0.1 to force a clean stop (technique from PVi1,
-  confirmed on our hardware).
-- **Fail-safe**: no healthy measurement source → the node publishes the main
-  breaker value → zero margin → charging blocked, exactly like a dead meter.
-  Source priority is UDP > Home Assistant mirror > fail-safe.
+The law therefore never publishes a dead value and never hides the charger's own contribution:
 
-Validated in production on 17 Aug 2026: two real load steps (A/C unit, pool
-pump) absorbed in smooth modulation, held plateaus below the vehicle's
-setpoint, autonomous recovery at ~1 A / 30 s, **zero contactor events**.
+| Regime | Published value |
+|---|---|
+| Below the constraint | The shifted reality itself: worst phase + bias + (limit - budget). Gain 1, zero delay, correlation is perfect by construction. |
+| Above the constraint | limit + clamp(gain x excess, 0.1, max excursion): a bounded slope whose height above the limit is itself the measured "come down" signal. |
+| Leaving the constraint | An additive tail decaying at 0.15 A/s (variant B) stops the charger from being invited to climb back immediately, killing the limit-cycle oscillation. Deltas still pass at gain 1 in both directions. |
+| Always | A +/-0.05 A dither, including in fail-safe, so the charger never sees a static reading. |
 
-The design also stands on documented **negative results**: an estimator-based
-"signal synthesizer" was implemented, tested over several nights, fixed six
-times, and abandoned - every internal state added had created its own bug.
-See [`docs/60_ETUDE_SYNTHETISEUR.md`](docs/60_ETUDE_SYNTHETISEUR.md)
-(French) and the summary in [`docs/BEHAVIOR.md`](docs/BEHAVIOR.md).
+The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on a French 15 kVA three-phase contract, the house-plus-car worst phase converges to ~19.5 A of the 21.7 A available.
 
-## Hardware (reference installation, France)
+### Protection layers, from fastest to last resort
 
-No Tesla imagery is used - wiring is documented with original text diagrams
-in [`docs/10_MATERIEL.md`](docs/10_MATERIEL.md).
-
-| Role | Hardware | Notes |
+| Layer | Lives in | Reaction |
 |---|---|---|
-| Utility meter | **Linky** (three-phase, TIC *standard* mode, 9600 bd 7E1) | per-phase currents and apparent powers at ~1 Hz |
-| Meter node | **Olimex ESP32-POE** + **Hallard "WeMos TeleInfo" hat** | TIC opto-isolated input on GPIO36; Ethernet (LAN8720) |
-| Charger node | **Kincony KC868-A6** (ESP32) | RS485 transceiver MAX13487E (auto-direction), TX GPIO27 / RX GPIO14 - the validated reference board; other boards per [`docs/20_FIRMWARE.md`](docs/20_FIRMWARE.md) §2.9 |
-| Wallbox | **Tesla Wall Connector Gen 3**, firmware ≥ 26.18 | internal RS485 terminal behind the faceplate; Modbus RTU 115200 8N1 |
-| Link | CAT5e, one twisted pair + ground | no 120 Ω termination needed on short runs (validated) |
+| Publication law (car yields) | charger node | seconds |
+| Anti-glitch firewall (R1 floor at 6 A while the contactor is closed, R2 two-sample confirmation of sudden drops) | charger node | instantaneous |
+| Escalation (sustained zero availability publishes limit + 0.1 as a stop order) | charger node | 120 s |
+| STOP switch (immediate stop order, no ramp) | charger node | immediate |
+| Pause lever (bias) driven by the house-side shedding logic | HA layer | 45 s observation window, then ~2 min |
+| Appliance shedding, alerts, utility-meter overload signal (STGE) | HA layer | minutes |
+| Fail-safe (no healthy measurement source: report full consumption, dithered) | charger node | 5 s freshness window |
 
-Other countries: the meter side is pluggable. Any device that ships the six
-quantities over the UDP contract is a valid provider - DSMR 5 (NL/BE), SML
-(DE/AT, with caveats), universal CT clamps as fallback. Eligibility gate:
-per-phase currents at **~1 Hz**. Matrix and provider recipe:
-[`docs/15_FOURNISSEURS_MESURE.md`](docs/15_FOURNISSEURS_MESURE.md).
+## Technical prerequisites
 
-> ## ⚠️ Electrical safety
->
-> Wiring the charger node means opening the Wall Connector's faceplate: the
-> RS485 terminal sits **next to live 230 V parts**. Switch off the wallbox's
-> dedicated breaker before opening it, and the meter-side breaker before any
-> work near the service entrance. If you are not comfortable working inside
-> an electrical panel, have a qualified electrician do the wiring. You use
-> this project **at your own risk**; misconfiguration can defeat load
-> management entirely (see the commissioning guide's pitfall list).
+**Hardware (pilot bill of materials, France):**
 
-## Installation - two channels, one version
+- Tesla Wall Connector Gen 3, firmware 26.18 (the calibration reference; **freeze the charger's firmware updates**, e.g. by blocking its WAN access, see the runbook).
+- Charger side: a Kincony KC868-A6 (or any ESP32 with an RS485 transceiver) wired to the wall connector's RS485 terminals.
+- Meter side: an Olimex ESP32-POE with a TIC receiver hat (Hallard design) on the Linky's I1/I2 terminals. Any board with a serial input works.
+- Twisted pair for RS485 (shielded 1.5 mm2 recommended by Tesla, 120 m max; short unterminated runs are fine in practice).
 
-LoadPilot ships through two channels that are **released in lockstep** (one
-SemVer tag for the whole repo):
+**Software:**
 
-1. **The integration** - installed via HACS (custom repository, category
-   *Integration*), configured through a config flow.
-2. **The firmware** - consumed as ESPHome *remote packages* from this same
-   repository, **always pinned to a release tag**:
+- Home Assistant >= 2025.12, ESPHome >= 2025.2 (encrypted `packet_transport`).
+- The two firmware packages from [`esphome/packages/`](esphome/packages/) (charger core + a meter provider; France TIC is production-proven, DSMR/SML/CT-clamp providers are skeletons).
+- Commissioning through the Tesla app or Tesla One: on firmware >= 26.2 the external-meter menu is gated behind installer credentials, with a documented workaround (generic Tesla account, "Tesla device settings"), see [docs/INSTALL_FR.md](docs/INSTALL_FR.md).
 
-```yaml
-# your charger-node YAML in the ESPHome dashboard
-packages:
-  loadpilot:
-    url: https://github.com/zany92/tesla-loadpilot   # TODO-sync: final owner
-    files:
-      - esphome/packages/twc-core.yaml
-      - esphome/packages/boards/kc868-a6.yaml
-    ref: v0.1.0          # ALWAYS a tag, never main
-```
+## Configuration
 
-The integration compares the firmware's reported package version with its
-own and raises a Home Assistant *Repair* on mismatch (it never blocks
-regulation).
+Everything user-facing happens in two places:
 
-**France, step by step**: the complete installation guide (TIC wiring,
-ESPHome flashing with `secrets.yaml`, Tesla One commissioning, first tests
-in shadow mode) is in [`docs/INSTALL_FR.md`](docs/INSTALL_FR.md) (French).
+1. **The config flow** (5 steps): country profile (France TIC first), the two ESPHome node names (validated against your entity registry), electrical settings (phases, contract presets for the French 6 to 36 kVA subscriptions or a custom per-phase limit, safety buffer with its plain-language meaning: 10 % buffer = the car exploits 90 % of what the house leaves), the six mirror entities for the fallback path, and a confirmation screen showing the computed budget.
+2. **Runtime tunables**, resident on the charger node (they survive HA outages and reboots with safe defaults):
 
-## Compatibility
+| Knob | Default | Safe range | Notes |
+|---|---|---|---|
+| Buffer | 10 % | 0-30 % | Shifts the equilibrium below the contract. |
+| Law echo gain | 0.5 | **never below ~0.5** | Below that floor the charger's own ramps are diluted in the published signal and the plausibility layer rejects the meter (measured the hard way). |
+| Law max excursion | 1.0 A | 0.8-1.0 A | The charger has a dead band up to ~limit + 0.9: lower caps cost integral without effect. |
+| Tail (variant B) | 0 (inert) | 0-2.5 A | Anti-oscillation; enable deliberately, closed-loop validation pending. |
+| Bias | 0 | 0-16 A | The pause lever; driven by the HA shedding logic, manual mode available. |
+| STOP switch | off | | Immediate stop order. |
+| Meter-absent switch | off | | Test switch: silences the Modbus server entirely (the charger falls back to its documented 6 A cap). |
 
-| Component | Minimum | Why |
-|---|---|---|
-| Home Assistant | 2025.12 | current config-entry & Repairs APIs |
-| ESPHome (both nodes) | 2025.2 | `udp` + `packet_transport` with XXTEA encryption & rolling code |
-| TWC Gen 3 firmware | 26.18 (calibration reference) | the entire measured law; **re-calibration required if the wallbox firmware changes** |
-| Charger board | Kincony KC868-A6 (validated) | others per matrix in `docs/20_FIRMWARE.md` §2.9 |
+3. **Entity mapping** (options flow, advanced): if your charger node predates the generic package and uses different entity names, map each of the 21 tracked entities explicitly; keys can also be declared absent. This is how the pilot site itself runs.
 
-`0.x` versioning until the PVi1 attribution agreement is settled and at
-least one non-reference installation validates.
+## Observations from the pilot
 
-## Credits & prior art
+The project's real asset is the measured behavior model of the wall connector, assembled from ~5 days of instrumented episodes and cross-checked against every community source we could find. Highlights:
 
-- **[PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control)** -
-  the founding prior art: the idea of emulating the Neurio meter in ESPHome,
-  the Modbus register structure, the "publish slightly above the limit to
-  force a stop" escalation technique, and the field proof that a gain < 1
-  signal lets the wallbox modulate durably. LoadPilot is an independent
-  project, not a fork; a formal attribution agreement with PVi1 is pending
-  (see [`LICENSE.placeholder`](LICENSE.placeholder)).
-- **[LucaTNT's register-map gist](https://gist.github.com/LucaTNT/4adf01a7252386559070023612efa117)** -
-  the Neurio identity block constants used by the emulation.
-- Everything else - the RAW publication semantics, the bias/ramp lever, the
-  encrypted multi-source UDP link with fail-safe, the 66 ms deadline
-  characterisation, and the whole measured control law - is original work of
-  this project.
+- Service engages on the phase *average*, protection bites on the *worst phase* with an integral of ~20 A.s above the limit (for excursions >= 1 A; below +0.5 A the charger tolerates far more and mostly does nothing).
+- Full validated cascade, hands-off: cooking spike, continuous descent 16 to 12 A tracking the slope, pause when four ACs exceeded what the car could yield, automatic release, autonomous session resume, zero contactor cycles.
+- The distrust state is real, sticky and undocumented by Tesla: entries, non-recoveries and the working recovery protocol (power-cycle plus hours of honest signal plus a calm-house session start) are all in [docs/BEHAVIOR.md](docs/BEHAVIOR.md) section 4, with raw traces published alongside our findings on the upstream project's issue tracker.
+- Incident signatures and operator responses are catalogued in [docs/RUNBOOK_INCIDENTS.md](docs/RUNBOOK_INCIDENTS.md).
 
-## Roadmap & contributing
+## Known limitations, honestly
 
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) - France → other countries, other
-  boards, BLE, richer UI.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) - how to help (testers with non-French
-  meters and untested Kincony boards especially welcome). Bug reports
-  **must** include the TWC firmware version.
-- [`SECURITY.md`](SECURITY.md) - no secrets in this repo, ever; how to
-  report a vulnerability.
+- **One pilot site, one firmware.** Everything is calibrated against TWC fw 26.18 on a French three-phase installation. The constants (dead band, integral, floors) may drift with Tesla updates; freeze your charger's firmware.
+- **The distrust layer is the structural risk.** Our law is designed to never trigger it, and the entry points we found are closed (impossible values, absorbed ramps, static fail-safe), but Tesla hardens this layer version after version and could close the commissioning workaround entirely.
+- **Variant B (anti-oscillation tail) is designed and shipped but inert**: closed-loop validation is the next scheduled test. With the tail off, a house load hovering exactly at the budget can produce a +/-2.5 A limit cycle that ends in a protective cut.
+- **HA 2026.8 ignores `suggested_object_id`**: derived sensors may be created with translated ids on non-English instances; rename them once in the registry (documented in the release notes; a proper fix is being investigated).
+- **Licensing is not settled.** The publication law grew from the fundamentals of [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control) (no license file); a licensing and attribution conversation with the author is in progress and nothing derived is published. This repo stays private until that is resolved.
+- Remaining physical tests: TIC watchdog unplug test, meter-absent 6 A fallback test, from-scratch install campaign ([docs/TESTPLAN.md](docs/TESTPLAN.md)).
 
-## License
+## Repository map
 
-**TBD.** MIT is the intent, but no license is granted until the attribution
-agreement with PVi1 is settled - see
-[`LICENSE.placeholder`](LICENSE.placeholder). Until a LICENSE file exists,
-all rights are reserved.
+| Path | Content |
+|---|---|
+| `custom_components/loadpilot/` | The Home Assistant integration (config flow, coordinator, sensors, repairs, services, diagnostics, EN/FR). |
+| `esphome/packages/` | The generic firmware: charger core (publication law) and meter providers. |
+| `esphome/examples/` | Ready-to-adapt node files (three-phase, single-phase, meter node). |
+| `dashboards/` | Lovelace cards (user face: one switch + live info; settings face). |
+| `docs/BEHAVIOR.md` | The measured TWC Gen 3 behavior model. Start here if you want the science. |
+| `docs/INSTALL_FR.md` | Full installation guide (French). |
+| `docs/RUNBOOK_INCIDENTS.md` | Operator playbook. |
+| `docs/TESTPLAN.md` | Validation campaign and GO/NO-GO criteria. |
+| `docs/DESIGN_*.md` | Design studies, including the negative results that shaped the law. |
+
+## Credits
+
+Built on the shoulders of [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control) (correlation doctrine, Neurio emulation groundwork) and the community reverse-engineering work in the Home Assistant forum and TWCManager threads. Not affiliated with, endorsed by, or supported by Tesla, Inc. Use at your own risk: this project deliberately interacts with electrical safety equipment; read the limits section twice.

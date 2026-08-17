@@ -1,0 +1,64 @@
+# CI validation for Tesla LoadPilot.
+# Three independent jobs: hassfest (Home Assistant manifest rules),
+# HACS validation (repository structure for the integration category),
+# and a lightweight Python/JSON sanity check with no heavy dependencies.
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run hassfest
+        uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
+          # The repository is private for now; the home-assistant/brands PR
+          # will be opened at publication time. Until then the brands check
+          # cannot pass and is deliberately ignored.
+          ignore: brands
+
+  python:
+    name: Python syntax and JSON
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Byte-compile the integration (py_compile)
+        run: python -m compileall -q -f custom_components/loadpilot
+      - name: Validate JSON files (json.load)
+        run: |
+          python - <<'EOF'
+          import json
+
+          files = [
+              "hacs.json",
+              "custom_components/loadpilot/manifest.json",
+              "custom_components/loadpilot/translations/en.json",
+              "custom_components/loadpilot/translations/fr.json",
+          ]
+          for path in files:
+              with open(path, encoding="utf-8") as handle:
+                  json.load(handle)
+              print(f"OK {path}")
+          EOF
