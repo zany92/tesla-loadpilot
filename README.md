@@ -10,7 +10,7 @@
 
 ## The problem
 
-A home EV charger on a fixed utility contract is a race condition: the oven starts while the car charges at full amps and the main breaker (or the utility's smart meter) cuts the whole house. The official answer is Tesla's Dynamic Power Management, which requires a Tesla-sold meter (Neurio W2 / Remote Meter, expensive and increasingly gated behind installer accounts) and only speaks Tesla. Cloud-based load managers need each vehicle's API, which excludes guests and other brands.
+A home EV charger on a fixed utility contract is a race condition: the oven starts while the car charges at full amps and the main breaker (or the utility's smart meter) cuts the whole house. The official answer is Tesla's Dynamic Power Management, which requires a Tesla-sold meter (Neurio W2 / Remote Meter, expensive and increasingly gated behind installer accounts) and only speaks Tesla. Chargers with an open control interface (OCPP and friends) solve this by steering the charger itself, but the TWC Gen 3 exposes no control API at all: existing load managers can only fall back on each vehicle's cloud API (Tesla Fleet and the like), which excludes guests and other brands.
 
 LoadPilot takes a third path: **emulate the Tesla meter** on the charger's own RS485 bus, and feed it a carefully shaped version of the measurements your utility meter already produces. The wall connector then does what its firmware was built to do (modulate the pilot signal to the car) but against your real house consumption. The vehicle is irrelevant: any car that speaks J1772/Type 2 obeys, because it is the charger being steered, not the car.
 
