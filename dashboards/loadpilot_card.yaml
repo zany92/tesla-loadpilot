@@ -1,0 +1,235 @@
+# Tesla LoadPilot — the everyday card ("two faces" design, face B: daily use)
+# ---------------------------------------------------------------------------
+# Generalised from the pilot site's "Charger" page (docs/50_COUCHE_HA.md).
+# ONE master switch (with confirmation both ways), status chips, alerts that
+# only appear when relevant, settings folded at the bottom.
+#
+# HOW TO USE
+#   * Paste as a manual card (or include from a dashboard).
+#   * Entity ids assume the default node names (loadpilot-twc / loadpilot
+#     integration). If you renamed your nodes, search & replace
+#     "loadpilot_twc" accordingly.
+#   * Single-phase installs: nothing to change here (worst phase = L1).
+#   * SECTION 1 uses ONLY Home Assistant core cards (no HACS dependency).
+#   * SECTION 2 (bottom, commented) is an OPTIONAL Mushroom variant. If you
+#     enable it, note that EVERY action (tap/hold/double_tap/icon_tap) is
+#     defined explicitly — Mushroom's default icon_tap_action is "toggle"
+#     even when tap_action is "none", which WILL toggle your entity from an
+#     accidental icon touch. Keep all four actions defined. Always.
+#
+# This project is not affiliated with, endorsed by, or sponsored by Tesla, Inc.
+# ---------------------------------------------------------------------------
+
+# ============================ SECTION 1 — CORE ============================
+type: vertical-stack
+cards:
+  # --- Master switch: THE one control. Confirmation in both directions. ---
+  - type: tile
+    entity: switch.loadpilot_twc_control_enabled
+    name: Charge regulation
+    icon: mdi:car-speed-limiter
+    color: green
+    tap_action:
+      action: toggle
+      confirmation:
+        text: >-
+          Toggle charge regulation? When OFF, the wall connector returns to
+          factory behaviour at FULL power — your electricity contract is no
+          longer protected.
+    icon_tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+
+  # --- Alert banners: visible ONLY when something needs attention. --------
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: switch.loadpilot_twc_control_enabled
+        state: "off"
+    card:
+      type: markdown
+      content: >-
+        ⚠️ **Regulation OFF** — charger at full power, contract not
+        protected.
+
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: binary_sensor.loadpilot_twc_escalation_active
+        state: "on"
+    card:
+      type: markdown
+      content: >-
+        🛑 **Sustained overload — clean stop in progress.** The house has
+        been over budget for 2 minutes; charging is being stopped safely.
+
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.loadpilot_twc_source_active
+        state: "HA"
+    card:
+      type: markdown
+      content: >-
+        🟠 **Running on Home Assistant backup** (direct meter link down —
+        degraded responsiveness). Check the meter node.
+
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.loadpilot_twc_source_active
+        state: "FAILSAFE"
+    card:
+      type: markdown
+      content: >-
+        ⛔ **No measurement — charging blocked for safety.** Neither the
+        meter link nor the Home Assistant backup is available. Your
+        contract can never be exceeded.
+
+  # --- Status chips: state / headroom / what the charger is told. ---------
+  - type: entities
+    show_header_toggle: false
+    entities:
+      - entity: sensor.loadpilot_state
+        name: Status
+        icon: mdi:shield-check
+      - entity: sensor.loadpilot_worst_phase
+        name: Busiest phase
+        icon: mdi:scale-balance
+      - entity: sensor.loadpilot_headroom_l1
+        name: Headroom L1
+        icon: mdi:gauge
+      # 3-phase installs — harmless on single-phase (L2/L3 stay at budget):
+      - entity: sensor.loadpilot_headroom_l2
+        name: Headroom L2
+        icon: mdi:gauge
+      - entity: sensor.loadpilot_headroom_l3
+        name: Headroom L3
+        icon: mdi:gauge
+      # Honest label: this is the setpoint PUBLISHED to the charger, not a
+      # vehicle-side measurement (see UX_COPY.md §Demandes, item 1).
+      - entity: sensor.loadpilot_twc_published_current_l1
+        name: Published to charger
+        icon: mdi:ev-station
+      # OPTIONAL — plug YOUR OWN vehicle state-of-charge entity here
+      # (no vehicle API ships with LoadPilot v0):
+      # - entity: sensor.my_car_battery_level
+      #   name: Vehicle charge
+      #   icon: mdi:battery-charging-70
+
+  # --- Pause banner + resume: only while a pause (full bias) is applied. --
+  # NOTE: "paused" is inferred from bias_applied >= 15 A (no explicit
+  # paused state in v0 — see UX_COPY.md §Demandes, item 2).
+  - type: conditional
+    conditions:
+      - condition: numeric_state
+        entity: sensor.loadpilot_twc_bias_applied
+        above: 14.9
+    card:
+      type: vertical-stack
+      cards:
+        - type: markdown
+          content: >-
+            ⏸️ **Charging paused (load-shedding).** The vehicle was stopped
+            cleanly; the house keeps the full budget.
+        - type: button
+          name: Resume charging
+          icon: mdi:play-circle-outline
+          show_state: false
+          tap_action:
+            action: perform-action
+            perform_action: loadpilot.resume
+            confirmation:
+              text: Resume vehicle charging?
+          hold_action:
+            action: none
+          double_tap_action:
+            action: none
+
+  # --- Pause button: only when no pause is applied and regulation is on. --
+  - type: conditional
+    conditions:
+      - condition: numeric_state
+        entity: sensor.loadpilot_twc_bias_applied
+        below: 1
+      - condition: state
+        entity: switch.loadpilot_twc_control_enabled
+        state: "on"
+    card:
+      type: button
+      name: Pause charging
+      icon: mdi:pause-circle-outline
+      show_state: false
+      tap_action:
+        action: perform-action
+        perform_action: loadpilot.pause
+        confirmation:
+          text: >-
+            Pause vehicle charging? It stops cleanly in about 2 minutes,
+            without any vehicle error.
+      hold_action:
+        action: none
+      double_tap_action:
+        action: none
+
+  # --- Settings: visible but discreet — touched twice a year. -------------
+  - type: entities
+    title: Settings
+    show_header_toggle: false
+    entities:
+      - entity: number.loadpilot_twc_contract_limit
+        name: Contract limit (A per phase)
+        icon: mdi:file-sign
+      - entity: number.loadpilot_twc_buffer_pct
+        name: Safety buffer (%)
+        icon: mdi:shield-half-full
+      - entity: number.loadpilot_twc_bias_target
+        name: Slowdown target (bias, A)
+        icon: mdi:car-speed-limiter
+      - entity: sensor.loadpilot_twc_bias_applied
+        name: Slowdown applied
+        icon: mdi:speedometer-slow
+
+# ======================= SECTION 2 — MUSHROOM (BONUS) ======================
+# OPTIONAL variant of the master switch + chips using Mushroom (HACS).
+# Not required by anything. If you use it: ALL FOUR actions are defined on
+# EVERY card below — never remove them. Mushroom's implicit default for
+# icon_tap_action is "toggle" even with tap_action: none; an accidental
+# icon touch then flips the entity (this exact trap once triggered a real
+# alarm siren on the pilot site).
+#
+# - type: custom:mushroom-entity-card
+#   entity: switch.loadpilot_twc_control_enabled
+#   name: Charge regulation
+#   icon: mdi:car-speed-limiter
+#   tap_action:
+#     action: toggle
+#     confirmation:
+#       text: >-
+#         Toggle charge regulation? OFF = charger at factory FULL power,
+#         contract not protected.
+#   hold_action:
+#     action: more-info
+#   double_tap_action:
+#     action: none
+#   icon_tap_action:
+#     action: more-info
+#
+# - type: custom:mushroom-template-card
+#   primary: Headroom
+#   secondary: >-
+#     {{ states('sensor.loadpilot_headroom_l1') }} A
+#     (worst: {{ states('sensor.loadpilot_worst_phase') }})
+#   icon: mdi:gauge
+#   icon_color: >-
+#     {% set h = states('sensor.loadpilot_headroom_l1') | float(0) %}
+#     {{ 'red' if h < 2 else 'orange' if h < 5 else 'green' }}
+#   tap_action:
+#     action: more-info
+#   hold_action:
+#     action: none
+#   double_tap_action:
+#     action: none
+#   icon_tap_action:
+#     action: none

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: New meter provider / new board / new country
+    url: https://github.com/OWNER_TBD/tesla-loadpilot/blob/main/CONTRIBUTING.md
+    about: >
+      Read the provider recipe (docs/15_FOURNISSEURS_MESURE.md §4) and the board
+      porting rules (docs/20_FIRMWARE.md §2.9) first, then open a regular issue
+      with your measurements. TWC firmware version mandatory.
+  - name: Security issue
+    url: https://github.com/OWNER_TBD/tesla-loadpilot/security/advisories/new
+    about: Never report security findings in a public issue — see SECURITY.md.

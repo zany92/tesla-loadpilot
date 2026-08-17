@@ -1,0 +1,82 @@
+name: Bug report
+description: Report a problem with LoadPilot (integration, firmware, or regulation behaviour)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. LoadPilot is measurement-driven: the whole behaviour
+        model is calibrated against a specific Tesla Wall Connector firmware, so the
+        fields below are not bureaucracy — without them your report cannot be
+        interpreted. **Never paste secrets** (WiFi credentials, API/OTA/UDP keys) or
+        precise home-location data.
+  - type: input
+    id: twc_fw
+    attributes:
+      label: TWC firmware version (MANDATORY)
+      description: >
+        From the wallbox — Tesla One, the local API (/api/1/version), or the
+        tesla_wall_connector integration. Reports without it will be sent back.
+      placeholder: "e.g. 26.18"
+    validations:
+      required: true
+  - type: input
+    id: loadpilot_version
+    attributes:
+      label: LoadPilot version (release tag)
+      description: The tag installed via HACS / pinned in your ESPHome `ref:` (they should match).
+      placeholder: "e.g. v0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Regulation behaviour (wallbox side)
+        - Meter provider / UDP link
+        - HA integration (config flow, sensors, services)
+        - Dashboard
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: board
+    attributes:
+      label: Charger board
+      placeholder: "e.g. Kincony KC868-A6"
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Meter provider and country
+      placeholder: "e.g. Linky TIC standard (FR) / DSMR5 (NL) / Shelly Pro 3EM"
+    validations:
+      required: true
+  - type: input
+    id: phases
+    attributes:
+      label: Phase topology and contract limit
+      placeholder: "e.g. 3-phase, 21 A per phase (15 kVA)"
+    validations:
+      required: true
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened, and what did you expect?
+      description: >
+        For regulation issues, include the observability sensors around the event:
+        source_active, poll interval, published vs measured currents per phase,
+        applied bias, escalation state — and the contactor lifetime cycle counter
+        before/after. If charging stopped and never restarted, check evse_state for
+        the value 9 (vehicle give-up — see docs/BEHAVIOR.md §4) before concluding
+        the wallbox is at fault.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / traces (secrets stripped)
+      description: ESPHome logs (never VERBOSE on the charger node), HA logs, vitals samples.
+      render: text

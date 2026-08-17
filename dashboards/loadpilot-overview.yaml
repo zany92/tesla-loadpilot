@@ -1,0 +1,314 @@
+# Tesla LoadPilot — ready-to-import Lovelace VIEW (contract §1.2 deliverable)
+# ---------------------------------------------------------------------------
+# Home Assistant CORE cards only — zero HACS dependency.
+#
+# HOW TO IMPORT
+#   Dashboard → edit → Raw configuration editor → add this view under
+#   "views:", or create a new dashboard and paste the view body.
+#   Entity ids assume the default node names (loadpilot-twc /
+#   loadpilot-meter). If you renamed your nodes, search & replace.
+#
+# SINGLE-PHASE INSTALLS
+#   Blocks marked "# 3-phase only" can be deleted (L2/L3 are published at 0
+#   by contract, they just show empty/zero rows if kept).
+#
+# GAUGES
+#   Gauge maxima are set for a 20 A/phase contract (12 kVA three-phase in
+#   France). Set "max" to YOUR contract limit per phase, and the severity
+#   thresholds to roughly 10% / 25% of it.
+#
+# This project is not affiliated with, endorsed by, or sponsored by Tesla, Inc.
+# ---------------------------------------------------------------------------
+
+title: LoadPilot
+path: loadpilot
+icon: mdi:ev-station
+cards:
+
+  # ===== 1. Master card — the everyday face (see loadpilot_card.yaml) =====
+  - type: vertical-stack
+    cards:
+      - type: tile
+        entity: switch.loadpilot_twc_control_enabled
+        name: Charge regulation
+        icon: mdi:car-speed-limiter
+        color: green
+        tap_action:
+          action: toggle
+          confirmation:
+            text: >-
+              Toggle charge regulation? When OFF, the wall connector returns
+              to factory behaviour at FULL power — your electricity contract
+              is no longer protected.
+        icon_tap_action:
+          action: more-info
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: sensor.loadpilot_state
+        name: Status
+        icon: mdi:shield-check
+        tap_action:
+          action: more-info
+        icon_tap_action:
+          action: more-info
+
+  # ===== 2. Alerts — appear only when relevant ============================
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: switch.loadpilot_twc_control_enabled
+        state: "off"
+    card:
+      type: markdown
+      content: >-
+        ⚠️ **Regulation OFF** — charger at full power, contract not
+        protected.
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: binary_sensor.loadpilot_twc_escalation_active
+        state: "on"
+    card:
+      type: markdown
+      content: >-
+        🛑 **Sustained overload — clean stop in progress** (budget exceeded
+        for 2 minutes; charging is being stopped safely).
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.loadpilot_twc_source_active
+        state: "HA"
+    card:
+      type: markdown
+      content: >-
+        🟠 **Running on Home Assistant backup** — direct meter link down,
+        degraded responsiveness. Check the meter node.
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.loadpilot_twc_source_active
+        state: "FAILSAFE"
+    card:
+      type: markdown
+      content: >-
+        ⛔ **No measurement — charging blocked for safety.** Your contract
+        can never be exceeded.
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: binary_sensor.loadpilot_meter_overload
+        state: "on"
+    card:
+      type: markdown
+      content: >-
+        🔴 **The utility meter itself reports an overload in progress.**
+        LoadPilot is shedding the vehicle first.
+
+  # ===== 3. Headroom per phase ============================================
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.loadpilot_headroom_l1
+        name: Headroom L1
+        unit: A
+        min: 0
+        max: 20          # <-- set to YOUR contract limit (A per phase)
+        severity:
+          red: 0
+          yellow: 2      # ~10% of the limit
+          green: 5       # ~25% of the limit
+      # 3-phase only ----------------------------------------------------
+      - type: gauge
+        entity: sensor.loadpilot_headroom_l2
+        name: Headroom L2
+        unit: A
+        min: 0
+        max: 20
+        severity:
+          red: 0
+          yellow: 2
+          green: 5
+      - type: gauge
+        entity: sensor.loadpilot_headroom_l3
+        name: Headroom L3
+        unit: A
+        min: 0
+        max: 20
+        severity:
+          red: 0
+          yellow: 2
+          green: 5
+      # end 3-phase only ------------------------------------------------
+
+  # ===== 4. Published vs measured, per phase ==============================
+  - type: entities
+    title: Published vs measured
+    show_header_toggle: false
+    entities:
+      - entity: sensor.loadpilot_worst_phase
+        name: Busiest phase
+        icon: mdi:scale-balance
+      - type: section
+        label: Phase 1
+      - entity: sensor.loadpilot_twc_published_current_l1
+        name: Published to charger (setpoint)
+        icon: mdi:ev-station
+      - entity: sensor.loadpilot_twc_real_current_l1
+        name: House measured (active source)
+        icon: mdi:home-lightning-bolt
+      - entity: sensor.loadpilot_twc_real_power_l1
+        name: House power
+        icon: mdi:flash
+      # 3-phase only ----------------------------------------------------
+      - type: section
+        label: Phase 2
+      - entity: sensor.loadpilot_twc_published_current_l2
+        name: Published to charger (setpoint)
+        icon: mdi:ev-station
+      - entity: sensor.loadpilot_twc_real_current_l2
+        name: House measured (active source)
+        icon: mdi:home-lightning-bolt
+      - entity: sensor.loadpilot_twc_real_power_l2
+        name: House power
+        icon: mdi:flash
+      - type: section
+        label: Phase 3
+      - entity: sensor.loadpilot_twc_published_current_l3
+        name: Published to charger (setpoint)
+        icon: mdi:ev-station
+      - entity: sensor.loadpilot_twc_real_current_l3
+        name: House measured (active source)
+        icon: mdi:home-lightning-bolt
+      - entity: sensor.loadpilot_twc_real_power_l3
+        name: House power
+        icon: mdi:flash
+      # end 3-phase only ------------------------------------------------
+
+  # ===== 5. Last 24 h =====================================================
+  - type: history-graph
+    title: Published vs measured — 24 h
+    hours_to_show: 24
+    entities:
+      - entity: sensor.loadpilot_twc_published_current_l1
+        name: Published L1
+      - entity: sensor.loadpilot_twc_real_current_l1
+        name: Measured L1
+      # 3-phase only ----------------------------------------------------
+      - entity: sensor.loadpilot_twc_published_current_l2
+        name: Published L2
+      - entity: sensor.loadpilot_twc_real_current_l2
+        name: Measured L2
+      - entity: sensor.loadpilot_twc_published_current_l3
+        name: Published L3
+      - entity: sensor.loadpilot_twc_real_current_l3
+        name: Measured L3
+      # end 3-phase only ------------------------------------------------
+
+  # ===== 6. Pause / resume ================================================
+  # "Paused" is inferred from bias_applied >= 15 A (no explicit paused
+  # state in v0 — see UX_COPY.md §Demandes, item 2).
+  - type: conditional
+    conditions:
+      - condition: numeric_state
+        entity: sensor.loadpilot_twc_bias_applied
+        above: 14.9
+    card:
+      type: vertical-stack
+      cards:
+        - type: markdown
+          content: >-
+            ⏸️ **Charging paused (load-shedding).** The vehicle was stopped
+            cleanly; the house keeps the full budget.
+        - type: button
+          name: Resume charging
+          icon: mdi:play-circle-outline
+          tap_action:
+            action: perform-action
+            perform_action: loadpilot.resume
+            confirmation:
+              text: Resume vehicle charging?
+          hold_action:
+            action: none
+          double_tap_action:
+            action: none
+  - type: conditional
+    conditions:
+      - condition: numeric_state
+        entity: sensor.loadpilot_twc_bias_applied
+        below: 1
+      - condition: state
+        entity: switch.loadpilot_twc_control_enabled
+        state: "on"
+    card:
+      type: button
+      name: Pause charging
+      icon: mdi:pause-circle-outline
+      tap_action:
+        action: perform-action
+        perform_action: loadpilot.pause
+        confirmation:
+          text: >-
+            Pause vehicle charging? It stops cleanly in about 2 minutes,
+            without any vehicle error.
+      hold_action:
+        action: none
+      double_tap_action:
+        action: none
+
+  # ===== 7. Settings ======================================================
+  - type: entities
+    title: Settings
+    show_header_toggle: false
+    entities:
+      - entity: number.loadpilot_twc_contract_limit
+        name: Contract limit (A per phase)
+        icon: mdi:file-sign
+      - entity: number.loadpilot_twc_buffer_pct
+        name: Safety buffer (%)
+        icon: mdi:shield-half-full
+      - entity: number.loadpilot_twc_bias_target
+        name: Slowdown target (bias, A)
+        icon: mdi:car-speed-limiter
+      - entity: sensor.loadpilot_twc_bias_applied
+        name: Slowdown applied
+        icon: mdi:speedometer-slow
+
+  # ===== 8. Diagnostics — for the curious and for support =================
+  - type: entities
+    title: Diagnostics
+    show_header_toggle: false
+    entities:
+      - entity: sensor.loadpilot_twc_source_active
+        name: Active measurement source
+        icon: mdi:source-branch
+      - entity: sensor.loadpilot_twc_udp_age
+        name: Age of last meter packet
+        icon: mdi:timer-sand
+      - entity: binary_sensor.loadpilot_twc_udp_fresh
+        name: Direct meter link fresh (< 5 s)
+        icon: mdi:lan-connect
+      - entity: binary_sensor.loadpilot_twc_polling_active
+        name: Charger polling (Modbus)
+        icon: mdi:swap-horizontal
+      - entity: sensor.loadpilot_twc_poll_interval
+        name: Poll interval (~190–200 ms expected)
+        icon: mdi:timer-outline
+      - entity: binary_sensor.loadpilot_twc_escalation_active
+        name: Escalation active (clean stop)
+        icon: mdi:alert-octagon-outline
+      - entity: sensor.loadpilot_twc_fw_version
+        name: Firmware version
+        icon: mdi:chip
+      # Throttled meter-node copies (recorder-friendly history):
+      - entity: sensor.loadpilot_meter_current_l1
+        name: Meter current L1
+        icon: mdi:counter
+      # 3-phase only ----------------------------------------------------
+      - entity: sensor.loadpilot_meter_current_l2
+        name: Meter current L2
+        icon: mdi:counter
+      - entity: sensor.loadpilot_meter_current_l3
+        name: Meter current L3
+        icon: mdi:counter
+      # end 3-phase only ------------------------------------------------

@@ -1,0 +1,1134 @@
+# =============================================================================
+# Tesla LoadPilot — twc-core.yaml (board-agnostic charger-node core)
+#
+# Extracted from the production-validated "PVi1-GRADE (17/08/2026)" block.
+# The control law is FIRMWARE: it needs neither Home Assistant nor any cloud
+# (ARCHITECTURE.md D2). This package contains everything that regulates and
+# protects; boards/<board>.yaml adds pins/network only.
+#
+# Law (measured, docs/40_LOI_DE_COMMANDE.md — do NOT "improve" it):
+#   avail_p = clamp(contract_limit × (1 − buffer%) − bias − measure_p, 0, L)
+#   pub     = L − min(avail_1..3)          (identical on the 3 CT channels)
+#   escalation: 120 s at zero avail → publish L + 0.1 (clean forced stop)
+#   fail-safe: no healthy source → publish main_breaker (margin 0, charge
+#   blocked) — also the boot state. Source priority: UDP > HA mirror > failsafe.
+#
+# Attribution: core inspiration PVi1 (github.com/PVi1/esphome-twc-control);
+# Neurio/Generac register map: gist by LucaTNT.
+# This project is not affiliated with, endorsed by, or sponsored by Tesla, Inc.
+#
+# KNOWN TRAP (measured): NEVER set `logger: level: VERBOSE` on this node.
+# Blocking per-frame modbus logs delay the Modbus reply past the TWC ~66 ms
+# retry deadline -> self-sustained retry storm, zero replies emitted.
+# Default DEBUG is silent per frame and safe.
+# =============================================================================
+substitutions:
+  node_name: loadpilot-twc
+  friendly_name: LoadPilot TWC
+  # Name of the meter-provider ESPHome node (packet_transport provider name).
+  meter_node_name: loadpilot-meter
+  # Package version — MUST match the release tag (skew detection in HA).
+  loadpilot_fw_version: "0.1.0"
+
+  # --- Electrical limits (THREE different limits, do not confuse) -----------
+  # Max Conductor Limit as configured in the Tesla One installer menu (A).
+  # The whole calibration (docs/40_LOI_DE_COMMANDE.md) was measured at 21 A.
+  twc_conductor_limit_a: "21"
+  # Service breaker per phase (A) — fail-safe publication value.
+  main_breaker_limit_a: "25"
+  # Default grid-contract limit per phase (A) — runtime-adjustable via the
+  # "Contract Limit" number (node-resident, flash-restored).
+  contract_limit_default_a: "21.7"
+  # Default safety buffer (%) — runtime-adjustable via "Buffer Pct".
+  buffer_default_pct: "10"
+  # Bias lever upper bound (A).
+  bias_max_a: "16"
+  # 1 (single-phase: B/C measures forced to 0) or 3.
+  phase_count: "3"
+
+  # --- Loop timings (measured, see docs/40_LOI_DE_COMMANDE.md §5) -----------
+  recompute_interval: 1000ms
+  escalation_timeout_ms: "120000"     # sustained zero-avail before L+0.1
+  udp_fresh_ms: "5000"                # 5 missed 1 Hz heartbeats -> HA mirror
+  ha_mirror_debounce_ms: "10000"      # HA mirror unavailability debounce
+  contactor_mirror_grace_ms: "30000"  # contactor mirror grace window
+  bias_ramp_up_a: "1.0"               # per 5 s tick, vehicle charging
+  bias_ramp_down_a: "0.5"             # per 5 s tick, vehicle charging
+
+  # --- HA mirror entities (BACKUP measure path; override per install) -------
+  ha_current_a_entity: sensor.loadpilot_meter_current_l1
+  ha_current_b_entity: sensor.loadpilot_meter_current_l2
+  ha_current_c_entity: sensor.loadpilot_meter_current_l3
+  ha_power_a_entity: sensor.loadpilot_meter_power_l1
+  ha_power_b_entity: sensor.loadpilot_meter_power_l2
+  ha_power_c_entity: sensor.loadpilot_meter_power_l3
+  # TWC contactor mirror (native tesla_wall_connector integration).
+  # Contactor OPEN -> bias target applied immediately (no ramp needed when
+  # nobody charges); mirror unavailable > grace -> keep the ramp (prudence).
+  ha_contactor_entity: binary_sensor.tesla_wall_connector_contactor_closed
+
+esphome:
+  name: ${node_name}
+  friendly_name: ${friendly_name}
+  # Two simultaneous ESPHome builds crashed the build machine (measured).
+  compile_process_limit: 1
+  project:
+    name: loadpilot.twc-core
+    version: ${loadpilot_fw_version}
+
+# Default level (DEBUG) only — see the VERBOSE trap in the header.
+logger:
+
+api:
+  encryption:
+    key: !secret loadpilot_api_key
+  # The law must keep running with HA down (D2): never reboot on API loss.
+  reboot_timeout: 0s
+  # Watchdog: without the HA link the mirrored measures cannot be trusted
+  # (the direct UDP feed is judged on its OWN freshness in recompute_ct)
+  # -> immediate source re-evaluation.
+  on_client_disconnected:
+    - lambda: |-
+        ESP_LOGW("watchdog", "API client '%s' disconnected, re-evaluating sources", client_info.c_str());
+        id(ha_api_connected) = false;
+    - script.execute: recompute_ct
+  on_client_connected:
+    - lambda: |-
+        id(ha_api_connected) = true;
+    - script.execute: recompute_ct
+
+ota:
+  - platform: esphome
+    password: !secret loadpilot_ota_password
+
+# =============================================================================
+# UDP <- meter provider. PURE RECEIVE: providers only, no ping_pong -> ESPHome
+# only creates the non-blocking listen socket (drained in loop()); this node
+# emits NOTHING, so nothing can delay the Modbus reply (< 66 ms deadline).
+# Port 18511 (default). Without ping_pong the native timeout (status/NAN) is
+# INACTIVE: freshness is judged by udp_last_ok_ms in recompute_ct.
+# =============================================================================
+udp:
+  id: udp_meter
+
+packet_transport:
+  - platform: udp
+    udp_id: udp_meter
+    providers:
+      - name: ${meter_node_name}
+        encryption: !secret loadpilot_udp_key
+
+sensor:
+  # ===========================================================================
+  # UDP measures (internal, no HA entity, zero recorder cost).
+  # publish_state fires on EVERY packet carrying the value (full 1 Hz resend
+  # + immediate increments) -> on_value doubles as the freshness heartbeat.
+  # The *_seen flags prevent init zeros from ever reaching the wallbox.
+  # ===========================================================================
+  - platform: packet_transport
+    id: udp_current_a
+    provider: ${meter_node_name}
+    remote_id: lky_ia
+    on_value:
+      then:
+        - lambda: |-
+            if (!std::isnan(x)) {
+              id(udp_a_current) = x;
+              id(udp_current_a_seen) = true;
+              id(udp_last_ok_ms) = millis();
+            }
+        - script.execute: recompute_ct
+  - platform: packet_transport
+    id: udp_current_b
+    provider: ${meter_node_name}
+    remote_id: lky_ib
+    on_value:
+      then:
+        - lambda: |-
+            if (!std::isnan(x)) {
+              id(udp_b_current) = x;
+              id(udp_current_b_seen) = true;
+              id(udp_last_ok_ms) = millis();
+            }
+        - script.execute: recompute_ct
+  - platform: packet_transport
+    id: udp_current_c
+    provider: ${meter_node_name}
+    remote_id: lky_ic
+    on_value:
+      then:
+        - lambda: |-
+            if (!std::isnan(x)) {
+              id(udp_c_current) = x;
+              id(udp_current_c_seen) = true;
+              id(udp_last_ok_ms) = millis();
+            }
+        - script.execute: recompute_ct
+  - platform: packet_transport
+    id: udp_power_a
+    provider: ${meter_node_name}
+    remote_id: lky_pa
+    on_value:
+      then:
+        - lambda: |-
+            if (!std::isnan(x)) {
+              id(udp_a_power) = x;
+              id(udp_power_a_seen) = true;
+              id(udp_last_ok_ms) = millis();
+            }
+        - script.execute: recompute_ct
+  - platform: packet_transport
+    id: udp_power_b
+    provider: ${meter_node_name}
+    remote_id: lky_pb
+    on_value:
+      then:
+        - lambda: |-
+            if (!std::isnan(x)) {
+              id(udp_b_power) = x;
+              id(udp_power_b_seen) = true;
+              id(udp_last_ok_ms) = millis();
+            }
+        - script.execute: recompute_ct
+  - platform: packet_transport
+    id: udp_power_c
+    provider: ${meter_node_name}
+    remote_id: lky_pc
+    on_value:
+      then:
+        - lambda: |-
+            if (!std::isnan(x)) {
+              id(udp_c_power) = x;
+              id(udp_power_c_seen) = true;
+              id(udp_last_ok_ms) = millis();
+            }
+        - script.execute: recompute_ct
+
+  # ===========================================================================
+  # HA mirror measures (BACKUP source since 14/08; UDP wins while fresh).
+  # The homeassistant sensor publishes NAN on unavailable/unknown -> drives
+  # the availability flags consumed by recompute_ct.
+  # ===========================================================================
+  - platform: homeassistant
+    id: ha_current_a
+    entity_id: ${ha_current_a_entity}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (std::isnan(x)) {
+              ESP_LOGW("mirror", "%s unavailable", "${ha_current_a_entity}");
+              id(ha_current_a_available) = false;
+            } else {
+              id(mirror_a_current) = x;
+              id(mirror_last_ok_ms) = millis();
+              id(ha_current_a_available) = true;
+            }
+        - script.execute: recompute_ct
+  - platform: homeassistant
+    id: ha_current_b
+    entity_id: ${ha_current_b_entity}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (std::isnan(x)) {
+              ESP_LOGW("mirror", "%s unavailable", "${ha_current_b_entity}");
+              id(ha_current_b_available) = false;
+            } else {
+              id(mirror_b_current) = x;
+              id(mirror_last_ok_ms) = millis();
+              id(ha_current_b_available) = true;
+            }
+        - script.execute: recompute_ct
+  - platform: homeassistant
+    id: ha_current_c
+    entity_id: ${ha_current_c_entity}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (std::isnan(x)) {
+              ESP_LOGW("mirror", "%s unavailable", "${ha_current_c_entity}");
+              id(ha_current_c_available) = false;
+            } else {
+              id(mirror_c_current) = x;
+              id(mirror_last_ok_ms) = millis();
+              id(ha_current_c_available) = true;
+            }
+        - script.execute: recompute_ct
+  - platform: homeassistant
+    id: ha_power_a
+    entity_id: ${ha_power_a_entity}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (std::isnan(x)) {
+              ESP_LOGW("mirror", "%s unavailable", "${ha_power_a_entity}");
+              id(ha_power_a_available) = false;
+            } else {
+              id(mirror_a_power) = x;
+              id(mirror_last_ok_ms) = millis();
+              id(ha_power_a_available) = true;
+            }
+        - script.execute: recompute_ct
+  - platform: homeassistant
+    id: ha_power_b
+    entity_id: ${ha_power_b_entity}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (std::isnan(x)) {
+              ESP_LOGW("mirror", "%s unavailable", "${ha_power_b_entity}");
+              id(ha_power_b_available) = false;
+            } else {
+              id(mirror_b_power) = x;
+              id(mirror_last_ok_ms) = millis();
+              id(ha_power_b_available) = true;
+            }
+        - script.execute: recompute_ct
+  - platform: homeassistant
+    id: ha_power_c
+    entity_id: ${ha_power_c_entity}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (std::isnan(x)) {
+              ESP_LOGW("mirror", "%s unavailable", "${ha_power_c_entity}");
+              id(ha_power_c_available) = false;
+            } else {
+              id(mirror_c_power) = x;
+              id(mirror_last_ok_ms) = millis();
+              id(ha_power_c_available) = true;
+            }
+        - script.execute: recompute_ct
+
+  # ===========================================================================
+  # Observability (CONTRACTUAL entity names — see /CONTRACTS.md §3.1).
+  # ===========================================================================
+  # Current actually PUBLISHED to the wallbox registers (symmetric by
+  # construction in ACTIF-MAX).
+  - platform: template
+    name: "Published Current L1"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 5s
+    lambda: "return id(ct1_current_a);"
+  - platform: template
+    name: "Published Current L2"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 5s
+    lambda: "return id(ct2_current_a);"
+  - platform: template
+    name: "Published Current L3"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 5s
+    lambda: "return id(ct3_current_a);"
+
+  # Measure of the ACTIVE source (what actually feeds recompute_ct).
+  - platform: template
+    name: "Real Current L1"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 2s
+    lambda: "return (id(meter_source) == 1) ? id(udp_a_current) : id(mirror_a_current);"
+  - platform: template
+    name: "Real Current L2"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 2s
+    lambda: "return (id(meter_source) == 1) ? id(udp_b_current) : id(mirror_b_current);"
+  - platform: template
+    name: "Real Current L3"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 2s
+    lambda: "return (id(meter_source) == 1) ? id(udp_c_current) : id(mirror_c_current);"
+
+  - platform: template
+    name: "Real Power L1"
+    unit_of_measurement: "VA"
+    device_class: apparent_power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 2s
+    lambda: "return (id(meter_source) == 1) ? id(udp_a_power) : id(mirror_a_power);"
+  - platform: template
+    name: "Real Power L2"
+    unit_of_measurement: "VA"
+    device_class: apparent_power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 2s
+    lambda: "return (id(meter_source) == 1) ? id(udp_b_power) : id(mirror_b_power);"
+  - platform: template
+    name: "Real Power L3"
+    unit_of_measurement: "VA"
+    device_class: apparent_power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 2s
+    lambda: "return (id(meter_source) == 1) ? id(udp_c_power) : id(mirror_c_power);"
+
+  # Age of the last healthy UDP value (expected < ~1100 ms in steady state).
+  - platform: template
+    name: "UDP Age"
+    icon: "mdi:timer-alert-outline"
+    unit_of_measurement: "ms"
+    state_class: measurement
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 2s
+    lambda: |-
+      if (id(udp_last_ok_ms) == 0) return NAN;
+      return (float)(millis() - id(udp_last_ok_ms));
+
+  # ~190-200 ms expected while the TWC polls (register 0xF4 timestamps cycles).
+  - platform: template
+    name: "Poll Interval"
+    icon: "mdi:timer-sync-outline"
+    unit_of_measurement: "ms"
+    state_class: measurement
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 2s
+    lambda: "return id(poll_interval_ms);"
+
+  # Bias actually applied by the ramp (the number above is only the TARGET;
+  # without this sensor a slow down-ramp is undiagnosable — "code 10" window).
+  - platform: template
+    id: twc_bias_applied_sensor
+    name: "Bias Applied"
+    icon: "mdi:car-speed-limiter"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 5s
+    lambda: "return id(twc_bias_applied);"
+
+  # NON-CONTRACTUAL diagnostic: what ACTIF-MAX would publish (useful while
+  # observing in RAW / OMBRE-MAX before arming the law).
+  - platform: template
+    name: "Shadow Published Current"
+    entity_category: diagnostic
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    update_interval: 2s
+    lambda: "return id(shadow_pub_a);"
+
+binary_sensor:
+  # Native multi-client API status (a hand-rolled flag stayed false after a
+  # SECONDARY dashboard client disconnected — measured bug).
+  - platform: status
+    id: ha_link_ok
+    internal: true
+
+  - platform: template
+    name: "Polling Active"
+    id: twc_polling_active
+    device_class: running
+    lambda: |-
+      if (id(last_poll_ms) == 0) return false;
+      return (millis() - id(last_poll_ms)) < 2000;
+
+  # Freshness of the direct UDP feed (same criteria as recompute_ct).
+  - platform: template
+    name: "UDP Fresh"
+    id: udp_data_fresh
+    device_class: connectivity
+    lambda: |-
+      bool seen_all = id(udp_current_a_seen) && id(udp_current_b_seen) &&
+          id(udp_current_c_seen) && id(udp_power_a_seen) &&
+          id(udp_power_b_seen) && id(udp_power_c_seen);
+      if (!seen_all || id(udp_last_ok_ms) == 0) return false;
+      return (millis() - id(udp_last_ok_ms)) < (uint32_t)${udp_fresh_ms};
+
+  # 120 s escalation in progress (publishing L + 0.1 to force a clean stop).
+  - platform: template
+    name: "Escalation Active"
+    id: twc_escalation_active
+    lambda: "return id(escalation_state);"
+
+text_sensor:
+  # Contactor mirror as a TEXT sensor on purpose: the homeassistant
+  # binary_sensor platform swallows unavailable/unknown (parse_on_off without
+  # callback) — as text we SEE unavailability and can apply the grace window.
+  - platform: homeassistant
+    id: twc_contactor_mirror
+    entity_id: ${ha_contactor_entity}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (x == "on") {
+              id(twc_contactor_closed) = true;
+              id(twc_contactor_seen) = true;
+              id(twc_contactor_available) = true;
+            } else if (x == "off") {
+              id(twc_contactor_closed) = false;
+              id(twc_contactor_seen) = true;
+              id(twc_contactor_available) = true;
+            } else {
+              // unavailable / unknown / None -> grace-window timestamping is
+              // handled by twc_bias_step (5 s tick).
+              id(twc_contactor_available) = false;
+            }
+        # Contactor just opened -> apply the target immediately (no
+        # out-of-cadence ramp step: allow_ramp_step false).
+        - script.execute:
+            id: twc_bias_step
+            allow_ramp_step: false
+
+  # Measure source actually used by recompute_ct.
+  - platform: template
+    name: "Source Active"
+    icon: "mdi:source-branch"
+    update_interval: 2s
+    lambda: |-
+      switch (id(meter_source)) {
+        case 1: return {"UDP"};
+        case 2: return {"HA"};
+        case 3: return {"FAILSAFE"};
+        case 4: return {"OFF"};
+        default: return {"BOOT"};
+      }
+
+  # Package version, for firmware/integration skew detection (Repairs).
+  - platform: template
+    name: "FW Version"
+    icon: "mdi:tag-outline"
+    entity_category: diagnostic
+    update_interval: 60s
+    lambda: 'return {"${loadpilot_fw_version}"};'
+
+switch:
+  # Master kill-switch. OFF -> publish a constant 0 A: the TWC distrusts the
+  # flat meter and falls back to factory behaviour (Tesla app slider) without
+  # touching the RS485 wiring. Node-resident, flash-restored, default ON.
+  - platform: template
+    id: twc_control_enabled
+    name: "Control Enabled"
+    icon: "mdi:power-plug-outline"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: recompute_ct
+    on_turn_off:
+      - script.execute: recompute_ct
+
+select:
+  # Signal mode (commissioning ladder):
+  #   RAW       — publish the raw measure (+bias): plain Neurio emulation.
+  #   OMBRE-MAX — publish RAW, compute the law as a shadow (observe first).
+  #   ACTIF-MAX — publish the worst-phase symmetric clamped law (production).
+  # Boots/restores to ACTIF-MAX: after a power cycle the node must come back
+  # regulating, not observing.
+  - platform: template
+    name: "Signal Mode"
+    id: twc_mode_signal
+    options: ["RAW", "OMBRE-MAX", "ACTIF-MAX"]
+    initial_option: "ACTIF-MAX"
+    optimistic: true
+    restore_value: true
+    icon: "mdi:waveform"
+
+number:
+  # Bias TARGET (0..max, step 0.5). The RAMP stays firmware: an unramped
+  # margin step during a vehicle ramp violates the pilot -> contactor trip
+  # (58 wallbox alerts in one day, measured). restore_value false: 0 A
+  # (no restriction) is the safe boot default.
+  - platform: template
+    id: twc_bias_target
+    name: "Bias Target"
+    icon: "mdi:car-speed-limiter"
+    min_value: 0
+    max_value: ${bias_max_a}
+    step: 0.5
+    unit_of_measurement: "A"
+    restore_value: false
+    initial_value: 0
+    optimistic: true
+    on_value:
+      then:
+        # New target -> if the wallbox contactor is OPEN (nobody charging),
+        # apply immediately; otherwise no out-of-cadence ramp step.
+        - script.execute:
+            id: twc_bias_step
+            allow_ramp_step: false
+
+  # Grid-contract limit per phase (A). Node-resident and flash-restored (D2):
+  # the integration WRITES it, never hosts it.
+  - platform: template
+    id: twc_contract_limit
+    name: "Contract Limit"
+    icon: "mdi:transmission-tower"
+    min_value: 6
+    max_value: 120
+    step: 0.1
+    unit_of_measurement: "A"
+    restore_value: true
+    initial_value: ${contract_limit_default_a}
+    optimistic: true
+    on_value:
+      then:
+        - script.execute: recompute_ct
+
+  # Safety buffer (%): the vehicle only ever exploits (1 - b) of the
+  # contract resource, in steady state as in transients.
+  - platform: template
+    id: twc_buffer_pct
+    name: "Buffer Pct"
+    icon: "mdi:shield-half-full"
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 30
+    step: 1
+    restore_value: true
+    initial_value: ${buffer_default_pct}
+    optimistic: true
+    on_value:
+      then:
+        - script.execute: recompute_ct
+
+globals:
+  # ===== PVi1-grade: zero control state beyond capped_since_ms. =====
+  # Every extra internal state in earlier estimator designs created its own
+  # bug (measured lesson) — do not add any.
+  - id: twc_bias_applied
+    type: float
+    restore_value: no
+    initial_value: "0"
+  # Contactor mirror state (closed = last valid state; seen = at least one
+  # on/off since boot; available = last received state was on/off).
+  - id: twc_contactor_closed
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: twc_contactor_seen
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: twc_contactor_available
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: twc_contactor_unavail_since_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_api_connected
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  # RAW Neurio semantics: ct*_current_a = REAL current published to the TWC.
+  # At boot (before the first measure) publish main_breaker = full-capacity
+  # consumption -> the wallbox sees zero margin and does NOT charge (safe).
+  - id: ct1_current_a
+    type: float
+    initial_value: "${main_breaker_limit_a}"
+  - id: ct2_current_a
+    type: float
+    initial_value: "${main_breaker_limit_a}"
+  - id: ct3_current_a
+    type: float
+    initial_value: "${main_breaker_limit_a}"
+  - id: ct4_current_a
+    type: float
+    initial_value: "0.0"
+  - id: ct_total_a
+    type: float
+    initial_value: "0.0"
+  - id: ct1_power_w
+    type: float
+    initial_value: "0.0"
+  - id: ct2_power_w
+    type: float
+    initial_value: "0.0"
+  - id: ct3_power_w
+    type: float
+    initial_value: "0.0"
+  - id: ct4_power_w
+    type: float
+    initial_value: "0.0"
+  - id: ct_total_w
+    type: float
+    initial_value: "0.0"
+  - id: last_poll_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: poll_interval_ms
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: capped_since_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: escalation_state
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  # Shadow of the law output (observability, OMBRE-MAX mode).
+  - id: shadow_pub_a
+    type: float
+    restore_value: no
+    initial_value: "0"
+  # HA mirror values + availability flags.
+  - id: mirror_a_current
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: mirror_b_current
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: mirror_c_current
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: mirror_a_power
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: mirror_b_power
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: mirror_c_power
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: mirror_last_ok_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_current_a_available
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: ha_current_b_available
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: ha_current_c_available
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: ha_power_a_available
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: ha_power_b_available
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: ha_power_c_available
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: mirror_unavailable_since_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  # UDP direct values + seen flags (each quantity must have been seen at
+  # least once since boot before the UDP feed is trusted).
+  - id: udp_a_current
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: udp_b_current
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: udp_c_current
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: udp_a_power
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: udp_b_power
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: udp_c_power
+    type: float
+    restore_value: no
+    initial_value: "0.0"
+  - id: udp_last_ok_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: udp_current_a_seen
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: udp_current_b_seen
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: udp_current_c_seen
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: udp_power_a_seen
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: udp_power_b_seen
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: udp_power_c_seen
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  # Active source of the last recompute: 0=boot, 1=UDP, 2=HA, 3=failsafe,
+  # 4=control OFF. Feeds the "Source Active" text sensor.
+  - id: meter_source
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+interval:
+  # Safety-net recompute (also re-evaluates the mirror debounce AND the UDP
+  # freshness window expiry).
+  - interval: ${recompute_interval}
+    then:
+      - script.execute: recompute_ct
+  # Bias ramp tick: bounded steps so the wallbox pilot moves in small stairs
+  # the vehicle can follow without ever overshooting (anti-trip).
+  - interval: 5s
+    then:
+      - script.execute:
+          id: twc_bias_step
+          allow_ramp_step: true
+
+script:
+  # ===========================================================================
+  # Bias application. RULE: the ramp only exists to protect a vehicle THAT IS
+  # CHARGING (pilot violation -> contactor trip). Wallbox contactor OPEN
+  # (reliable mirror) -> target applied IMMEDIATELY both ways: removes the
+  # "code 10" window (160 s of down-ramp refusing to start, measured).
+  # Mirror never seen / unavailable > grace / HA API down -> keep the ramp.
+  # allow_ramp_step: true only from the 5 s tick — other callers (target
+  # change, mirror flip) NEVER step the ramp out of cadence.
+  # ===========================================================================
+  - id: twc_bias_step
+    parameters:
+      allow_ramp_step: bool
+    then:
+      - lambda: |-
+          float target = id(twc_bias_target).state;
+          if (std::isnan(target)) target = 0.0f;
+          float cur = id(twc_bias_applied);
+          // -- Contactor-mirror trustworthiness (grace window) --
+          uint32_t now_ms = millis();
+          bool mirror_ok = id(twc_contactor_seen) && id(twc_contactor_available)
+              && id(ha_link_ok).state;
+          if (mirror_ok) {
+            id(twc_contactor_unavail_since_ms) = 0;
+          } else if (id(twc_contactor_unavail_since_ms) == 0) {
+            id(twc_contactor_unavail_since_ms) = now_ms;
+          }
+          bool trust_mirror = id(twc_contactor_seen) &&
+              (id(twc_contactor_unavail_since_ms) == 0 ||
+               (now_ms - id(twc_contactor_unavail_since_ms))
+                   <= (uint32_t)${contactor_mirror_grace_ms});
+          bool contactor_open = trust_mirror && !id(twc_contactor_closed);
+          // -- Application --
+          float next = cur;
+          if (contactor_open) {
+            next = target;  // nobody charging: immediate, both directions
+          } else if (!allow_ramp_step) {
+            return;         // outside the 5 s tick: no ramp step
+          } else if (target > cur) {
+            next = std::min(target, cur + ${bias_ramp_up_a}f);
+          } else if (target < cur) {
+            next = std::max(target, cur - ${bias_ramp_down_a}f);
+          }
+          if (next != cur) {
+            if (contactor_open && std::fabs(next - cur) > 1.0f) {
+              ESP_LOGI("twc_bias", "Contactor open: bias %.1f -> %.1f A (immediate)", cur, next);
+            }
+            id(twc_bias_applied) = next;
+            id(twc_bias_applied_sensor).publish_state(next);
+            id(recompute_ct).execute();
+          }
+
+  # ===========================================================================
+  # Central recompute. Source priority: UDP fresh > HA mirror > fail-safe.
+  # The fail-safe is NEVER weakened: it arms as soon as neither source is
+  # healthy. RAW Neurio semantics preserved verbatim.
+  # ===========================================================================
+  - id: recompute_ct
+    then:
+      - lambda: |-
+          const float main_breaker = ${main_breaker_limit_a};
+          const float voltage = 230.0f;
+          const bool three_phase = (${phase_count} == 3);
+          // ----- Source 1: direct UDP (freshness judged here, not by API) ---
+          bool udp_seen_all = id(udp_current_a_seen) && id(udp_current_b_seen) &&
+              id(udp_current_c_seen) && id(udp_power_a_seen) &&
+              id(udp_power_b_seen) && id(udp_power_c_seen);
+          bool udp_fresh = udp_seen_all && (id(udp_last_ok_ms) != 0) &&
+              ((millis() - id(udp_last_ok_ms)) < (uint32_t)${udp_fresh_ms});
+          // ----- Source 2: HA mirror (availability flags, debounced) --------
+          // Single-phase installs only need the L1 mirror entities.
+          bool all_available = id(ha_current_a_available) && id(ha_power_a_available) &&
+              (!three_phase || (id(ha_current_b_available) && id(ha_current_c_available) &&
+                                id(ha_power_b_available) && id(ha_power_c_available)));
+          if (!all_available) {
+            if (id(mirror_unavailable_since_ms) == 0) id(mirror_unavailable_since_ms) = millis();
+          } else {
+            id(mirror_unavailable_since_ms) = 0;
+          }
+          bool mirror_stale = (id(mirror_unavailable_since_ms) != 0) &&
+              (millis() - id(mirror_unavailable_since_ms) >= (uint32_t)${ha_mirror_debounce_ms});
+          bool ha_ok = !mirror_stale && id(ha_link_ok).state;
+          // ----- Measure selection (UDP fresh > HA mirror > nothing) --------
+          float m_a = 0.0f, m_b = 0.0f, m_c = 0.0f;
+          float m_pa = 0.0f, m_pb = 0.0f, m_pc = 0.0f;
+          bool have_measure = false;
+          int source = 3;  // failsafe by default
+          if (udp_fresh) {
+            m_a = id(udp_a_current); m_b = id(udp_b_current); m_c = id(udp_c_current);
+            m_pa = id(udp_a_power);  m_pb = id(udp_b_power);  m_pc = id(udp_c_power);
+            have_measure = true;
+            source = 1;
+          } else if (ha_ok) {
+            m_a = id(mirror_a_current); m_pa = id(mirror_a_power);
+            if (three_phase) {
+              m_b = id(mirror_b_current); m_c = id(mirror_c_current);
+              m_pb = id(mirror_b_power);  m_pc = id(mirror_c_power);
+            }
+            have_measure = true;
+            source = 2;
+          }
+          if (!three_phase) { m_b = m_c = 0.0f; m_pb = m_pc = 0.0f; }
+          // ===== RAW NEURIO/GENERAC SEMANTICS (UNCHANGED) =====
+          // Publish the REAL mains measure like a genuine Neurio meter; the
+          // 26.18 wallbox computes margin = ITS limit (Home Load Management)
+          // - published measure, and checks correlation with its own output.
+          float pub_a, pub_b, pub_c;      // published current (A)
+          float pub_pa, pub_pb, pub_pc;   // published power (W/VA)
+          if (!id(twc_control_enabled).state) {
+            // Master switch OFF: house consumption = 0 -> maximum margin ->
+            // wallbox charges at its own ceiling (external control disarmed).
+            pub_a = pub_b = pub_c = 0.0f;
+            pub_pa = pub_pb = pub_pc = 0.0f;
+            source = 4;
+          } else if (!have_measure) {
+            // SAFETY (no healthy source: UDP stale AND HA mirror/API dead).
+            // A genuinely dead meter must BLOCK: publish consumption =
+            // main_breaker (full service capacity) -> margin 0.
+            ESP_LOGW("meter", "No healthy measure source (UDP stale, HA mirror/API down) -> publishing main_breaker, charge blocked");
+            pub_a = pub_b = pub_c = main_breaker;
+            pub_pa = pub_pb = pub_pc = main_breaker * voltage;
+          } else {
+            // NORMAL: real per-phase current + power, import-positive.
+            // + BIAS: publishing measure + X A forces the wallbox to lower
+            // the vehicle by X A (margin = limit - published). Applied in the
+            // NORMAL branch only — never in fail-safe (already main_breaker),
+            // never with the master switch OFF.
+            float bias = id(twc_bias_applied);
+            pub_a = m_a + bias;
+            pub_b = m_b + bias;
+            pub_c = m_c + bias;
+            pub_pa = m_pa + bias * voltage;
+            pub_pb = m_pb + bias * voltage;
+            pub_pc = m_pc + bias * voltage;
+          }
+          // ===== PVi1-GRADE BLOCK (17/08) — memoryless worst-phase law =====
+          // Wallbox service = SYMMETRIC functional of the 3 channels;
+          // protection = WORST PHASE (bite ~21.3 A in <=5 s, cut at ~20 A.s
+          // of excess integral). => publish WORST-PHASE SYMMETRICALLY:
+          // min = mean = max, the service loop engages exactly at the true
+          // constraint whatever the exact functional is. Trip impossible by
+          // construction: pub <= L (except the deliberate L+0.1 escalation
+          // after 120 s at zero avail). NO vehicle estimator: m_* INCLUDES
+          // the vehicle -> the published value follows it 1:1 (correlation
+          // intact — PVi1 lesson: never dilute).
+          {
+            const float L = ${twc_conductor_limit_a};
+            float climit = id(twc_contract_limit).state;
+            if (std::isnan(climit) || climit <= 0.0f) climit = ${contract_limit_default_a};
+            float bpct = id(twc_buffer_pct).state;
+            if (std::isnan(bpct) || bpct < 0.0f || bpct > 30.0f) bpct = ${buffer_default_pct};
+            // Shared resource = grid contract reduced by the buffer: the
+            // vehicle only exploits (1-b) of the margin. Constant — active
+            // from the first cycle, no warm-up, no step possible in steady
+            // state.
+            const float budget = climit * (1.0f - bpct / 100.0f);
+            const float bias = id(twc_bias_applied);
+            auto mode_idx = id(twc_mode_signal).active_index();
+            const int midx = mode_idx.has_value() ? (int)mode_idx.value() : 2;
+            const bool law_active = (midx == 2);   // ACTIF-MAX
+            bool esc = false;
+            if (have_measure && id(twc_control_enabled).state) {
+              float mm[3] = { m_a, m_b, m_c };
+              float av[3];
+              for (int i = 0; i < 3; i++) {
+                float a = budget - bias - mm[i];
+                if (a > L) a = L;
+                if (a < 0.0f) a = 0.0f;
+                av[i] = a;
+              }
+              float av_min = std::min(av[0], std::min(av[1], av[2]));
+              float o_sym = L - av_min;
+              // PVi1 escalation: sustained zero avail 120 s -> deliberate
+              // hard stop (the wallbox ramps toward "zero avail" in minutes
+              // and can hold a residual forever; L+0.1 forces the stop).
+              if (av_min <= 0.0f) {
+                if (id(capped_since_ms) == 0) id(capped_since_ms) = millis();
+                if (millis() - id(capped_since_ms) >= (uint32_t)${escalation_timeout_ms}) {
+                  o_sym = L + 0.1f;
+                  esc = true;
+                }
+              } else {
+                id(capped_since_ms) = 0;
+              }
+              id(shadow_pub_a) = o_sym;
+              if (law_active) {
+                pub_a = pub_b = pub_c = o_sym;
+                pub_pa = pub_pb = pub_pc = o_sym * voltage;
+              }
+            } else {
+              id(capped_since_ms) = 0;
+              id(shadow_pub_a) = pub_a;
+            }
+            id(escalation_state) = esc;
+          }
+          id(meter_source) = source;
+          id(ct1_current_a) = pub_a;
+          id(ct2_current_a) = pub_b;
+          id(ct3_current_a) = pub_c;
+          id(ct4_current_a) = 0.0f;
+          id(ct_total_a) = pub_a + pub_b + pub_c;
+          id(ct1_power_w) = pub_pa;
+          id(ct2_power_w) = pub_pb;
+          id(ct3_power_w) = pub_pc;
+          id(ct4_power_w) = 0.0f;
+          id(ct_total_w) = pub_pa + pub_pb + pub_pc;
+
+# =============================================================================
+# RS485 -> Modbus RTU SERVER (the TWC3 is the master and polls ~190-200 ms).
+# Emulates a Neurio/Generac meter — identity block 1-55 and register map from
+# the public gist by LucaTNT:
+# https://gist.github.com/LucaTNT/4adf01a7252386559070023612efa117
+# Registers INTACT — do not touch. Every read_lambda returns a pre-computed
+# global (never compute in the lambda: the reply must leave in < 66 ms).
+# The board package MUST provide `uart: id: rs485` (115200 8N1).
+# =============================================================================
+modbus:
+  - id: wallconn_modbus
+    uart_id: rs485
+    role: server
+
+modbus_server:
+  - modbus_id: wallconn_modbus
+    address: 1
+    registers:
+      - { address: 1, value_type: U_WORD, read_lambda: "return 0x3078;" }
+      - { address: 2, value_type: U_WORD, read_lambda: "return 0x3030;" }
+      - { address: 3, value_type: U_WORD, read_lambda: "return 0x3030;" }
+      - { address: 4, value_type: U_WORD, read_lambda: "return 0x3034;" }
+      - { address: 5, value_type: U_WORD, read_lambda: "return 0x3731;" }
+      - { address: 6, value_type: U_WORD, read_lambda: "return 0x3442;" }
+      - { address: 7, value_type: U_WORD, read_lambda: "return 0x3035;" }
+      - { address: 8, value_type: U_WORD, read_lambda: "return 0x3638;" }
+      - { address: 9, value_type: U_WORD, read_lambda: "return 0x3631;" }
+      - { address: 10, value_type: U_WORD, read_lambda: "return 0x0000;" }
+      - { address: 11, value_type: U_WORD, read_lambda: "return 0x312E;" }
+      - { address: 12, value_type: U_WORD, read_lambda: "return 0x362E;" }
+      - { address: 13, value_type: U_WORD, read_lambda: "return 0x312D;" }
+      - { address: 14, value_type: U_WORD, read_lambda: "return 0x5465;" }
+      - { address: 15, value_type: U_WORD, read_lambda: "return 0x736C;" }
+      - { address: 16, value_type: U_WORD, read_lambda: "return 0x6100;" }
+      - { address: 17, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 18, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 19, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 20, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 21, value_type: U_WORD, read_lambda: "return 0x3031;" }
+      - { address: 22, value_type: U_WORD, read_lambda: "return 0x322E;" }
+      - { address: 23, value_type: U_WORD, read_lambda: "return 0x3030;" }
+      - { address: 24, value_type: U_WORD, read_lambda: "return 0x3032;" }
+      - { address: 25, value_type: U_WORD, read_lambda: "return 0x3041;" }
+      - { address: 26, value_type: U_WORD, read_lambda: "return 0x2E48;" }
+      - { address: 27, value_type: U_WORD, read_lambda: "return 0x0000;" }
+      - { address: 28, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 29, value_type: U_WORD, read_lambda: "return 0x3930;" }
+      - { address: 30, value_type: U_WORD, read_lambda: "return 0x3935;" }
+      - { address: 31, value_type: U_WORD, read_lambda: "return 0x3400;" }
+      - { address: 32, value_type: U_WORD, read_lambda: "return 0x5641;" }
+      - { address: 33, value_type: U_WORD, read_lambda: "return 0x4834;" }
+      - { address: 34, value_type: U_WORD, read_lambda: "return 0x3831;" }
+      - { address: 35, value_type: U_WORD, read_lambda: "return 0x3041;" }
+      - { address: 36, value_type: U_WORD, read_lambda: "return 0x4230;" }
+      - { address: 37, value_type: U_WORD, read_lambda: "return 0x3233;" }
+      - { address: 38, value_type: U_WORD, read_lambda: "return 0x3100;" }
+      - { address: 39, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 40, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 41, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 42, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 43, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 44, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 45, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 46, value_type: U_WORD, read_lambda: "return 0xFFFF;" }
+      - { address: 47, value_type: U_WORD, read_lambda: "return 0x3034;" }
+      - { address: 48, value_type: U_WORD, read_lambda: "return 0x3A37;" }
+      - { address: 49, value_type: U_WORD, read_lambda: "return 0x313A;" }
+      - { address: 50, value_type: U_WORD, read_lambda: "return 0x3442;" }
+      - { address: 51, value_type: U_WORD, read_lambda: "return 0x3A30;" }
+      - { address: 52, value_type: U_WORD, read_lambda: "return 0x353A;" }
+      - { address: 53, value_type: U_WORD, read_lambda: "return 0x3638;" }
+      - { address: 54, value_type: U_WORD, read_lambda: "return 0x3A36;" }
+      - { address: 55, value_type: U_WORD, read_lambda: "return 0x3100;" }
+      # Power (W)
+      - { address: 0x88, value_type: FP32, read_lambda: "return id(ct1_power_w);" }
+      - { address: 0x8A, value_type: FP32, read_lambda: "return id(ct2_power_w);" }
+      - { address: 0x8C, value_type: FP32, read_lambda: "return id(ct3_power_w);" }
+      - { address: 0x8E, value_type: FP32, read_lambda: "return id(ct4_power_w);" }
+      - { address: 0x90, value_type: FP32, read_lambda: "return id(ct_total_w);" }
+      - { address: 0x92, value_type: U_WORD, read_lambda: "return 0;" }
+      # Current (A) — 0xF4 = first register polled by the TWC3, cycle marker
+      - address: 0xF4
+        value_type: FP32
+        read_lambda: |-
+          uint32_t now = millis();
+          if (id(last_poll_ms) != 0) {
+            id(poll_interval_ms) = (float)(now - id(last_poll_ms));
+          }
+          id(last_poll_ms) = now;
+          return id(ct1_current_a);
+      - { address: 0xF6, value_type: FP32, read_lambda: "return id(ct2_current_a);" }
+      - { address: 0xF8, value_type: FP32, read_lambda: "return id(ct3_current_a);" }
+      - { address: 0xFA, value_type: FP32, read_lambda: "return id(ct4_current_a);" }
+      - { address: 0xFC, value_type: FP32, read_lambda: "return id(ct_total_a);" }
+      # "Generac" initialisation handshake
+      - { address: 40002, value_type: U_WORD, read_lambda: "return 0x0001;" }
+      - { address: 40003, value_type: U_WORD, read_lambda: "return 0x0042;" }
+      - { address: 40004, value_type: U_WORD, read_lambda: "return 0x4765;" }
+      - { address: 40005, value_type: U_WORD, read_lambda: "return 0x6E65;" }
+      - { address: 40006, value_type: U_WORD, read_lambda: "return 0x7261;" }
+      - { address: 40007, value_type: U_WORD, read_lambda: "return 0x6300;" }

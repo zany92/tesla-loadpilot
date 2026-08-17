@@ -1,0 +1,301 @@
+# =============================================================================
+# Tesla LoadPilot — meter provider: France, Linky TIC standard mode
+# (PRODUCTION-PROVEN reference provider)
+#
+# Decodes the Linky "Téléinformation Client" (TIC, standard mode, 9600 bd
+# 7E1) and ships the 6 contract quantities over encrypted UDP to the charger
+# node (docs/15_FOURNISSEURS_MESURE.md §1 — the UDP contract is FROZEN):
+#   lky_ia/ib/ic  = per-phase current (A), sub-ampere (SINSTS/URMS computed)
+#   lky_pa/pb/pc  = per-phase apparent power (VA)
+# 1 Hz full resend (heartbeat) + immediate incremental packet on any change.
+# On sensor failure the node goes SILENT (heartbeat stops -> the charger node
+# falls back HA mirror, then fail-safe). Never repeat a frozen value.
+#
+# Hardware: TIC hat (e.g. Hallard "WeMos TeleInfo"), RX only.
+# Network is board-specific: add `ethernet:` or `wifi:` in your entry file
+# (see esphome/examples/). Reference install: Olimex ESP32-POE (LAN8720).
+#
+# Country quirks confined here (docs/15 §3): Tempo frames are long ->
+# rx_buffer_size 1024 is CRUCIAL (at 256 the buffer overflowed, ~2 frames
+# out of 3 lost, effective cadence ~15 s -> the wallbox DPM pumped).
+# The generic overload signal comes from the Linky STGE register bit 7
+# ("dépassement de la puissance de référence en cours").
+# =============================================================================
+substitutions:
+  node_name: loadpilot-meter
+  friendly_name: LoadPilot Meter
+  loadpilot_fw_version: "0.1.0"
+  tic_rx_pin: GPIO36
+  # 500 ms: stick to the continuous TIC frames (~1/s in standard mode) to
+  # minimise publication latency; throttled copies keep the recorder quiet.
+  tic_update_interval: 500ms
+
+esphome:
+  name: ${node_name}
+  friendly_name: ${friendly_name}
+  compile_process_limit: 1
+  project:
+    name: loadpilot.meter-teleinfo-fr
+    version: ${loadpilot_fw_version}
+
+logger:
+  # UART0 is not used for logs on the reference board.
+  baud_rate: 0
+
+api:
+  encryption:
+    key: !secret loadpilot_api_key
+
+ota:
+  - platform: esphome
+    password: !secret loadpilot_ota_password
+
+# =============================================================================
+# UDP -> charger node. Broadcast 255.255.255.255:18511 by default. If the
+# network blocks LAN->WLAN broadcast, switch to unicast: uncomment `addresses`
+# with the charger-node IP (and reserve it in DHCP). ONE destination only:
+# with both, the rolling code would reject the duplicate with a warning per
+# second.
+# =============================================================================
+udp:
+  id: udp_meter
+#  addresses: ["192.168.x.x"]   # unicast to the charger node if needed
+
+packet_transport:
+  - platform: udp
+    udp_id: udp_meter
+    # 1 Hz: COMPLETE resend of the 6 quantities (freshness heartbeat for the
+    # charger node, 5 s window receiver side). Value changes ALSO leave
+    # immediately (incremental packet, next loop).
+    update_interval: 1s
+    # XXTEA (SHA-256-hashed key) — MUST be identical on the charger node.
+    encryption: !secret loadpilot_udp_key
+    # Anti-replay rolling code (persisted in flash at boot + 2^32 overflow:
+    # negligible wear). A replayed/duplicated packet is dropped.
+    rolling_code_enable: true
+    sensors:
+      # Sub-ampere computed currents (SINSTS/URMS) — NOT the integer IRMS:
+      # the TIC only publishes whole amperes, while SINSTS (VA) / URMS (V)
+      # give ~4 mA resolution.
+      - id: tic_current_calc_1
+        broadcast_id: lky_ia
+      - id: tic_current_calc_2
+        broadcast_id: lky_ib
+      - id: tic_current_calc_3
+        broadcast_id: lky_ic
+      - id: tic_sinsts1
+        broadcast_id: lky_pa
+      - id: tic_sinsts2
+        broadcast_id: lky_pb
+      - id: tic_sinsts3
+        broadcast_id: lky_pc
+
+uart:
+  id: uart_tic
+  rx_pin: ${tic_rx_pin}
+  # CRUCIAL: a standard-mode Tempo TIC frame exceeds 400 bytes; at 256 the
+  # buffer overflowed ("Internal buffer full") and ~2 frames out of 3 were
+  # lost (effective cadence ~15 s -> wallbox DPM pumping). Measured.
+  rx_buffer_size: 1024
+  baud_rate: 9600
+  parity: EVEN
+  data_bits: 7
+  stop_bits: 1
+
+teleinfo:
+  id: esp_teleinfo
+  uart_id: uart_tic
+  update_interval: ${tic_update_interval}
+  historical_mode: false   # TIC STANDARD mode
+
+sensor:
+  # ---------------------------------------------------------------------------
+  # Voltages (internal): only used to compute the sub-ampere currents.
+  # ---------------------------------------------------------------------------
+  - platform: teleinfo
+    tag_name: "URMS1"
+    id: tic_urms1
+    internal: true
+    unit_of_measurement: V
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 0
+  - platform: teleinfo
+    tag_name: "URMS2"
+    id: tic_urms2
+    internal: true
+    unit_of_measurement: V
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 0
+  - platform: teleinfo
+    tag_name: "URMS3"
+    id: tic_urms3
+    internal: true
+    unit_of_measurement: V
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 0
+
+  # ---------------------------------------------------------------------------
+  # Apparent powers — UDP and HA paths DECOUPLED (recorder-friendly):
+  # the internal base sensor (no throttle, ~1 Hz) is what packet_transport
+  # reads; the throttled copy below is the HA entity.
+  # ---------------------------------------------------------------------------
+  - platform: teleinfo
+    tag_name: "SINSTS1"
+    id: tic_sinsts1
+    internal: true
+    on_value:
+      then:
+        # Recompute the sub-ampere current on EVERY SINSTS update.
+        - component.update: tic_current_calc_1
+  - platform: teleinfo
+    tag_name: "SINSTS2"
+    id: tic_sinsts2
+    internal: true
+    on_value:
+      then:
+        - component.update: tic_current_calc_2
+  - platform: teleinfo
+    tag_name: "SINSTS3"
+    id: tic_sinsts3
+    internal: true
+    on_value:
+      then:
+        - component.update: tic_current_calc_3
+
+  # ---------------------------------------------------------------------------
+  # Sub-ampere computed currents I = SINSTS_N / URMS_N (internal; broadcast
+  # source). Guard: invalid URMS (NaN) or < 180 V -> 230 V nominal.
+  # ---------------------------------------------------------------------------
+  - platform: template
+    id: tic_current_calc_1
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: never
+    lambda: |-
+      float p = id(tic_sinsts1).state;
+      if (std::isnan(p)) return NAN;
+      float u = id(tic_urms1).state;
+      if (std::isnan(u) || u < 180.0f) u = 230.0f;
+      return roundf((p / u) * 100.0f) / 100.0f;
+  - platform: template
+    id: tic_current_calc_2
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: never
+    lambda: |-
+      float p = id(tic_sinsts2).state;
+      if (std::isnan(p)) return NAN;
+      float u = id(tic_urms2).state;
+      if (std::isnan(u) || u < 180.0f) u = 230.0f;
+      return roundf((p / u) * 100.0f) / 100.0f;
+  - platform: template
+    id: tic_current_calc_3
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: never
+    lambda: |-
+      float p = id(tic_sinsts3).state;
+      if (std::isnan(p)) return NAN;
+      float u = id(tic_urms3).state;
+      if (std::isnan(u) || u < 180.0f) u = 230.0f;
+      return roundf((p / u) * 100.0f) / 100.0f;
+
+  # ---------------------------------------------------------------------------
+  # CONTRACTUAL HA entities (/CONTRACTS.md §3.2): throttled copies of the
+  # measures — same data as the UDP feed, recorder-friendly. These are also
+  # the natural targets for the charger node's HA-mirror substitutions.
+  # ---------------------------------------------------------------------------
+  - platform: copy
+    source_id: tic_current_calc_1
+    name: "Current L1"
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: tic_current_calc_2
+    name: "Current L2"
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: tic_current_calc_3
+    name: "Current L3"
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: tic_sinsts1
+    name: "Power L1"
+    unit_of_measurement: VA
+    device_class: apparent_power
+    state_class: measurement
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: tic_sinsts2
+    name: "Power L2"
+    unit_of_measurement: VA
+    device_class: apparent_power
+    state_class: measurement
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: tic_sinsts3
+    name: "Power L3"
+    unit_of_measurement: VA
+    device_class: apparent_power
+    state_class: measurement
+    filters: [ throttle: 2s ]
+
+binary_sensor:
+  - platform: status
+    id: tic_link_status
+    internal: true
+
+  # Generic overload signal (/CONTRACTS.md §3.2, OPTIONAL): Linky STGE bit 7
+  # = "reference-power overshoot IN PROGRESS", observed by the meter itself.
+  - platform: template
+    name: "Overload"
+    id: meter_overload
+    lambda: |-
+      const std::string &s = id(tic_stge_raw).state;
+      if (s.empty()) return {};
+      char *end = nullptr;
+      unsigned long v = strtoul(s.c_str(), &end, 16);
+      if (end == s.c_str()) return {};
+      return ((v >> 7) & 0x1UL) != 0;
+
+text_sensor:
+  # Linky status register (STGE, 8 hex chars, present in every frame).
+  - platform: teleinfo
+    tag_name: "STGE"
+    id: tic_stge_raw
+    internal: true
+
+  # Package version (skew diagnostics parity with the charger node).
+  - platform: template
+    name: "FW Version"
+    icon: "mdi:tag-outline"
+    entity_category: diagnostic
+    update_interval: 60s
+    lambda: 'return {"${loadpilot_fw_version}"};'
+
+button:
+  - platform: restart
+    name: "Restart"

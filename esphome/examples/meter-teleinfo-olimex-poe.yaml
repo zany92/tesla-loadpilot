@@ -1,0 +1,39 @@
+# =============================================================================
+# Tesla LoadPilot — example entry file: METER NODE (France, Linky TIC)
+# on Olimex ESP32-POE + Hallard "WeMos TeleInfo" hat (reference hardware)
+#
+# The provider package is board-agnostic: the network block lives HERE.
+# ALWAYS pin `ref:` to a release tag (vX.Y.Z), never main.
+# =============================================================================
+packages:
+  loadpilot:
+    url: https://github.com/OWNER_TBD/tesla-loadpilot
+    files:
+      - esphome/packages/providers/teleinfo-fr.yaml
+    ref: v0.1.0          # ALWAYS a tag, never main
+    refresh: 1d
+
+substitutions:
+  node_name: loadpilot-meter
+  friendly_name: LoadPilot Meter
+  tic_rx_pin: GPIO36     # Hallard hat on the Olimex ESP32-POE
+
+esp32:
+  board: esp32-poe
+  framework:
+    type: arduino
+
+# Olimex ESP32-POE wired network (LAN8720). `power_pin` is the GPIO feeding
+# the PHY: harmless where it worked without, required for a clean PHY
+# restart after a soft reset on some board revisions.
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+
+# If your network blocks LAN->WLAN broadcast (e.g. UniFi "Block LAN to WLAN
+# Multicast and Broadcast Data"), switch the provider to unicast: see the
+# commented `addresses:` in the provider package.

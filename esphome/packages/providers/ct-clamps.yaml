@@ -1,0 +1,136 @@
+# =============================================================================
+# Tesla LoadPilot — meter provider: universal CT clamps (ATM90E32) — SKELETON
+#
+# STATUS: SKELETON — NEVER COMPILED, NEVER TESTED ON REAL HARDWARE.
+# The UDP contract (port 18511, lky_* broadcast ids, XXTEA, 1 Hz) is FROZEN.
+#
+# The universal fallback when the national meter is ineligible (DSMR 4,
+# Smarty, UK SMETS, SML total-only — docs/15_FOURNISSEURS_MESURE.md §2):
+# CT clamps on the mains feed, read directly by the ESP. Also the best
+# latency of the whole family (sub-second capable — though beyond ~1 Hz
+# there is NO measurable gain at the wallbox, measured).
+#
+# Reference part: ATM90E32 (e.g. CircuitSetup 6-channel board, SPI).
+# PZEM-004T v3 (UART, per-phase modules) is a cheaper alternative — same
+# contract, different acquisition block (TODO).
+#
+# TODO before first use:
+# - CT ratio / burden calibration (gain_ct, gain_voltage per channel);
+# - verify import-positive sign convention with the clamp orientation;
+# - real-hardware QA per docs/15 §4 (latency < 1.5 s, silence on failure).
+# =============================================================================
+substitutions:
+  node_name: loadpilot-meter
+  friendly_name: LoadPilot Meter
+  loadpilot_fw_version: "0.1.0"
+  atm90e32_cs_pin: GPIO5   # TODO: wiring
+  spi_clk_pin: GPIO18
+  spi_mosi_pin: GPIO23
+  spi_miso_pin: GPIO19
+  ct_line_frequency: 50Hz
+
+esphome:
+  name: ${node_name}
+  friendly_name: ${friendly_name}
+  compile_process_limit: 1
+  project:
+    name: loadpilot.meter-ct-clamps
+    version: ${loadpilot_fw_version}
+
+logger:
+
+api:
+  encryption:
+    key: !secret loadpilot_api_key
+
+ota:
+  - platform: esphome
+    password: !secret loadpilot_ota_password
+
+# --- FROZEN UDP contract -----------------------------------------------------
+udp:
+  id: udp_meter
+#  addresses: ["192.168.x.x"]
+
+packet_transport:
+  - platform: udp
+    udp_id: udp_meter
+    update_interval: 1s
+    encryption: !secret loadpilot_udp_key
+    rolling_code_enable: true
+    sensors:
+      - id: ct_current_1
+        broadcast_id: lky_ia
+      - id: ct_current_2
+        broadcast_id: lky_ib
+      - id: ct_current_3
+        broadcast_id: lky_ic
+      - id: ct_power_1
+        broadcast_id: lky_pa
+      - id: ct_power_2
+        broadcast_id: lky_pb
+      - id: ct_power_3
+        broadcast_id: lky_pc
+
+# --- Acquisition (TODO: calibrate on hardware) -------------------------------
+spi:
+  clk_pin: ${spi_clk_pin}
+  mosi_pin: ${spi_mosi_pin}
+  miso_pin: ${spi_miso_pin}
+
+sensor:
+  - platform: atm90e32
+    cs_pin: ${atm90e32_cs_pin}
+    line_frequency: ${ct_line_frequency}
+    # TODO: gain_pga / calibration per install (CT ratio, burden).
+    phase_a:
+      current:
+        id: ct_current_1
+        internal: true
+      apparent_power:
+        id: ct_power_1
+        internal: true
+      voltage:
+        id: ct_voltage_1
+        internal: true
+    phase_b:
+      current:
+        id: ct_current_2
+        internal: true
+      apparent_power:
+        id: ct_power_2
+        internal: true
+    phase_c:
+      current:
+        id: ct_current_3
+        internal: true
+      apparent_power:
+        id: ct_power_3
+        internal: true
+    update_interval: 1s
+
+  # CONTRACTUAL HA entities (throttled copies).
+  - platform: copy
+    source_id: ct_current_1
+    name: "Current L1"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: ct_current_2
+    name: "Current L2"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: ct_current_3
+    name: "Current L3"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: ct_power_1
+    name: "Power L1"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: ct_power_2
+    name: "Power L2"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: ct_power_3
+    name: "Power L3"
+    filters: [ throttle: 2s ]

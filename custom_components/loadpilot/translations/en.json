@@ -1,0 +1,141 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "LoadPilot nodes",
+        "description": "[UX_COPY.md pending] Names of the two ESPHome nodes and site topology.",
+        "data": {
+          "charger_node": "Charger node name",
+          "meter_node": "Meter node name",
+          "phases": "Phases",
+          "country_profile": "Meter profile"
+        }
+      },
+      "limits": {
+        "title": "Electrical limits",
+        "description": "[UX_COPY.md pending] Written to the node-resident knobs (the firmware hosts them).",
+        "data": {
+          "contract_limit_a": "Grid contract limit per phase (A)",
+          "buffer_pct": "Safety buffer (%)"
+        }
+      },
+      "mirror": {
+        "title": "Backup measure path",
+        "description": "[UX_COPY.md pending] Optional Home Assistant mirror entities (must match the ESPHome substitutions).",
+        "data": {
+          "current_l1": "Current L1",
+          "current_l2": "Current L2",
+          "current_l3": "Current L3",
+          "power_l1": "Power L1",
+          "power_l2": "Power L2",
+          "power_l3": "Power L3"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This charger node is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "LoadPilot options",
+        "data": {
+          "contract_limit_a": "Grid contract limit per phase (A)",
+          "buffer_pct": "Safety buffer (%)",
+          "current_l1": "Current L1",
+          "current_l2": "Current L2",
+          "current_l3": "Current L3",
+          "power_l1": "Power L1",
+          "power_l2": "Power L2",
+          "power_l3": "Power L3"
+        }
+      }
+    }
+  },
+  "selector": {
+    "phases": {
+      "options": {
+        "1": "Single-phase",
+        "3": "Three-phase"
+      }
+    },
+    "country_profile": {
+      "options": {
+        "fr_tic": "France — Linky TIC (production-proven)",
+        "dsmr_p1": "NL/BE — DSMR 5 P1 (skeleton)",
+        "sml_de": "DE/AT — SML IR head (skeleton)",
+        "ct_clamps": "Universal — CT clamps (skeleton)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "state": {
+        "name": "State",
+        "state": {
+          "regulating": "Regulating",
+          "idle": "Idle",
+          "escalating": "Escalating",
+          "failsafe": "Fail-safe",
+          "off": "Off"
+        }
+      },
+      "headroom_l1": { "name": "Headroom L1" },
+      "headroom_l2": { "name": "Headroom L2" },
+      "headroom_l3": { "name": "Headroom L3" },
+      "worst_phase": {
+        "name": "Worst phase",
+        "state": {
+          "l1": "L1",
+          "l2": "L2",
+          "l3": "L3"
+        }
+      }
+    }
+  },
+  "services": {
+    "set_bias": {
+      "name": "Set bias",
+      "description": "[UX_COPY.md pending] Write the bias target (the ramp stays in firmware).",
+      "fields": {
+        "amps": {
+          "name": "Amps",
+          "description": "Bias target, 0 to 16 A in 0.5 A steps."
+        }
+      }
+    },
+    "pause": {
+      "name": "Pause",
+      "description": "[UX_COPY.md pending] Full bias: clean charge pause."
+    },
+    "resume": {
+      "name": "Resume",
+      "description": "[UX_COPY.md pending] Bias back to 0."
+    }
+  },
+  "issues": {
+    "firmware_version_skew": {
+      "title": "Firmware / integration version skew",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Firmware / integration version skew",
+            "description": "The charger node runs package version {fw_version} while the integration is {integration_version}. Update the pinned ESPHome package `ref:` (or the HACS integration) so both match, then confirm. Regulation is NOT blocked by this skew."
+          }
+        }
+      }
+    },
+    "source_failsafe": {
+      "title": "No healthy measure source (charge blocked)",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "No healthy measure source",
+            "description": "The charger node is in fail-safe: both the UDP feed and the HA mirror are down, so it publishes full consumption and blocks charging (safe behaviour). Restore the meter node or the mirror entities, then confirm."
+          }
+        }
+      }
+    }
+  }
+}

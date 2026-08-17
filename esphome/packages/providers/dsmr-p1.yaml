@@ -1,0 +1,211 @@
+# =============================================================================
+# Tesla LoadPilot — meter provider: DSMR 5 port P1 (NL / BE) — SKELETON
+#
+# STATUS: SKELETON — NEVER COMPILED, NEVER TESTED ON A REAL METER.
+# The UDP contract below (broadcast_id, port 18511, encryption, 1 Hz) is
+# FROZEN (docs/15_FOURNISSEURS_MESURE.md §1) — do not change it. What needs
+# work is the acquisition side, marked TODO.
+#
+# Eligibility (docs/15 §2): DSMR 5 telegrams arrive every 1 s -> eligible.
+# DSMR 4 (10 s) and Luxembourg "Smarty" (~10 s + encrypted telegrams) are
+# NOT eligible — use providers/ct-clamps.yaml instead.
+#
+# Honest caveats:
+# - The DSMR `current` OBIS values are WHOLE amperes. Prefer computing
+#   I = power_delivered_lx / voltage_lx (same trick as teleinfo-fr) for
+#   sub-ampere resolution.
+# - Export (solar) is out of scope v0.x: the contract wants IMPORT-POSITIVE
+#   values; power_returned_* handling is TODO for solar installs.
+# - Some P1 ports need the 5 V supply / RTS handling and an inverted UART —
+#   verify per meter.
+# =============================================================================
+substitutions:
+  node_name: loadpilot-meter
+  friendly_name: LoadPilot Meter
+  loadpilot_fw_version: "0.1.0"
+  p1_rx_pin: GPIO36        # TODO: adapt to wiring; often inverted (see below)
+
+esphome:
+  name: ${node_name}
+  friendly_name: ${friendly_name}
+  compile_process_limit: 1
+  project:
+    name: loadpilot.meter-dsmr-p1
+    version: ${loadpilot_fw_version}
+
+logger:
+  baud_rate: 0
+
+api:
+  encryption:
+    key: !secret loadpilot_api_key
+
+ota:
+  - platform: esphome
+    password: !secret loadpilot_ota_password
+
+# --- FROZEN UDP contract (identical to teleinfo-fr) --------------------------
+udp:
+  id: udp_meter
+#  addresses: ["192.168.x.x"]   # unicast to the charger node if needed
+
+packet_transport:
+  - platform: udp
+    udp_id: udp_meter
+    update_interval: 1s
+    encryption: !secret loadpilot_udp_key
+    rolling_code_enable: true
+    sensors:
+      - id: meter_current_calc_1
+        broadcast_id: lky_ia
+      - id: meter_current_calc_2
+        broadcast_id: lky_ib
+      - id: meter_current_calc_3
+        broadcast_id: lky_ic
+      - id: meter_power_1
+        broadcast_id: lky_pa
+      - id: meter_power_2
+        broadcast_id: lky_pb
+      - id: meter_power_3
+        broadcast_id: lky_pc
+
+# --- Acquisition (TODO: verify on hardware) ----------------------------------
+uart:
+  id: uart_p1
+  rx_pin:
+    number: ${p1_rx_pin}
+    inverted: true           # TODO: most P1 ports are inverted; verify
+  baud_rate: 115200
+  rx_buffer_size: 1700       # a full DSMR 5 telegram
+
+dsmr:
+  id: dsmr_p1
+  uart_id: uart_p1
+  # TODO: decryption_key for Luxembourg Smarty is NOT supported here (cadence
+  # ineligible anyway — see header).
+
+sensor:
+  # DSMR gives kW per phase; convert to VA-equivalent W (the contract wants
+  # apparent power in VA; using active power is an approximation — TODO:
+  # document the error margin honestly after a real-meter test).
+  - platform: dsmr
+    power_delivered_l1:
+      id: dsmr_power_l1
+      internal: true
+    power_delivered_l2:
+      id: dsmr_power_l2
+      internal: true
+    power_delivered_l3:
+      id: dsmr_power_l3
+      internal: true
+    voltage_l1:
+      id: dsmr_voltage_l1
+      internal: true
+    voltage_l2:
+      id: dsmr_voltage_l2
+      internal: true
+    voltage_l3:
+      id: dsmr_voltage_l3
+      internal: true
+
+  # kW -> W (broadcast source, no throttle).
+  - platform: template
+    id: meter_power_1
+    internal: true
+    unit_of_measurement: VA
+    state_class: measurement
+    update_interval: 1s
+    lambda: |-
+      float p = id(dsmr_power_l1).state;
+      if (std::isnan(p)) return NAN;
+      return p * 1000.0f;
+  - platform: template
+    id: meter_power_2
+    internal: true
+    unit_of_measurement: VA
+    state_class: measurement
+    update_interval: 1s
+    lambda: |-
+      float p = id(dsmr_power_l2).state;
+      if (std::isnan(p)) return NAN;
+      return p * 1000.0f;
+  - platform: template
+    id: meter_power_3
+    internal: true
+    unit_of_measurement: VA
+    state_class: measurement
+    update_interval: 1s
+    lambda: |-
+      float p = id(dsmr_power_l3).state;
+      if (std::isnan(p)) return NAN;
+      return p * 1000.0f;
+
+  # Sub-ampere currents I = P / U (teleinfo-fr pattern).
+  - platform: template
+    id: meter_current_calc_1
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      float p = id(meter_power_1).state;
+      if (std::isnan(p)) return NAN;
+      float u = id(dsmr_voltage_l1).state;
+      if (std::isnan(u) || u < 180.0f) u = 230.0f;
+      return roundf((p / u) * 100.0f) / 100.0f;
+  - platform: template
+    id: meter_current_calc_2
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      float p = id(meter_power_2).state;
+      if (std::isnan(p)) return NAN;
+      float u = id(dsmr_voltage_l2).state;
+      if (std::isnan(u) || u < 180.0f) u = 230.0f;
+      return roundf((p / u) * 100.0f) / 100.0f;
+  - platform: template
+    id: meter_current_calc_3
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      float p = id(meter_power_3).state;
+      if (std::isnan(p)) return NAN;
+      float u = id(dsmr_voltage_l3).state;
+      if (std::isnan(u) || u < 180.0f) u = 230.0f;
+      return roundf((p / u) * 100.0f) / 100.0f;
+
+  # CONTRACTUAL HA entities (throttled copies).
+  - platform: copy
+    source_id: meter_current_calc_1
+    name: "Current L1"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_current_calc_2
+    name: "Current L2"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_current_calc_3
+    name: "Current L3"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_power_1
+    name: "Power L1"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_power_2
+    name: "Power L2"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_power_3
+    name: "Power L3"
+    filters: [ throttle: 2s ]

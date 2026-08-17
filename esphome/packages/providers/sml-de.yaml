@@ -1,0 +1,187 @@
+# =============================================================================
+# Tesla LoadPilot — meter provider: SML IR head (DE / AT) — SKELETON
+#
+# STATUS: SKELETON — NEVER COMPILED, NEVER TESTED ON A REAL METER.
+# The UDP contract (port 18511, lky_* broadcast ids, XXTEA, 1 Hz) is FROZEN.
+#
+# HONEST CAVEATS (docs/15_FOURNISSEURS_MESURE.md §2-§3) — read before use:
+# - Many SML meters (ISKRA MT681, EMH eHZ...) only expose the TOTAL signed
+#   power (OBIS 1-0:16.7.0), NOT per-phase values. Publishing total/3 on the
+#   three phases is a DEGRADED approximation: on an unbalanced installation
+#   the worst phase is UNDER-estimated and the charger-node law under-
+#   protects. If your meter has no per-phase OBIS (1-0:21.7.0 / 41.7.0 /
+#   61.7.0), prefer providers/ct-clamps.yaml.
+# - A PIN (from the utility) is often required to unlock instantaneous power.
+# - Cadence varies 1-4 s per meter model: verify >= ~1 Hz before relying on
+#   it (below ~1 Hz the wallbox bang-bang is guaranteed — measured).
+# =============================================================================
+substitutions:
+  node_name: loadpilot-meter
+  friendly_name: LoadPilot Meter
+  loadpilot_fw_version: "0.1.0"
+  sml_rx_pin: GPIO36       # TODO: IR reading head RX
+  sml_tx_pin: GPIO4        # TODO: unused by most read-only heads
+
+esphome:
+  name: ${node_name}
+  friendly_name: ${friendly_name}
+  compile_process_limit: 1
+  project:
+    name: loadpilot.meter-sml-de
+    version: ${loadpilot_fw_version}
+
+logger:
+  baud_rate: 0
+
+api:
+  encryption:
+    key: !secret loadpilot_api_key
+
+ota:
+  - platform: esphome
+    password: !secret loadpilot_ota_password
+
+# --- FROZEN UDP contract -----------------------------------------------------
+udp:
+  id: udp_meter
+#  addresses: ["192.168.x.x"]
+
+packet_transport:
+  - platform: udp
+    udp_id: udp_meter
+    update_interval: 1s
+    encryption: !secret loadpilot_udp_key
+    rolling_code_enable: true
+    sensors:
+      - id: meter_current_calc_1
+        broadcast_id: lky_ia
+      - id: meter_current_calc_2
+        broadcast_id: lky_ib
+      - id: meter_current_calc_3
+        broadcast_id: lky_ic
+      - id: meter_power_1
+        broadcast_id: lky_pa
+      - id: meter_power_2
+        broadcast_id: lky_pb
+      - id: meter_power_3
+        broadcast_id: lky_pc
+
+# --- Acquisition (TODO: verify OBIS codes per meter model) -------------------
+uart:
+  id: uart_sml
+  rx_pin: ${sml_rx_pin}
+  tx_pin: ${sml_tx_pin}
+  baud_rate: 9600
+  data_bits: 8
+  parity: NONE
+  stop_bits: 1
+
+sml:
+  id: sml_bus
+  uart_id: uart_sml
+
+sensor:
+  # TODO: per-phase OBIS codes — PRESENT ONLY ON SOME METERS (see header).
+  - platform: sml
+    sml_id: sml_bus
+    obis_code: "1-0:21.7.0"    # active power L1 (W)
+    id: sml_power_l1
+    internal: true
+  - platform: sml
+    sml_id: sml_bus
+    obis_code: "1-0:41.7.0"    # active power L2 (W)
+    id: sml_power_l2
+    internal: true
+  - platform: sml
+    sml_id: sml_bus
+    obis_code: "1-0:61.7.0"    # active power L3 (W)
+    id: sml_power_l3
+    internal: true
+
+  # Broadcast sources. SML rarely exposes per-phase voltage: 230 V nominal
+  # is assumed for the current computation (TODO: use OBIS 32/52/72.7.0
+  # voltages when the meter provides them).
+  - platform: template
+    id: meter_power_1
+    internal: true
+    unit_of_measurement: VA
+    state_class: measurement
+    update_interval: 1s
+    lambda: "return id(sml_power_l1).state;"
+  - platform: template
+    id: meter_power_2
+    internal: true
+    unit_of_measurement: VA
+    state_class: measurement
+    update_interval: 1s
+    lambda: "return id(sml_power_l2).state;"
+  - platform: template
+    id: meter_power_3
+    internal: true
+    unit_of_measurement: VA
+    state_class: measurement
+    update_interval: 1s
+    lambda: "return id(sml_power_l3).state;"
+
+  - platform: template
+    id: meter_current_calc_1
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      float p = id(meter_power_1).state;
+      if (std::isnan(p)) return NAN;
+      return roundf((p / 230.0f) * 100.0f) / 100.0f;
+  - platform: template
+    id: meter_current_calc_2
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      float p = id(meter_power_2).state;
+      if (std::isnan(p)) return NAN;
+      return roundf((p / 230.0f) * 100.0f) / 100.0f;
+  - platform: template
+    id: meter_current_calc_3
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      float p = id(meter_power_3).state;
+      if (std::isnan(p)) return NAN;
+      return roundf((p / 230.0f) * 100.0f) / 100.0f;
+
+  # CONTRACTUAL HA entities (throttled copies).
+  - platform: copy
+    source_id: meter_current_calc_1
+    name: "Current L1"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_current_calc_2
+    name: "Current L2"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_current_calc_3
+    name: "Current L3"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_power_1
+    name: "Power L1"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_power_2
+    name: "Power L2"
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: meter_power_3
+    name: "Power L3"
+    filters: [ throttle: 2s ]

@@ -1,0 +1,40 @@
+# =============================================================================
+# Tesla LoadPilot — board pack: Kincony ESP32-S3 core (ESP32-S3-WROOM-1U N16R8)
+#
+# STATUS: DRAFT — compiled OK, NEVER connected to a wallbox. Do not use on a
+# live installation before replaying the minimal QA of docs/20_FIRMWARE.md
+# §2.9 (polling active, poll ~200 ms stable, fail-safe, bias 0->16->0).
+#
+# RS485: integrated transceiver, auto-direction (no DE/RE).
+# Network: wired W5500 (SPI). Logs go through USB_SERIAL_JTAG because the
+# default UART0 pins are taken by the W5500 SPI bus.
+# =============================================================================
+substitutions:
+  rs485_tx_pin: GPIO16
+  rs485_rx_pin: GPIO15
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+
+ethernet:
+  type: W5500
+  clk_pin: GPIO43
+  mosi_pin: GPIO44
+  miso_pin: GPIO42
+  cs_pin: GPIO41
+  interrupt_pin: GPIO2
+  reset_pin: GPIO1
+
+uart:
+  - id: rs485
+    tx_pin: ${rs485_tx_pin}
+    rx_pin: ${rs485_rx_pin}
+    baud_rate: 115200
+    data_bits: 8
+    parity: NONE
+    stop_bits: 1

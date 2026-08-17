@@ -1,0 +1,141 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nœuds LoadPilot",
+        "description": "[UX_COPY.md en attente] Noms des deux nœuds ESPHome et topologie du site.",
+        "data": {
+          "charger_node": "Nom du nœud borne",
+          "meter_node": "Nom du nœud compteur",
+          "phases": "Phases",
+          "country_profile": "Profil compteur"
+        }
+      },
+      "limits": {
+        "title": "Limites électriques",
+        "description": "[UX_COPY.md en attente] Écrites dans les réglages résidents du nœud (le firmware les héberge).",
+        "data": {
+          "contract_limit_a": "Limite d'abonnement par phase (A)",
+          "buffer_pct": "Buffer de sécurité (%)"
+        }
+      },
+      "mirror": {
+        "title": "Chemin de mesure de secours",
+        "description": "[UX_COPY.md en attente] Entités miroir Home Assistant optionnelles (doivent correspondre aux substitutions ESPHome).",
+        "data": {
+          "current_l1": "Courant L1",
+          "current_l2": "Courant L2",
+          "current_l3": "Courant L3",
+          "power_l1": "Puissance L1",
+          "power_l2": "Puissance L2",
+          "power_l3": "Puissance L3"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Ce nœud borne est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options LoadPilot",
+        "data": {
+          "contract_limit_a": "Limite d'abonnement par phase (A)",
+          "buffer_pct": "Buffer de sécurité (%)",
+          "current_l1": "Courant L1",
+          "current_l2": "Courant L2",
+          "current_l3": "Courant L3",
+          "power_l1": "Puissance L1",
+          "power_l2": "Puissance L2",
+          "power_l3": "Puissance L3"
+        }
+      }
+    }
+  },
+  "selector": {
+    "phases": {
+      "options": {
+        "1": "Monophasé",
+        "3": "Triphasé"
+      }
+    },
+    "country_profile": {
+      "options": {
+        "fr_tic": "France — Linky TIC (éprouvé en production)",
+        "dsmr_p1": "NL/BE — DSMR 5 P1 (squelette)",
+        "sml_de": "DE/AT — tête IR SML (squelette)",
+        "ct_clamps": "Universel — pinces CT (squelette)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "state": {
+        "name": "État",
+        "state": {
+          "regulating": "Régulation",
+          "idle": "Repos",
+          "escalating": "Escalade",
+          "failsafe": "Sécurité",
+          "off": "Arrêt"
+        }
+      },
+      "headroom_l1": { "name": "Marge L1" },
+      "headroom_l2": { "name": "Marge L2" },
+      "headroom_l3": { "name": "Marge L3" },
+      "worst_phase": {
+        "name": "Pire phase",
+        "state": {
+          "l1": "L1",
+          "l2": "L2",
+          "l3": "L3"
+        }
+      }
+    }
+  },
+  "services": {
+    "set_bias": {
+      "name": "Régler le biais",
+      "description": "[UX_COPY.md en attente] Écrit la cible de biais (la rampe reste dans le firmware).",
+      "fields": {
+        "amps": {
+          "name": "Ampères",
+          "description": "Cible de biais, 0 à 16 A par pas de 0,5 A."
+        }
+      }
+    },
+    "pause": {
+      "name": "Pause",
+      "description": "[UX_COPY.md en attente] Biais plein : pause de charge propre."
+    },
+    "resume": {
+      "name": "Reprise",
+      "description": "[UX_COPY.md en attente] Biais remis à 0."
+    }
+  },
+  "issues": {
+    "firmware_version_skew": {
+      "title": "Écart de version firmware / intégration",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Écart de version firmware / intégration",
+            "description": "Le nœud borne exécute la version {fw_version} du package alors que l'intégration est en {integration_version}. Mettez à jour le `ref:` du package ESPHome épinglé (ou l'intégration HACS) pour les aligner, puis confirmez. La régulation n'est PAS bloquée par cet écart."
+          }
+        }
+      }
+    },
+    "source_failsafe": {
+      "title": "Aucune source de mesure saine (charge bloquée)",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Aucune source de mesure saine",
+            "description": "Le nœud borne est en sécurité : le flux UDP et le miroir HA sont tombés, il publie une consommation pleine et bloque la charge (comportement sûr). Rétablissez le nœud compteur ou les entités miroir, puis confirmez."
+          }
+        }
+      }
+    }
+  }
+}

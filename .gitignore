@@ -1,0 +1,4 @@
+secrets.yaml
+*.BACKUP*
+.DS_Store
+__pycache__/
