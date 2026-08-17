@@ -22,6 +22,12 @@ jobs:
   hacs:
     name: HACS validation
     runs-on: ubuntu-latest
+    # NON BLOQUANT tant que le repo est prive : les controles hacsjson,
+    # integration_manifest et license passent par la vue publique du repo
+    # (celle de la boutique HACS) et ne peuvent pas voir un repo prive.
+    # A RE-DURCIR (retirer continue-on-error) a la publication, avec la
+    # licence en place.
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
