@@ -128,7 +128,7 @@ ways they can move under us.
 
 ## Explicit non-goals (v0.x)
 
-From [`../ARCHITECTURE.md`](../ARCHITECTURE.md):
+From [`../ARCHITECTURE.md`](../../ARCHITECTURE.md):
 
 - No solar/export management (reference install is import-only, GRID mode).
 - No vehicle cloud API in the shipped product.

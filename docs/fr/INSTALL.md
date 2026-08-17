@@ -57,7 +57,7 @@ Copiez `esphome/secrets.yaml.example` vers votre `secrets.yaml` ESPHome et
 renseignez toutes les valeurs (WiFi, clés API ESPHome, mots de passe OTA,
 **clé UDP partagée** entre les deux nœuds - c'est elle qui chiffre les
 mesures en XXTEA). Le fichier `secrets.yaml` **ne se commite jamais**
-(voir [`../SECURITY.md`](../SECURITY.md)).
+(voir [`../SECURITY.md`](../../SECURITY.md)).
 
 ## 2. Nœud compteur (Olimex ESP32-POE + hat Hallard)
 
@@ -280,4 +280,4 @@ pas une panne. Détails : [`BEHAVIOR.md`](../en/BEHAVIOR.md) §5.
 
 Pour ouvrir un ticket : version du firmware TWC **obligatoire**, plus
 carte, mode de signal, et capteurs d'observabilité
-(voir [`../CONTRIBUTING.md`](../CONTRIBUTING.md)).
+(voir [`../CONTRIBUTING.md`](../../CONTRIBUTING.md)).
