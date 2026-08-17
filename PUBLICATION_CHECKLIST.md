@@ -1,27 +1,17 @@
-# Publication checklist (go-public gate)
+# Post-publication TODO
 
-The repo stays private until EVERY box is ticked. Status 17 Aug 2026, midnight.
+The repository went public on 17 Aug 2026 under MIT, with attribution to
+PVi1 and Klangen82. Remaining polish items, none of them blocking:
 
-- [x] **PVi1 licensing resolved** : 17 Aug 21:12 UTC, PVi1 added an MIT
-  LICENSE to esphome-twc-control (based on Klangen82's) and answered on
-  issue #1. Verified via the GitHub API (spdx MIT).
-- [x] **LICENSE file** added : MIT, with an explicit attribution notice for
-  PVi1 and Klangen82 covering the derived ESPHome-node portions.
-- [ ] **Courtesy window (short)** : PVi1 asked for "a few days" to review
-  our data before commenting. Wait for his follow-up or until ~22 Aug
-  before flipping public; reply on issue #1 first (thanks + heads-up that
-  we will publish under MIT with attribution).
-- [ ] **Project name reviewed** : "Tesla LoadPilot" contains a trademark;
-  decide keep (community precedent) vs rename, deliberately.
-- [ ] **Hero image retouched** : remove the TESLA lettering on the charger
-  (and regenerate without the V1.0 caption while at it).
-- [ ] **CI re-hardened** : remove `continue-on-error` from the HACS job
-  (license now present; the remaining checks pass once public), open the
-  home-assistant/brands PR for the logo.
-- [ ] **Secrets final sweep** : re-run the value-scan and gitleaks on the
-  full history (history was already rewritten and the UDP key rotated on
-  17 Aug; verify nothing regressed since).
+- [ ] **Hero image retouch** : remove the TESLA lettering on the charger in
+  `docs/assets/hero.png` and regenerate without the V1.0 caption.
+- [ ] **CI re-hardening** : remove `continue-on-error` from the HACS job in
+  `.github/workflows/validate.yml` (repo-view checks can now run) and open
+  the home-assistant/brands PR for the logo.
 - [ ] **From-scratch install test** (TESTPLAN volet B) on a clean HA.
+- [ ] **HACS custom-repository instructions** : verify the install flow end
+  to end once the brands PR is merged.
 
-When all boxes are ticked: flip visibility, tag the release, publish the
-HACS custom-repository instructions, and answer the community threads.
+Decisions taken: project name "Tesla LoadPilot" kept (community precedent,
+descriptive use); publication done with PVi1's blessing window open (he has
+the raw traces and a few days to review).
