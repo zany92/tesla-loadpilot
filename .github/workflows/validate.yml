@@ -22,26 +22,17 @@ jobs:
   hacs:
     name: HACS validation
     runs-on: ubuntu-latest
-    # NON BLOQUANT tant que le repo est prive : les controles hacsjson,
-    # integration_manifest et license passent par la vue publique du repo
-    # (celle de la boutique HACS) et ne peuvent pas voir un repo prive.
-    # A RE-DURCIR (retirer continue-on-error) a la publication, avec la
-    # licence en place.
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Run HACS validation
         uses: hacs/action@main
         env:
-          # Repo prive : sans token explicite, l'action interroge l'API en
-          # anonyme et ne voit ni manifest ni hacs.json ni licence.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           category: integration
-          # The repository is private for now; the home-assistant/brands PR
-          # will be opened at publication time. Until then the brands check
-          # cannot pass and is deliberately ignored.
+          # Ignored until the home-assistant/brands PR for the loadpilot
+          # domain is merged; drop this line right after.
           ignore: brands
 
   python:
