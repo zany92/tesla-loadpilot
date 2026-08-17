@@ -27,6 +27,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Run HACS validation
         uses: hacs/action@main
+        env:
+          # Repo prive : sans token explicite, l'action interroge l'API en
+          # anonyme et ne voit ni manifest ni hacs.json ni licence.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           category: integration
           # The repository is private for now; the home-assistant/brands PR
