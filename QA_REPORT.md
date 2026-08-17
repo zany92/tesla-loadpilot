@@ -238,3 +238,5 @@ mono, les 2 dashboards).
 
 
 > Note (17/08 soir) : B1 est TRAITÉ depuis le 17/08 après-midi (historique git recréé sans la clé, force-push, clé XXTEA tournée en prod sur les deux nœuds). Le rappel « reste dû » plus haut est obsolète.
+
+> Note (17/08 nuit) : couche de mapping d'entités ajoutée. `entry.options["entity_overrides"]` remappe chaque clé de `CHARGER_TRACKED_ENTITIES` vers un entity_id complet (clé absente = défaut générique, valeur null/"" = entité déclarée absente, tolérée) ; le failsafe ne dépend plus que des 6 mesures essentielles (`ESSENTIAL_KEYS`). Étape d'options « advanced_mapping » (opt-in par case à cocher) + traductions EN/FR ; py_compile OK, arbres de clés EN/FR identiques.

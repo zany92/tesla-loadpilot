@@ -24,6 +24,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     EntitySelector,
     EntitySelectorConfig,
     NumberSelector,
@@ -38,11 +39,13 @@ from homeassistant.util import slugify
 
 from .const import (
     CHARGER_NODE_DEFAULT_NAME,
+    CHARGER_TRACKED_ENTITIES,
     CONF_BUFFER_PCT,
     CONF_CHARGER_NODE,
     CONF_CONTRACT_LIMIT_A,
     CONF_CONTRACT_PRESET,
     CONF_COUNTRY_PROFILE,
+    CONF_ENTITY_OVERRIDES,
     CONF_METER_NODE,
     CONF_MIRROR_ENTITIES,
     CONF_PHASES,
@@ -64,6 +67,10 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Options-flow-only form field (never stored): opt-in checkbox that routes
+# to the advanced entity-mapping step.
+CONF_CONFIGURE_MAPPING = "configure_entity_mapping"
 
 # Labels used in the confirm-step recap placeholder {country_profile}.
 # Deliberately language-neutral-ish (proper nouns / protocol names): HA
@@ -406,10 +413,12 @@ class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class LoadPilotOptionsFlow(OptionsFlow):
-    """Runtime-adjustable options (limits + mirror entities)."""
+    """Runtime-adjustable options (limits + mirror + entity mapping)."""
 
     def __init__(self) -> None:
         self._tri_warned_limit: Optional[float] = None
+        # Options gathered by the init step, completed by advanced_mapping.
+        self._options: dict[str, Any] = {}
 
     async def async_step_init(
         self, user_input: Optional[dict[str, Any]] = None
@@ -456,7 +465,14 @@ class LoadPilotOptionsFlow(OptionsFlow):
                     CONF_CONTRACT_LIMIT_A: current_limit,
                     CONF_BUFFER_PCT: current_buffer,
                     CONF_MIRROR_ENTITIES: current_mirror,
+                    # Preserved as-is unless the mapping step rewrites it.
+                    CONF_ENTITY_OVERRIDES: entry.options.get(
+                        CONF_ENTITY_OVERRIDES, {}
+                    ),
                 }
+                if user_input.get(CONF_CONFIGURE_MAPPING):
+                    self._options = options
+                    return await self.async_step_advanced_mapping()
                 return self.async_create_entry(title="", data=options)
 
         schema = _limits_schema(
@@ -465,9 +481,63 @@ class LoadPilotOptionsFlow(OptionsFlow):
             phases=phases,
             with_presets=with_presets,
         ).extend(_mirror_schema(current_mirror, phases=phases).schema)
+        schema = schema.extend(
+            {vol.Optional(CONF_CONFIGURE_MAPPING, default=False): BooleanSelector()}
+        )
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
             errors=errors,
             description_placeholders=placeholders or None,
+        )
+
+    async def async_step_advanced_mapping(
+        self, user_input: Optional[dict[str, Any]] = None
+    ) -> ConfigFlowResult:
+        """Optional per-key remapping of the tracked charger-node entities.
+
+        For historic nodes whose object_ids do not follow the generic
+        contract. Each field holds a FULL entity_id; empty = generic
+        default. Keys previously DECLARED ABSENT (stored as None/"") stay
+        declared absent unless an entity is picked for them - an empty
+        selector cannot distinguish "back to default" from "still absent".
+        """
+        entry = self.config_entry
+        slug = slugify(entry.data[CONF_CHARGER_NODE])
+        generic = {
+            key: f"{platform}.{slug}_{suffix}"
+            for key, (platform, suffix) in CHARGER_TRACKED_ENTITIES.items()
+        }
+        existing = entry.options.get(CONF_ENTITY_OVERRIDES) or {}
+        if user_input is not None:
+            overrides: dict[str, Optional[str]] = {
+                key: user_input[key]
+                for key in CHARGER_TRACKED_ENTITIES
+                if user_input.get(key) and user_input[key] != generic[key]
+            }
+            for key, value in existing.items():
+                if (
+                    key in CHARGER_TRACKED_ENTITIES
+                    and not value
+                    and not user_input.get(key)
+                ):
+                    overrides[key] = None  # keep the declared-absent marker
+            self._options[CONF_ENTITY_OVERRIDES] = overrides
+            return self.async_create_entry(title="", data=self._options)
+
+        schema: dict[Any, Any] = {}
+        for key, (platform, _suffix) in CHARGER_TRACKED_ENTITIES.items():
+            # Effective current value: override if set, else the generic
+            # default; declared-absent keys show an empty field.
+            effective = existing[key] if key in existing else generic[key]
+            marker = (
+                vol.Optional(key, description={"suggested_value": effective})
+                if effective
+                else vol.Optional(key)
+            )
+            schema[marker] = EntitySelector(
+                EntitySelectorConfig(domain=platform)
+            )
+        return self.async_show_form(
+            step_id="advanced_mapping", data_schema=vol.Schema(schema)
         )

@@ -82,11 +82,40 @@
           "current_l3": "Courant, phase 3",
           "power_l1": "Puissance, phase 1",
           "power_l2": "Puissance, phase 2",
-          "power_l3": "Puissance, phase 3"
+          "power_l3": "Puissance, phase 3",
+          "configure_entity_mapping": "Configurer le mappage avancé des entités"
         },
         "data_description": {
           "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement - ou « Autre » pour saisir les ampères vous-même ci-dessous.",
-          "buffer_pct": "Avec 10 % de réserve, la voiture n'exploite que 90 % de votre abonnement : le reste absorbe les à-coups sans faire disjoncter."
+          "buffer_pct": "Avec 10 % de réserve, la voiture n'exploite que 90 % de votre abonnement : le reste absorbe les à-coups sans faire disjoncter.",
+          "configure_entity_mapping": "Uniquement pour les boîtiers borne dont les noms d'entités ne suivent pas le firmware LoadPilot standard (installations historiques). Laissez décoché sinon."
+        }
+      },
+      "advanced_mapping": {
+        "title": "Mappage avancé des entités",
+        "description": "Associez chaque signal LoadPilot à l'entité réelle de votre boîtier borne. Laissez un champ vide pour utiliser le nom standard. Les champs déjà vides pour un signal que votre boîtier ne fournit pas restent déclarés absents - choisissez une entité pour recommencer à le suivre. Seules les six mesures de courant (publié + mesuré, par phase) sont indispensables au suivi de la régulation.",
+        "data": {
+          "published_current_l1": "Courant publié L1 (boîtier borne)",
+          "published_current_l2": "Courant publié L2 (boîtier borne)",
+          "published_current_l3": "Courant publié L3 (boîtier borne)",
+          "real_current_l1": "Courant mesuré L1 (mesure compteur)",
+          "real_current_l2": "Courant mesuré L2 (mesure compteur)",
+          "real_current_l3": "Courant mesuré L3 (mesure compteur)",
+          "real_power_l1": "Puissance mesurée L1 (mesure compteur)",
+          "real_power_l2": "Puissance mesurée L2 (mesure compteur)",
+          "real_power_l3": "Puissance mesurée L3 (mesure compteur)",
+          "source_active": "Source de mesure active",
+          "udp_age": "Âge du flux UDP",
+          "udp_fresh": "Fraîcheur du flux UDP",
+          "polling_active": "Interrogation de la borne active",
+          "poll_interval": "Intervalle d'interrogation de la borne",
+          "bias_target": "Biais cible (number)",
+          "bias_applied": "Biais appliqué",
+          "contract_limit": "Réglage limite d'abonnement (number)",
+          "buffer_pct": "Réglage réserve de sécurité (number)",
+          "control_enabled": "Régulation activée (switch)",
+          "escalation_active": "Escalade active",
+          "fw_version": "Version du firmware"
         }
       }
     },

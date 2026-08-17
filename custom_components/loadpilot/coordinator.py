@@ -24,6 +24,7 @@ from .const import (
     CONF_BUFFER_PCT,
     CONF_CHARGER_NODE,
     CONF_CONTRACT_LIMIT_A,
+    CONF_ENTITY_OVERRIDES,
     CONF_PHASES,
     CHARGER_TRACKED_ENTITIES,
     DEFAULT_BUFFER_PCT,
@@ -98,10 +99,22 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
         self.integration_version = integration_version
         self._charger_slug: str = slugify(entry.data[CONF_CHARGER_NODE])
         self._unsub_state: Optional[CALLBACK_TYPE] = None
-        # key -> entity_id map of every tracked charger-node entity.
+        # Optional per-key remapping (historic nodes with non-generic
+        # object_ids). Value = FULL entity_id; None/"" = declared absent.
+        overrides: dict[str, Any] = (
+            entry.options.get(CONF_ENTITY_OVERRIDES) or {}
+        )
+        self.absent_keys: frozenset[str] = frozenset(
+            key
+            for key, value in overrides.items()
+            if key in CHARGER_TRACKED_ENTITIES and not value
+        )
+        # key -> entity_id map of every tracked charger-node entity
+        # (declared-absent keys are simply never tracked).
         self.tracked_entities: dict[str, str] = {
-            key: f"{platform}.{self._charger_slug}_{suffix}"
+            key: overrides.get(key) or f"{platform}.{self._charger_slug}_{suffix}"
             for key, (platform, suffix) in CHARGER_TRACKED_ENTITIES.items()
+            if key not in self.absent_keys
         }
 
     # ------------------------------------------------------------------ setup
@@ -127,7 +140,10 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
 
     # ---------------------------------------------------------------- helpers
     def _state_str(self, key: str) -> Optional[str]:
-        state = self.hass.states.get(self.tracked_entities[key])
+        entity_id = self.tracked_entities.get(key)
+        if entity_id is None:  # declared absent (entity_overrides)
+            return None
+        state = self.hass.states.get(entity_id)
         if state is None or state.state in ("unavailable", "unknown"):
             return None
         return state.state
@@ -211,9 +227,23 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
         control_enabled = self._state_bool("control_enabled")
         escalation = self._state_bool("escalation_active")
 
+        # The 6 ESSENTIAL measures (per active phase): when they all flow,
+        # the node is observably alive even if some NON-essential tracked
+        # entity is declared absent (entity_overrides) or transiently gone.
+        essentials_present = all(
+            real_current[phase] is not None
+            and published_current[phase] is not None
+            for phase in phase_names
+        )
+
         data = LoadPilotData(
             state=self._derive_state(
-                source, control_enabled, escalation, real_current, phase_names
+                source,
+                control_enabled,
+                escalation,
+                real_current,
+                phase_names,
+                essentials_present,
             ),
             headroom=headroom,
             worst_phase=worst_phase,
@@ -241,13 +271,20 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
         escalation: Optional[bool],
         real_current: dict[str, Optional[float]],
         phase_names: list[str],
+        essentials_present: bool,
     ) -> str:
         """Map the firmware observables to the contract §3.3 state machine."""
         if control_enabled is False or source == SOURCE_OFF:
             return STATE_OFF
-        if source is None or source in (SOURCE_FAILSAFE, SOURCE_BOOT):
-            # Unknown source = node unreachable: report the safe truth
-            # (firmware publishes main_breaker whenever no source is healthy).
+        if source in (SOURCE_FAILSAFE, SOURCE_BOOT):
+            return STATE_FAILSAFE
+        if source is None and not essentials_present:
+            # No source telemetry AND the essential measures are gone: the
+            # node is unreachable, report the safe truth (firmware publishes
+            # main_breaker whenever no source is healthy). When the six
+            # essentials still flow, a missing source_active alone (declared
+            # absent via entity_overrides, or transient) must NOT force
+            # failsafe - the failsafe judgement rests on the essentials.
             return STATE_FAILSAFE
         if escalation:
             return STATE_ESCALATING
@@ -330,7 +367,12 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
     # ---------------------------------------------------------------- actions
     async def async_write_number(self, key: str, value: float) -> None:
         """Write a node-resident number entity (best effort, logged)."""
-        entity_id = self.tracked_entities[key]
+        entity_id = self.tracked_entities.get(key)
+        if entity_id is None:  # declared absent (entity_overrides)
+            _LOGGER.warning(
+                "Cannot write %s: entity declared absent on this node", key
+            )
+            return
         await self.hass.services.async_call(
             "number",
             "set_value",
@@ -359,7 +401,10 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
         for key, value in knobs.items():
             if value is None:
                 continue
-            entity_id = self.tracked_entities[key]
+            entity_id = self.tracked_entities.get(key)
+            if entity_id is None:  # declared absent (entity_overrides)
+                _LOGGER.debug("Knob %s declared absent on this node", key)
+                continue
             if self.hass.states.get(entity_id) is None:
                 _LOGGER.debug("Knob entity %s not (yet) present", entity_id)
                 continue
@@ -379,4 +424,6 @@ class LoadPilotCoordinator(DataUpdateCoordinator[LoadPilotData]):
                 "entity_id": entity_id,
                 "state": None if state is None else state.state,
             }
+        for key in self.absent_keys:
+            snapshot[key] = {"entity_id": None, "state": "absent (override)"}
         return snapshot

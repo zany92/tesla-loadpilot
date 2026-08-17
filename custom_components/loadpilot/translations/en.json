@@ -82,11 +82,40 @@
           "current_l3": "Current, phase 3",
           "power_l1": "Power, phase 1",
           "power_l2": "Power, phase 2",
-          "power_l3": "Power, phase 3"
+          "power_l3": "Power, phase 3",
+          "configure_entity_mapping": "Configure advanced entity mapping"
         },
         "data_description": {
           "contract_preset": "Pick your subscribed power to fill in the limit for you - or choose “Other” and enter the amps yourself below.",
-          "buffer_pct": "With a 10% buffer, the car only uses 90% of your contract: the rest absorbs surges without tripping the breaker."
+          "buffer_pct": "With a 10% buffer, the car only uses 90% of your contract: the rest absorbs surges without tripping the breaker.",
+          "configure_entity_mapping": "Only for charger nodes whose entity names do not follow the standard LoadPilot firmware (historic installations). Leave off otherwise."
+        }
+      },
+      "advanced_mapping": {
+        "title": "Advanced entity mapping",
+        "description": "Map each LoadPilot signal to the actual entity of your charger node. Leave a field empty to use the standard name. Fields already empty for a signal your node does not provide stay declared absent - pick an entity to start tracking it again. Only the six current measures (published + measured, per phase) are required for regulation monitoring.",
+        "data": {
+          "published_current_l1": "Published current L1 (charger node)",
+          "published_current_l2": "Published current L2 (charger node)",
+          "published_current_l3": "Published current L3 (charger node)",
+          "real_current_l1": "Measured current L1 (meter feed)",
+          "real_current_l2": "Measured current L2 (meter feed)",
+          "real_current_l3": "Measured current L3 (meter feed)",
+          "real_power_l1": "Measured power L1 (meter feed)",
+          "real_power_l2": "Measured power L2 (meter feed)",
+          "real_power_l3": "Measured power L3 (meter feed)",
+          "source_active": "Active measure source",
+          "udp_age": "UDP feed age",
+          "udp_fresh": "UDP feed fresh",
+          "polling_active": "Charger polling active",
+          "poll_interval": "Charger poll interval",
+          "bias_target": "Bias target (number)",
+          "bias_applied": "Bias applied",
+          "contract_limit": "Contract limit knob (number)",
+          "buffer_pct": "Safety buffer knob (number)",
+          "control_enabled": "Control enabled (switch)",
+          "escalation_active": "Escalation active",
+          "fw_version": "Firmware version"
         }
       }
     },

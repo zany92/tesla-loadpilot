@@ -118,6 +118,26 @@ CHARGER_TRACKED_ENTITIES = {
     "fw_version": ("sensor", "fw_version"),
 }
 
+# --- Entity-mapping overrides (options) -----------------------------------
+# Optional per-key remapping of CHARGER_TRACKED_ENTITIES, for nodes whose
+# object_ids do not follow the generic contract (historic pilot site).
+# Stored in entry.options as {key: full entity_id}. A key absent from the
+# dict = generic default; a key mapped to None/"" = entity DECLARED ABSENT
+# on the node (tolerated, never tracked).
+CONF_ENTITY_OVERRIDES = "entity_overrides"
+
+# The 6 measures the fail-safe judgement relies on (per active phase).
+# Any OTHER tracked entity may be declared absent without forcing the
+# failsafe state; these six missing = HA genuinely cannot observe the node.
+ESSENTIAL_KEYS = [
+    "published_current_l1",
+    "published_current_l2",
+    "published_current_l3",
+    "real_current_l1",
+    "real_current_l2",
+    "real_current_l3",
+]
+
 # Source-active values published by the firmware text sensor.
 SOURCE_UDP = "UDP"
 SOURCE_HA = "HA"
