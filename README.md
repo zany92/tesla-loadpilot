@@ -8,7 +8,7 @@
 
 **Local, cloud-free dynamic load management for the Tesla Wall Connector Gen 3, driven by your utility meter.** The charger adapts its power to whatever the house leaves available, in real time, for any vehicle including guests' cars, with no vehicle API, no manufacturer cloud and no extra energy meter to buy.
 
-> Status: **version 1.0.0**, open source (MIT), running in production on a single pilot site (France, 15 kVA three-phase, ~2000 instrumented episodes). Installable as a HACS custom repository. See [RELEASE_NOTES_1.0.0.md](RELEASE_NOTES_1.0.0.md).
+> Status: **version 1.3.1**, open source (MIT), running in production on a single pilot site (France, 15 kVA three-phase, ~2000 instrumented episodes, firmwares 26.18 and 26.26.1 validated). Installable as a HACS custom repository. Full history: [GitHub releases](https://github.com/zany92/tesla-loadpilot/releases).
 
 ---
 
