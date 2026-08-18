@@ -139,10 +139,15 @@ From [`../ARCHITECTURE.md`](../../ARCHITECTURE.md):
 A user-chosen charge ceiling (N amps, independent of the vehicle's own
 setting), implemented WITHOUT synthesizing a decorrelated meter signal
 (that path latches distrust, see BEHAVIOR section 4). Instead it reuses
-the node's bias channel: every 30 s, Home Assistant computes
+the node's bias channel: every 10 s, Home Assistant computes
 bias_target = worst_phase_headroom + vehicle_current(local vitals) − limit
 and writes it to the bias number; the node's own anti-trip ramp applies
-it. The Linky echo stays 1:1 (vitals freshness only affects the slow
+it. Field-tuned on 18 Aug: a fast 5 s local vitals sensor, an
+anti-hysteresis kick (+1.5 A when the vehicle sits above the cap while
+the published value idles in the dead band), and an asymmetric writer
+(raise immediately, decay at most 0.5 A per 10 s tick) that killed the
+11-16 A limit cycle a symmetric fast loop produces. Measured result: a
+13 A cap held at 13.2 A steady, equilibrium bias self-found. The Linky echo stays 1:1 (vitals freshness only affects the slow
 offset, never the correlation), and every protection layer stays active,
 so the limit acts as a cap: the car draws min(limit, what the house
 leaves). Candidate for productization in the integration (needs the

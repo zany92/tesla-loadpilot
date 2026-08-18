@@ -95,7 +95,7 @@ choisi par l'utilisateur (indépendant de la consigne du véhicule), sans
 jamais fabriquer un signal compteur décorrélé : ce raccourci, rapporté
 par la communauté (« lire /vitals et publier des valeurs simulées »),
 désactive la corrélation 1:1 et finit dans l'état de défiance décrit
-dans BEHAVIOR §4. À la place, une boucle lente (30 s) côté HA calcule
+dans BEHAVIOR §4. À la place, une boucle côté HA (10 s, écriture asymétrique : hausse immédiate, baisse 0,5 A par tick, kick anti-hystérésis) calcule
 
     biais_cible = marge pire phase + courant véhicule (vitals) − limite
 
