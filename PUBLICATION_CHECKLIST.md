@@ -3,8 +3,8 @@
 The repository went public on 17 Aug 2026 under MIT, with attribution to
 PVi1 and Klangen82. Remaining polish items, none of them blocking:
 
-- [x] **Hero image retouch** : done 18 Aug, new render without charger
-  lettering or caption, showing the full Linky to charger chain.
+- [x] **Hero image** : final render chosen by the site owner on 18 Aug
+  (titled, realistic boards, full Linky to charger chain).
 - [x] **CI re-hardened** : `continue-on-error` removed from the HACS job
   (17 Aug); only the brands check stays ignored until the brands PR merges.
 - [x] **Brand icons shipped in the integration** (`custom_components/
