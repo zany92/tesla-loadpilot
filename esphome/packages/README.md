@@ -18,6 +18,9 @@ packages/
 │   └── ...                  # per docs/fr/20_FIRMWARE.md §2.9
 └── providers/
     ├── teleinfo-fr.yaml     # France Linky TIC standard - production-proven
+    ├── teleinfo-fr-mono.yaml # France Linky TIC standard, SINGLE-PHASE meter
+    │                        #   (SINSTS/URMS1, B/C zeros watchdog-slaved) -
+    │                        #   THEORETICAL, never bench-tested
     ├── dsmr-p1.yaml         # NL/BE - skeleton per docs/fr/15_FOURNISSEURS_MESURE.md
     ├── sml-de.yaml          # DE/AT - skeleton, honest per-phase caveats
     └── ct-clamps.yaml       # universal fallback (ATM90E32 / PZEM)

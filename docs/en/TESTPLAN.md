@@ -114,6 +114,17 @@ On a CLEAN HA instance (VM) + the two spare ESP32s if possible:
 | C11 | Vehicle: silent give-up | 3+ closely spaced charge interruptions | documented behaviour ([`INSTALL.md`](INSTALL.md) §7): the vehicle may give up; verify the doc is enough for diagnosis | undocumented / diagnosis impossible |
 | C12 | Forged/replayed UDP packet (XXTEA + rolling code) | replay a captured packet | packet rejected (warning log), no influence on the publication | forged measurement accepted |
 | C13 | Two UDP destinations (broadcast + unicast) | configure both | duplicate rejection documented (warning/s); verify no effect on freshness | freshness broken by the duplicates |
+| C14 | Single-phase: CT registers read by the wallbox (extends C10; verdict on the symmetric-publication decision) | wallbox commissioned single-phase in Tesla One; observe in OMBRE, then brief differentiated publication (CT1 real / CT2-3 at 0, then symmetric) | identify which registers engage service and which trigger protection; the wallbox tolerates non-zero CT2/3 in single-phase | CT2/3 checked as ~0 by the firmware → activate plan B "CT1 only" (dedicated substitution, NOT the default) |
+| C15 | Single-phase: `ct_total` = 3x the single value | symmetric publication in single-phase, watch registers 0xFC/0x90 | total accepted (as the 3x-worst-phase total already is in three-phase) | total flagged implausible → plan B |
+| C16 | Single-phase: control-law constants | re-run the §B calibration on the single-phase bench | measure dead band above L, cut integral (~20 A.s in three-phase), service latency, recovery slope, L+0.1 micro-law, vehicle minimum (~6 A?) | constants diverge with no safe setting |
+| C17 | Single-phase: plausibility scale | 32 A vehicle ramp (double the three-phase per-phase scale) | 1:1 echo accepted; 0.5 gain floor still valid; document distrust entries/exits and the recovery protocol | distrust latched by a legitimate 32 A ramp |
+| C18 | Single-phase: real TIC mono | `teleinfo-fr-mono.yaml` on a real single-phase Linky | SINSTS (no index) + URMS1 labels confirmed at ~1 Hz; watchdog test (unplug the hat → FAILSAFE in ~20 s, B/C zeros go NAN with phase A); Tempo frames fit in 1024 bytes | labels differ / frames truncated / B/C zeros keep the feed fresh with a dead TIC |
+| C19 | Single-phase: 32 A bias pause | `bias_max_a: "32"`, loadpilot.set_bias amps: 32 during a 32 A charge | full pause effective; ~160 s ramp acceptable; vehicle give-up behaviour (~3 disturbed sessions) identical to three-phase | pause never completes or vehicle errors |
+| C20 | Single-phase: fail-safe and Meter Absent | meter absent / fail-safe on the single-phase bench | Tesla-documented 6 A fallback identical; boot main_breaker = charge blocked | uncontrolled charge under fallback |
+
+Single-phase status: the whole C14-C20 campaign is OPEN - single-phase
+support is THEORETICAL until it runs (no single-phase bench available at
+design time, 18 Aug 2026).
 
 ## D. GO / NO-GO publication criteria
 

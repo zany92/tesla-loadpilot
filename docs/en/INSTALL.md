@@ -88,8 +88,14 @@ XXTEA). The `secrets.yaml` file **is never committed**
      is an EDF tariff whose TIC frames are longer;
    - on Tempo, verify the cadence stays at ~1 Hz.
 
-On single-phase: only IRMS1/SINSTS1 exist; phases B/C are published at 0
-and the rest of the chain works unchanged.
+On single-phase (THEORETICAL - never bench-validated): a single-phase
+Linky does not emit the indexed labels this provider reads (SINSTS1/2/3),
+so use the dedicated provider
+`esphome/packages/providers/teleinfo-fr-mono.yaml` through the
+`esphome/examples/meter-teleinfo-mono-olimex-poe.yaml` entrypoint
+(`SINSTS` without index + `URMS1`; phases B/C published at 0, slaved to
+the TIC watchdog). With the three-phase provider the UDP feed would never
+become fresh and the charger node would sit in fail-safe forever.
 
 ## 3. Charger node (Kincony KC868-A6)
 
@@ -118,7 +124,13 @@ and the rest of the chain works unchanged.
      ≈ 21 A);
    - service breaker (`main_breaker`): this is the value published in
      fail-safe to block charging;
-   - safety buffer (default 10 %).
+   - safety buffer (default 10 %);
+   - phase count (`phase_count`): `"3"` by default (three-phase
+     reference). A single-phase install starts from
+     `charger-mono-exemple.yaml` instead (`phase_count: "1"`, bias
+     ceiling `bias_max_a: "32"`) and pairs with the single-phase meter
+     provider (section 2) - THEORETICAL, see the single-phase insert in
+     section 4.
 5. **Close the faceplate, re-energise the wallbox.**
 6. **Checks**:
    - `TWC Polling Active` = on and `TWC Poll Interval` stable at
@@ -200,6 +212,25 @@ the firmware version before/after any update and re-run the validation
 > publication block honours this invariant by construction (the published
 > measurement includes the wallbox's branch); any local modification must
 > preserve it, including during the vehicle's ramps.
+
+### Single-phase commissioning (THEORETICAL - never bench-validated)
+
+For a single-phase install (`charger-mono-exemple.yaml` +
+`teleinfo-fr-mono.yaml`), the Tesla One steps differ on three points:
+
+- **Grid type**: select *single-phase* when commissioning the Neurio meter
+  (the exact wording depends on the Tesla One version).
+- **Max Conductor Limit**: size for the single phase, e.g. 32 A (a
+  single-phase TWC Gen 3 draws up to 32 A on its one phase).
+- **Commissioning ladder**: OMBRE-MAX first, observe via `Shadow Published
+  Current`, and keep any stay in RAW as short as possible - in RAW the B/C
+  channels publish ~0 constant, a dead signal if the wallbox averages its
+  CT registers.
+
+Everything above is THEORETICAL: which CT registers a wallbox commissioned
+single-phase actually reads, and whether it tolerates non-zero CT2/3, are
+the first bench points ([`TESTPLAN.md`](TESTPLAN.md), single-phase cases).
+The control-law constants are three-phase measurements.
 
 ## 5. Home Assistant integration (HACS)
 

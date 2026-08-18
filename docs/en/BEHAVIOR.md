@@ -483,3 +483,39 @@ rose, zero contactor cycles, and a clean exit (9.1 to 15.7 A in ~6 s once
 the constraint fell). The one alert fired was a detector false positive
 (threshold sat inside the dead band; recalibrated to L+0.85). Raw trace:
 `data/traces/2026-08-17_2256_variantB_closed_loop.log`.
+
+## 11. Single-phase annex (THEORETICAL - designed, never bench-validated)
+
+Single-phase support (`phase_count: "1"`, provider `teleinfo-fr-mono.yaml`)
+reuses this behaviour model unchanged; nothing in this annex is measured on
+a single-phase installation. What follows separates what is structurally
+invariant from what is a three-phase calibration NOT transferred.
+
+Assumed invariant (structure, not numbers):
+
+- The law itself, character for character: worst phase = the only phase
+  (`worst = max(m1, 0, 0)`), budget = contract x (1 - buffer%) is already
+  expressed in amps of THE phase, the clamp, the escalation, the fail-safe
+  dither and the boot semantics are phase-count independent.
+- Symmetric publication on the 3 CT registers (§1 argument): the exact
+  service functional in single-phase commissioning is unknown, and
+  symmetric publication is the only strategy correct under CT1-only,
+  average and max readers at once. A real single-phase Neurio has CT2/3
+  uncabled (~0 + noise): whether the wallbox tolerates non-zero CT2/3 in
+  single-phase mode is bench point number 1.
+- 1:1 plausibility (§3): the never-dilute lesson applies as-is; the ~0.5
+  gain floor remains an absolute limit.
+
+Three-phase calibration NOT transferred (numbers to re-measure on a bench):
+
+- Dead band above L (L+0.5..L+0.9), cut integral (~20 A.s), service
+  latency (5-20 s), recovery (~1 A / 30 s), the L+0.1 micro-law slope, the
+  ~6 A vehicle minimum, and the set of CT registers actually read by a
+  wallbox commissioned single-phase in Tesla One.
+- `ct_total` registers = 3x the single value (side effect of the symmetric
+  publication, already accepted in three-phase): accepted or flagged in
+  single-phase commissioning, unknown.
+- Bias sizing: the mono example raises `bias_max_a` to 32 A (a single-phase
+  TWC Gen 3 draws up to 32 A); a full pause then takes ~160 s of ramp.
+
+Bench campaign: docs/en/TESTPLAN.md, single-phase cases (C10 and C14+).

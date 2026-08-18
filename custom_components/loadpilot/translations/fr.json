@@ -34,7 +34,7 @@
         },
         "data_description": {
           "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement - ou « Autre » pour saisir les ampères vous-même ci-dessous.",
-          "contract_limit_a": "En France : 6 kVA monophasé = 30 A · 9 kVA = 45 A · 12 kVA = 60 A · 15 kVA = 75 A · 18 kVA = 90 A. En triphasé, par phase : 6 kVA = 10 A · 9 kVA = 15 A · 12 kVA = 20 A · 15 kVA = 25 A · 18 kVA = 30 A.",
+          "contract_limit_a": "En France : 3 kVA monophasé = 15 A · 6 kVA = 30 A · 9 kVA = 45 A · 12 kVA = 60 A · 15 kVA = 75 A · 18 kVA = 90 A. En triphasé, par phase : 6 kVA = 10 A · 9 kVA = 15 A · 12 kVA = 20 A · 15 kVA = 25 A · 18 kVA = 30 A.",
           "buffer_pct": "Avec 10 % de réserve, la voiture n'exploite que 90 % de votre abonnement : le reste absorbe les à-coups (démarrage d'un four, d'une pompe) sans faire disjoncter."
         }
       },
@@ -142,6 +142,7 @@
     "contract_preset": {
       "options": {
         "custom": "Autre (saisir la limite en ampères)",
+        "mono_3": "3 kVA monophasé - 15 A",
         "mono_6": "6 kVA monophasé - 30 A",
         "mono_9": "9 kVA monophasé - 45 A",
         "mono_12": "12 kVA monophasé - 60 A",
@@ -187,17 +188,17 @@
   "services": {
     "set_bias": {
       "name": "Régler le ralentissement de charge (biais)",
-      "description": "Ralentit volontairement le véhicule en réservant des ampères pour le reste de la maison. 0 = aucun ralentissement, 16 = charge en pause. La valeur est appliquée en douceur - la rampe est gérée par le boîtier borne.",
+      "description": "Ralentit volontairement le véhicule en réservant des ampères pour le reste de la maison. 0 = aucun ralentissement ; le maximum (16 A en triphasé, 32 A en monophasé) = charge en pause. La valeur est appliquée en douceur - la rampe est gérée par le boîtier borne.",
       "fields": {
         "amps": {
           "name": "Ampères réservés",
-          "description": "Ampères retirés au véhicule, par phase (0 à 16, pas de 0,5)."
+          "description": "Ampères retirés au véhicule, par phase (0 à 16 en triphasé, 0 à 32 en monophasé, pas de 0,5)."
         }
       }
     },
     "pause": {
       "name": "Mettre la charge en pause",
-      "description": "Met la charge du véhicule en pause proprement en réservant tout le budget (biais 16 A). Le véhicule s'arrête en 2 minutes environ, sans erreur. Reprise via « Reprendre la charge »."
+      "description": "Met la charge du véhicule en pause proprement en réservant tout le biais (16 A en triphasé, 32 A en monophasé). Le véhicule s'arrête en quelques minutes, sans erreur - le biais est appliqué en rampe, une pause complète en monophasé prend donc plus longtemps. Reprise via « Reprendre la charge »."
     },
     "resume": {
       "name": "Reprendre la charge",

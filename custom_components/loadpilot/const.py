@@ -59,6 +59,12 @@ SERVICE_ATTR_AMPS = "amps"
 BIAS_MIN_A = 0.0
 BIAS_MAX_A = 16.0
 BIAS_STEP_A = 0.5
+# Single-phase bias ceiling: a full pause requires bias >= vehicle current,
+# and a single-phase TWC Gen 3 draws up to 32 A on its one phase
+# (7.4 kW / 230 V). Three-phase entries stay bounded by BIAS_MAX_A
+# (per-entry validation in services.py); the node itself enforces its own
+# `bias_max_a` substitution.
+BIAS_MAX_MONO_A = 32.0
 
 DEFAULT_CONTRACT_LIMIT_A = 21.7           # France 15 kVA three-phase
 
@@ -129,6 +135,9 @@ CONF_ENTITY_OVERRIDES = "entity_overrides"
 # The 6 measures the fail-safe judgement relies on (per active phase).
 # Any OTHER tracked entity may be declared absent without forcing the
 # failsafe state; these six missing = HA genuinely cannot observe the node.
+# REFERENCE LIST only: the runtime judge is the coordinator, which derives
+# the essentials dynamically PER ACTIVE PHASE (single-phase entries only
+# require the L1 pair; this static list is not consumed by the code).
 ESSENTIAL_KEYS = [
     "published_current_l1",
     "published_current_l2",
@@ -158,11 +167,15 @@ TRI_LIMIT_SUSPICIOUS_A = 40.0    # 3-phase, per-phase limit above this: probably
 
 # French kVA presets (standard Enedis pairs) - input helper ONLY: what is
 # stored stays CONF_CONTRACT_LIMIT_A in amps per phase (UX.md §2.3).
-# Single-phase stops at 24 kVA (120 A): 30/36 kVA single-phase offers do not
-# exist and would exceed the 120 A firmware bound.
+# Single-phase starts at 3 kVA (15 A, bottom of the Enedis catalogue;
+# 15 A x 0.9 = 13.5 A budget, above the MIN_CHARGE_BUDGET_A floor - a
+# marginal but legal contract) and stops at 24 kVA (120 A): 30/36 kVA
+# single-phase offers do not exist and would exceed the 120 A firmware
+# bound.
 CONF_CONTRACT_PRESET = "contract_preset"
 CONTRACT_PRESET_CUSTOM = "custom"
 CONTRACT_PRESETS_MONO_A = {
+    "mono_3": 15.0,
     "mono_6": 30.0,
     "mono_9": 45.0,
     "mono_12": 60.0,

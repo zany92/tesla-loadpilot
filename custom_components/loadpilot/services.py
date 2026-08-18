@@ -16,8 +16,11 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     BIAS_MAX_A,
+    BIAS_MAX_MONO_A,
     BIAS_MIN_A,
     BIAS_STEP_A,
+    CONF_PHASES,
+    DEFAULT_PHASES,
     DOMAIN,
     SERVICE_ATTR_AMPS,
     SERVICE_PAUSE,
@@ -36,11 +39,15 @@ def _validate_step(value: float) -> float:
     return value
 
 
+# Schema-level bound = the widest install type (single-phase, 32 A). The
+# STRICT bound is per entry: a three-phase entry stays capped at BIAS_MAX_A
+# (16 A), enforced in _async_write_bias below - three-phase behaviour is
+# unchanged.
 SET_BIAS_SCHEMA = vol.Schema(
     {
         vol.Required(SERVICE_ATTR_AMPS): vol.All(
             vol.Coerce(float),
-            vol.Range(min=BIAS_MIN_A, max=BIAS_MAX_A),
+            vol.Range(min=BIAS_MIN_A, max=BIAS_MAX_MONO_A),
             _validate_step,
         )
     }
@@ -59,8 +66,28 @@ def _coordinators(hass: HomeAssistant) -> list[LoadPilotCoordinator]:
     return coordinators
 
 
+def _bias_max_for(coordinator: LoadPilotCoordinator) -> float:
+    """Per-entry bias ceiling: 16 A three-phase, 32 A single-phase."""
+    entry = coordinator.config_entry
+    phases: int = entry.options.get(
+        CONF_PHASES, entry.data.get(CONF_PHASES, DEFAULT_PHASES)
+    )
+    return BIAS_MAX_MONO_A if phases == 1 else BIAS_MAX_A
+
+
 async def _async_write_bias(hass: HomeAssistant, amps: float) -> None:
-    for coordinator in _coordinators(hass):
+    coordinators = _coordinators(hass)
+    # Validate against EVERY targeted entry before writing to ANY of them:
+    # the service must not half-apply when one entry rejects the value.
+    for coordinator in coordinators:
+        bias_max = _bias_max_for(coordinator)
+        if amps > bias_max:
+            raise HomeAssistantError(
+                f"amps must be at most {bias_max:g} on this installation "
+                f"({'single' if bias_max == BIAS_MAX_MONO_A else 'three'}"
+                "-phase)"
+            )
+    for coordinator in coordinators:
         await coordinator.async_write_number("bias_target", amps)
 
 
@@ -75,8 +102,13 @@ def async_setup_services(hass: HomeAssistant) -> None:
 
     async def handle_pause(call: ServiceCall) -> None:
         # Full bias = clean charge pause (the firmware escalation forces a
-        # proper stop after 120 s at zero availability).
-        await _async_write_bias(hass, BIAS_MAX_A)
+        # proper stop after 120 s at zero availability). The ceiling is PER
+        # ENTRY: 16 A three-phase, 32 A single-phase - a hard-coded 16 A
+        # would only slow a 32 A single-phase charge down, never pause it.
+        for coordinator in _coordinators(hass):
+            await coordinator.async_write_number(
+                "bias_target", _bias_max_for(coordinator)
+            )
 
     async def handle_resume(call: ServiceCall) -> None:
         # Bias back to 0. The anti-yo-yo/projection guard is a later HA

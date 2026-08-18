@@ -110,6 +110,17 @@ Sur une instance HA VIERGE (VM) + les deux ESP32 de rechange si possible :
 | C11 | Véhicule : abandon silencieux | 3+ interruptions de charge rapprochées | comportement documenté (INSTALL_FR §7) : le véhicule peut abandonner - vérifier que la doc suffit au diagnostic | non documenté / diagnostic impossible |
 | C12 | Paquet UDP forgé/rejoué (XXTEA + rolling code) | rejouer un paquet capturé | paquet rejeté (log warning), aucune influence sur la publication | mesure falsifiée acceptée |
 | C13 | Deux destinations UDP (broadcast + unicast) | configurer les deux | rejet du doublon documenté (warning/s) - vérifier l'absence d'effet sur la fraîcheur | fraîcheur cassée par les doublons |
+| C14 | Monophasé : registres CT lus par la borne (étend C10 ; verdict de la décision « publication symétrique ») | borne commissionnée monophasée dans Tesla One ; observation en OMBRE, puis publication différenciée brève (CT1 réel / CT2-3 à 0, puis symétrique) | identifier quels registres engagent le service et lesquels déclenchent la protection ; la borne tolère des CT2/3 non nuls en mono | CT2/3 vérifiés ~0 par le firmware → activer le plan B « CT1 seul » (substitution dédiée, PAS le défaut) |
+| C15 | Monophasé : `ct_total` = 3x la valeur unique | publication symétrique en mono, observer les registres 0xFC/0x90 | total accepté (comme le total 3x pire phase l'est déjà en triphasé) | total flaggé implausible → plan B |
+| C16 | Monophasé : constantes de la loi | re-dérouler la calibration du volet B sur le banc mono | mesurer la bande morte au-dessus de L, l'intégrale de coupure (~20 A.s en tri), la latence service, la pente de remontée, la micro-loi L+0,1, le minimum véhicule (~6 A ?) | constantes divergentes sans réglage sûr |
+| C17 | Monophasé : échelle de plausibilité | rampe véhicule 32 A (échelle double du par-phase tri) | écho 1:1 accepté ; plancher de gain 0,5 toujours valide ; documenter entrées/sorties de la défiance et le protocole de récupération | défiance verrouillée par une rampe 32 A légitime |
+| C18 | Monophasé : TIC mono réelle | `teleinfo-fr-mono.yaml` sur un vrai Linky monophasé | étiquettes SINSTS (sans indice) + URMS1 confirmées à ~1 Hz ; test watchdog (débrancher le hat → FAILSAFE en ~20 s, zéros B/C passés NAN avec la phase A) ; trames Tempo dans 1024 octets | étiquettes différentes / trames tronquées / zéros B/C gardant le flux frais TIC morte |
+| C19 | Monophasé : pause par biais 32 A | `bias_max_a: "32"`, loadpilot.set_bias amps: 32 pendant une charge 32 A | pause complète effective ; rampe ~160 s acceptable ; abandon véhicule (~3 sessions perturbées) identique au tri | pause jamais complète ou erreurs véhicule |
+| C20 | Monophasé : fail-safe et Meter Absent | compteur absent / fail-safe sur le banc mono | repli 6 A documenté par Tesla identique ; boot main_breaker = charge bloquée | charge non contrôlée sous repli |
+
+Statut monophasé : toute la campagne C14-C20 est OUVERTE - le support
+monophasé est THÉORIQUE tant qu'elle n'a pas tourné (aucun banc mono
+disponible à la conception, 18/08/2026).
 
 ## D. Critères GO / NO-GO de publication
 

@@ -32,7 +32,7 @@ délestage est donc la RÉDUCTION DU VÉHICULE, par le canal disponible :
 | Situation | Levier | Modalité |
 |---|---|---|
 | Véhicule du foyer, API fraîche | consigne API (`number` courant de charge) | **proportionnelle** (la voiture obéit à une consigne : descente calculée, remontée bornée) |
-| Véhicule invité / API périmée / API muette | **biais borne** (number ESPHome) | **BINAIRE** : pause = biais plein (16 A) direct, relâche = biais 0 direct - jamais de valeur intermédiaire (loi de commande §2-3) |
+| Véhicule invité / API périmée / API muette | **biais borne** (number ESPHome) | **BINAIRE** : pause = biais plein (16 A en triphasé, 32 A en monophasé) direct, relâche = biais 0 direct - jamais de valeur intermédiaire (loi de commande §2-3) |
 
 Le canal binaire s'accompagne de :
 - **mémo de demande** : AVANT la pause, mémoriser la demande du véhicule

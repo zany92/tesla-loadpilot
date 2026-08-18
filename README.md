@@ -144,11 +144,13 @@ Everything user-facing happens in two places:
 | Law echo gain | 0.5 | **never below ~0.5** | Below that floor the charger's own ramps are diluted in the published signal and the plausibility layer rejects the meter (measured the hard way). |
 | Law max excursion | 1.0 A | 0.8-1.0 A | The charger has a dead band up to ~limit + 0.9: lower caps cost integral without effect. |
 | Tail (variant B) | 0 (inert) | 0-2.5 A | Anti-oscillation; validated in closed loop on the pilot (11 min pinned at the exact equilibrium, zero oscillation), runs at 2.0 A in production. |
-| Bias | 0 | 0-16 A | The pause lever; driven by the HA shedding logic, manual mode available. |
+| Bias | 0 | 0-16 A three-phase, 0-32 A single-phase | The pause lever; driven by the HA shedding logic, manual mode available. A single-phase TWC Gen 3 draws up to 32 A on its one phase, so a full pause needs the 32 A ceiling (single-phase support is theoretical, see below). |
 | STOP switch | off | | Immediate stop order. |
 | Meter-absent switch | off | | Test switch: silences the Modbus server entirely (the charger falls back to its documented 6 A cap). |
 
 3. **Entity mapping** (options flow, advanced): if your charger node predates the generic package and uses different entity names, map each of the 21 tracked entities explicitly; keys can also be declared absent. This is how the pilot site itself runs.
+
+**Single-phase or three-phase.** The installation type is chosen in three matching places: the `phase_count` substitution of the charger-node example you copy (`"3"` in `charger-kc868-a6.yaml`, `"1"` in `charger-mono-exemple.yaml`, which also raises the bias ceiling to `bias_max_a: "32"`), the meter provider (`teleinfo-fr.yaml` three-phase, `teleinfo-fr-mono.yaml` single-phase: a single-phase Linky emits different TIC labels), and the contract preset in the config flow (3 to 24 kVA single-phase, 6 to 36 kVA three-phase). Single-phase variants of the dashboards ship alongside (`dashboards/*-mono.yaml`). Reminder: single-phase support is theoretical, never validated on a bench; the walkthrough is in [docs/en/INSTALL.md](docs/en/INSTALL.md).
 
 ## Observations from the pilot
 
@@ -162,6 +164,7 @@ The project's real asset is the measured behavior model of the wall connector, a
 ## Known limitations, honestly
 
 - **One pilot site, one firmware.** Everything is calibrated against TWC fw 26.18 on a French three-phase installation. The constants (dead band, integral, floors) may drift with Tesla updates; freeze your charger's firmware.
+- **Single-phase support is designed but THEORETICAL.** It has never been validated on a bench: the control-law constants are three-phase measurements, and the CT registers a wallbox commissioned single-phase actually reads are unknown (bench campaign in [docs/en/TESTPLAN.md](docs/en/TESTPLAN.md), cases C14-C20).
 - **The distrust layer is the structural risk.** The law is designed to never trigger it, and the entry points I found are closed (impossible values, absorbed ramps, static fail-safe), but Tesla hardens this layer version after version and could close the commissioning workaround entirely.
 - **With the tail off**, a house load hovering exactly at the budget can produce a +/-2.5 A limit cycle that ends in a protective cut. The decaying-tail variant closes it (validated in closed loop on the pilot); it ships inert and must be enabled deliberately.
 - **HA 2026.8 ignores `suggested_object_id`**: derived sensors may be created with translated ids on non-English instances; rename them once in the registry (documented in the release notes; a proper fix is being investigated).

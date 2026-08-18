@@ -110,7 +110,12 @@ Défini dans `docs/fr/15_FOURNISSEURS_MESURE.md` §1 : port **18511**,
 `packet_transport` UDP chiffré XXTEA + rolling code, 6 grandeurs
 `lky_ia/ib/ic` (A) + `lky_pa/pb/pc` (VA), import positif, brut (jamais
 lissé), heartbeat 1 s + envoi immédiat sur changement, silence en panne.
-Monophasé : phases B/C publiées à 0. **Personne ne modifie ce contrat**
+Monophasé : phases B/C publiées à 0, ASSERVIES au watchdog du provider
+(0 seulement tant que la phase A est vivante ; NAN sur les SIX grandeurs
+en panne - des zéros constants indépendants de la santé de la phase A
+garderaient le sextuplet jugé frais pour toujours côté cœur, la
+résurrection exacte du piège QA M3 ; clarification de la règle existante,
+pas un changement d'ABI). **Personne ne modifie ce contrat**
 (les broadcast_id sont l'ABI du produit).
 
 ## 3. Contrat d'entités (produit par le firmware/l'intégration, consommé par dashboards et docs)

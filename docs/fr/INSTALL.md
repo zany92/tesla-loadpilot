@@ -83,8 +83,14 @@ mesures en XXTEA). Le fichier `secrets.yaml` **ne se commite jamais**
      cadence effective tombe à ~15 s → la borne pompera) ;
    - en Tempo, vérifiez que la cadence reste ~1 Hz.
 
-En monophasé : seules IRMS1/SINSTS1 existent - les phases B/C sont
-publiées à 0, le reste de la chaîne fonctionne tel quel.
+En monophasé (THÉORIQUE - jamais validé sur banc) : un Linky monophasé
+n'émet pas les étiquettes indexées que lit ce provider (SINSTS1/2/3) -
+utilisez le provider dédié
+`esphome/packages/providers/teleinfo-fr-mono.yaml` via l'entrypoint
+`esphome/examples/meter-teleinfo-mono-olimex-poe.yaml` (`SINSTS` sans
+indice + `URMS1` ; phases B/C publiées à 0, asservies au watchdog TIC).
+Avec le provider triphasé, le flux UDP ne deviendrait jamais frais et le
+nœud borne resterait en fail-safe pour toujours.
 
 ## 3. Nœud borne (Kincony KC868-A6)
 
@@ -112,7 +118,12 @@ publiées à 0, le reste de la chaîne fonctionne tel quel.
    - limite de contrat par phase (ex. 15 kVA tri : 5 000 VA / 230 V ≈ 21 A) ;
    - disjoncteur de branchement (`main_breaker`) - c'est la valeur publiée
      en fail-safe pour bloquer la charge ;
-   - buffer de sécurité (défaut 10 %).
+   - buffer de sécurité (défaut 10 %) ;
+   - nombre de phases (`phase_count`) : `"3"` par défaut (référence
+     triphasée). Une installation monophasée part plutôt de
+     `charger-mono-exemple.yaml` (`phase_count: "1"`, plafond de biais
+     `bias_max_a: "32"`) et s'associe au provider compteur monophasé
+     (section 2) - THÉORIQUE, voir l'encart monophasé de la section 4.
 5. **Refermez la façade, réarmez la borne.**
 6. **Vérifications** :
    - `TWC Polling Active` = on et `TWC Poll Interval` stable ~190-200 ms :
@@ -196,6 +207,26 @@ avant/après toute MAJ et re-déroulez la validation
 > publication de référence respecte cet invariant par construction (la
 > mesure publiée inclut la branche de la borne) ; toute modification
 > locale doit le préserver, y compris pendant les rampes du véhicule.
+
+### Commissioning monophasé (THÉORIQUE - jamais validé sur banc)
+
+Pour une installation monophasée (`charger-mono-exemple.yaml` +
+`teleinfo-fr-mono.yaml`), le parcours Tesla One diffère sur trois points :
+
+- **Type de réseau** : sélectionnez *monophasé* au commissioning du
+  compteur Neurio (le libellé exact dépend de la version de Tesla One).
+- **Max Conductor Limit** : dimensionné pour la phase unique, par ex. 32 A
+  (un TWC Gen 3 mono débite jusqu'à 32 A sur sa seule phase).
+- **Échelle de mise en service** : OMBRE-MAX d'abord, observation via
+  `Shadow Published Current`, et séjour en RAW le plus court possible - en
+  RAW les voies B/C publient ~0 constant, un signal mort si la borne
+  moyenne ses registres CT.
+
+Tout ce qui précède est THÉORIQUE : quels registres CT une borne
+commissionnée en monophasé lit réellement, et si elle tolère des CT2/3 non
+nuls, sont les premiers points de banc ([`TESTPLAN.md`](TESTPLAN.md), cas
+monophasés). Les constantes de la loi de commande sont des mesures
+triphasées.
 
 ## 5. Intégration Home Assistant (HACS)
 

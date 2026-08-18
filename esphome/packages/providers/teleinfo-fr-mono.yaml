@@ -1,0 +1,334 @@
+# =============================================================================
+# Tesla LoadPilot - meter provider: France, Linky TIC standard mode,
+# SINGLE-PHASE meter
+# (THEORETICAL - never tested on a real single-phase meter or bench.
+#  Derived label-for-label from the production-proven three-phase provider
+#  teleinfo-fr.yaml; only the TIC labels and the B/C handling differ.)
+#
+# Single-phase TIC reality (standard mode, 9600 bd 7E1): the indexed labels
+# do not exist - a single-phase Linky exposes SINSTS (no index), URMS1 and
+# IRMS1 (whole amperes). This cannot be expressed by substitutions on the
+# three-phase provider (sensors cannot be added/removed by substitution),
+# hence this SEPARATE file; teleinfo-fr.yaml stays byte-identical.
+#
+# Ships the SAME 6 contract quantities over encrypted UDP to the charger
+# node (docs/15_FOURNISSEURS_MESURE.md §1 - the UDP contract is FROZEN):
+#   lky_ia/lky_pa = the real phase (A / VA, sub-ampere SINSTS/URMS1 computed)
+#   lky_ib/ic, lky_pb/pc = 0 (no such phase), SLAVED TO THE TIC WATCHDOG
+# 1 Hz full resend (heartbeat) + immediate incremental packet on any change.
+#
+# WHY THE B/C ZEROS ARE WATCHDOG-SLAVED (contract §2 clarification): on the
+# charger node, EVERY heartbeat packet carrying a non-NAN value refreshes
+# udp_last_ok_ms. Constant zeros on B/C, independent of the health of the
+# real phase, would keep the sextuplet judged fresh forever with a dead TIC
+# hat - the exact QA M3 trap all over again. So the B/C zeros are template
+# sensors returning 0 ONLY while phase A is alive, and NAN otherwise: the
+# watchdog invalidates all SIX quantities, exactly like the three-phase
+# watchdog.
+#
+# TIC WATCHDOG (mechanism MEASURED 17/08 on the three-phase provider,
+# QA M3): the ESPHome `teleinfo` component has NO invalidation timeout. A
+# dead TIC hat with a live ESP32 does NOT make the node silent: the sensors
+# keep their last state and packet_transport resends the FROZEN sextuplet
+# at 1 Hz forever. Fix at the source: no SINSTS frame for ${tic_timeout_ms}
+# ms -> publish NAN on all 6 broadcast quantities, B/C zeros included
+# (atomic, same as the three-phase watchdog). Recovery is automatic on the
+# first valid frame. Never repeat a frozen value.
+#
+# Hardware: TIC hat (e.g. Hallard "WeMos TeleInfo"), RX only.
+# Network is board-specific: add `ethernet:` or `wifi:` in your entry file
+# (see esphome/examples/). Reference board: Olimex ESP32-POE (LAN8720).
+#
+# Country quirks confined here (docs/15 §3): Tempo frames are long ->
+# rx_buffer_size 1024 is CRUCIAL (measured on three-phase: at 256 the
+# buffer overflowed, ~2 frames out of 3 lost, effective cadence ~15 s ->
+# the wallbox DPM pumped). Whether single-phase Tempo frames fit the same
+# margin is a bench point (docs/en/TESTPLAN.md).
+# The generic overload signal comes from the Linky STGE register bit 7
+# ("dépassement de la puissance de référence en cours").
+# =============================================================================
+substitutions:
+  node_name: loadpilot-meter
+  friendly_name: LoadPilot Meter
+  loadpilot_fw_version: "0.1.0"
+  tic_rx_pin: GPIO36
+  # 500 ms: stick to the continuous TIC frames (~1/s in standard mode) to
+  # minimise publication latency; throttled copies keep the recorder quiet.
+  tic_update_interval: 500ms
+  # TIC watchdog: silence threshold (ms) before the 6 broadcast quantities
+  # are invalidated to NAN. 15 s ~= 15 missed frames at the standard-mode
+  # ~1 Hz cadence - immune to occasional frame loss, short enough that the
+  # charger node's fail-safe arms before the wallbox can drift far (total
+  # blind window = this + the receiver freshness window, ~20 s, covered by
+  # the wallbox's slow ramp).
+  tic_timeout_ms: "15000"
+
+esphome:
+  name: ${node_name}
+  friendly_name: ${friendly_name}
+  compile_process_limit: 1
+  project:
+    name: loadpilot.meter-teleinfo-fr-mono
+    version: ${loadpilot_fw_version}
+
+logger:
+  # UART0 is not used for logs on the reference board.
+  baud_rate: 0
+
+api:
+  encryption:
+    key: !secret loadpilot_api_key
+
+ota:
+  - platform: esphome
+    password: !secret loadpilot_ota_password
+
+# =============================================================================
+# UDP -> charger node. Broadcast 255.255.255.255:18511 by default. If the
+# network blocks LAN->WLAN broadcast, switch to unicast: uncomment `addresses`
+# with the charger-node IP (and reserve it in DHCP). ONE destination only:
+# with both, the rolling code would reject the duplicate with a warning per
+# second.
+# =============================================================================
+udp:
+  id: udp_meter
+#  addresses: ["192.168.x.x"]   # unicast to the charger node if needed
+
+packet_transport:
+  - platform: udp
+    udp_id: udp_meter
+    # 1 Hz: COMPLETE resend of the 6 quantities (freshness heartbeat for the
+    # charger node, 5 s window receiver side). Value changes ALSO leave
+    # immediately (incremental packet, next loop).
+    update_interval: 1s
+    # XXTEA (SHA-256-hashed key) - MUST be identical on the charger node.
+    encryption: !secret loadpilot_udp_key
+    # Anti-replay rolling code (persisted in flash at boot + 2^32 overflow:
+    # negligible wear). A replayed/duplicated packet is dropped.
+    rolling_code_enable: true
+    sensors:
+      # The 6 broadcast_id are the FROZEN product ABI (contract §2) - the
+      # charger node expects all six whatever the phase count. Phase A
+      # carries the real measure; B/C carry the watchdog-slaved zeros.
+      - id: tic_current_calc_1
+        broadcast_id: lky_ia
+      - id: tic_zero_current_bc
+        broadcast_id: lky_ib
+      - id: tic_zero_current_bc
+        broadcast_id: lky_ic
+      - id: tic_sinsts1
+        broadcast_id: lky_pa
+      - id: tic_zero_power_bc
+        broadcast_id: lky_pb
+      - id: tic_zero_power_bc
+        broadcast_id: lky_pc
+
+uart:
+  id: uart_tic
+  rx_pin: ${tic_rx_pin}
+  # CRUCIAL: a standard-mode Tempo TIC frame exceeds 400 bytes; at 256 the
+  # buffer overflowed ("Internal buffer full") and ~2 frames out of 3 were
+  # lost (effective cadence ~15 s -> wallbox DPM pumping). Measured on the
+  # three-phase provider; kept identical here.
+  rx_buffer_size: 1024
+  baud_rate: 9600
+  parity: EVEN
+  data_bits: 7
+  stop_bits: 1
+
+teleinfo:
+  id: esp_teleinfo
+  uart_id: uart_tic
+  update_interval: ${tic_update_interval}
+  historical_mode: false   # TIC STANDARD mode
+
+sensor:
+  # ---------------------------------------------------------------------------
+  # Voltage (internal): only used to compute the sub-ampere current.
+  # Single-phase meters DO publish URMS1 (the "1" index is kept by Enedis).
+  # ---------------------------------------------------------------------------
+  - platform: teleinfo
+    tag_name: "URMS1"
+    id: tic_urms1
+    internal: true
+    unit_of_measurement: V
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 0
+
+  # ---------------------------------------------------------------------------
+  # Apparent power - UDP and HA paths DECOUPLED (recorder-friendly):
+  # the internal base sensor (no throttle, ~1 Hz) is what packet_transport
+  # reads; the throttled copy below is the HA entity.
+  # Single-phase label: SINSTS, NO index (SINSTS1/2/3 do not exist here).
+  # The id keeps the _1 suffix on purpose: same internal wiring as the
+  # three-phase provider, only the TIC label differs.
+  # ---------------------------------------------------------------------------
+  - platform: teleinfo
+    tag_name: "SINSTS"
+    id: tic_sinsts1
+    internal: true
+    on_value:
+      then:
+        # Recompute the sub-ampere current on EVERY SINSTS update.
+        - component.update: tic_current_calc_1
+        # TIC watchdog heartbeat (SINSTS is present in every standard frame).
+        - lambda: 'id(tic_last_frame_ms) = millis();'
+
+  # ---------------------------------------------------------------------------
+  # Sub-ampere computed current I = SINSTS / URMS1 (internal; broadcast
+  # source). Guard: invalid URMS (NaN) or < 180 V -> 230 V nominal.
+  # ---------------------------------------------------------------------------
+  - platform: template
+    id: tic_current_calc_1
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: never
+    lambda: |-
+      float p = id(tic_sinsts1).state;
+      if (std::isnan(p)) return NAN;
+      float u = id(tic_urms1).state;
+      if (std::isnan(u) || u < 180.0f) u = 230.0f;
+      return roundf((p / u) * 100.0f) / 100.0f;
+
+  # ---------------------------------------------------------------------------
+  # B/C zeros, SLAVED TO THE TIC WATCHDOG (contract §2: "single-phase:
+  # phases B/C published at 0"). NOT constants: 0 only while phase A is
+  # alive, NAN otherwise - a constant 0 would refresh the receiver's
+  # freshness forever with a dead TIC (QA M3 trap). These are INPUTS of the
+  # charger-node core (the core forces m_b = m_c = 0 in single-phase
+  # anyway); they are never published to the wallbox in ACTIF-MAX.
+  # No init zeros either: before the first frame SINSTS is NAN, so are they.
+  # ---------------------------------------------------------------------------
+  - platform: template
+    id: tic_zero_current_bc
+    internal: true
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 5s
+    lambda: |-
+      return std::isnan(id(tic_sinsts1).state) ? NAN : 0.0f;
+  - platform: template
+    id: tic_zero_power_bc
+    internal: true
+    unit_of_measurement: VA
+    device_class: apparent_power
+    state_class: measurement
+    update_interval: 5s
+    lambda: |-
+      return std::isnan(id(tic_sinsts1).state) ? NAN : 0.0f;
+
+  # ---------------------------------------------------------------------------
+  # CONTRACTUAL HA entities (/CONTRACTS.md §3.2): throttled copies of the
+  # measures - same data as the UDP feed, recorder-friendly. These are also
+  # the natural targets for the charger node's HA-mirror substitutions.
+  # Single-phase: L1 only (no L2/L3 entities - the phases do not exist,
+  # and an eternally-zero entity would be UI dead weight).
+  # ---------------------------------------------------------------------------
+  - platform: copy
+    source_id: tic_current_calc_1
+    name: "Current L1"
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    filters: [ throttle: 2s ]
+  - platform: copy
+    source_id: tic_sinsts1
+    name: "Power L1"
+    unit_of_measurement: VA
+    device_class: apparent_power
+    state_class: measurement
+    filters: [ throttle: 2s ]
+
+binary_sensor:
+  - platform: status
+    id: tic_link_status
+    internal: true
+
+  # TIC watchdog liveness, exposed to HA for operator alerting: the node
+  # itself can be perfectly healthy while the TIC hat is dead - this is the
+  # only signal that distinguishes the two.
+  - platform: template
+    name: "TIC Alive"
+    device_class: connectivity
+    lambda: |-
+      if (id(tic_last_frame_ms) == 0) return {};
+      return (millis() - id(tic_last_frame_ms)) < ${tic_timeout_ms};
+
+  # Generic overload signal (/CONTRACTS.md §3.2, OPTIONAL): Linky STGE bit 7
+  # = "reference-power overshoot IN PROGRESS", observed by the meter itself.
+  - platform: template
+    name: "Overload"
+    id: meter_overload
+    lambda: |-
+      const std::string &s = id(tic_stge_raw).state;
+      if (s.empty()) return {};
+      char *end = nullptr;
+      unsigned long v = strtoul(s.c_str(), &end, 16);
+      if (end == s.c_str()) return {};
+      return ((v >> 7) & 0x1UL) != 0;
+
+text_sensor:
+  # Linky status register (STGE, 8 hex chars, present in every frame).
+  - platform: teleinfo
+    tag_name: "STGE"
+    id: tic_stge_raw
+    internal: true
+
+  # Package version (skew diagnostics parity with the charger node).
+  - platform: template
+    name: "FW Version"
+    icon: "mdi:tag-outline"
+    entity_category: diagnostic
+    update_interval: 60s
+    lambda: 'return {"${loadpilot_fw_version}"};'
+
+button:
+  - platform: restart
+    name: "Restart"
+
+# =============================================================================
+# TIC WATCHDOG (same mechanism as the three-phase provider, QA M3): see
+# header. Without it, a dead hat on a live ESP32 means frozen values resent
+# at 1 Hz - the worst failure mode a meter can present to the wallbox
+# (stale-but-fresh-looking measure). Publishing NAN at the source lets every
+# downstream guard (charger-node NAN check, HA availability) trip on its
+# own, with automatic recovery. The explicit NAN below covers all SIX
+# broadcast quantities ATOMICALLY (same blind window as the three-phase
+# provider, ~20 s total); the B/C zero templates would also follow the
+# SINSTS NAN on their own 5 s tick, the explicit publication just removes
+# that extra lag.
+# =============================================================================
+globals:
+  - id: tic_last_frame_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: tic_dead_flagged
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+interval:
+  - interval: 2s
+    then:
+      - lambda: |-
+          if (id(tic_last_frame_ms) == 0) return;   // no frame seen yet
+          const bool dead = (millis() - id(tic_last_frame_ms)) > ${tic_timeout_ms};
+          if (dead && !id(tic_dead_flagged)) {
+            id(tic_dead_flagged) = true;
+            ESP_LOGW("tic", "TIC silent for %s ms -> invalidating the 6 broadcast quantities (NAN)", "${tic_timeout_ms}");
+            id(tic_sinsts1).publish_state(NAN);
+            id(tic_current_calc_1).publish_state(NAN);
+            id(tic_zero_current_bc).publish_state(NAN);
+            id(tic_zero_power_bc).publish_state(NAN);
+          } else if (!dead && id(tic_dead_flagged)) {
+            id(tic_dead_flagged) = false;
+            ESP_LOGI("tic", "TIC back - real measures republished");
+          }

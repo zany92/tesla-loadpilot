@@ -2,9 +2,26 @@
 # Tesla LoadPilot - example entry file: CHARGER NODE, SINGLE-PHASE install
 # (Kincony KC868-A6 board - same hardware as the three-phase reference).
 #
+# SINGLE-PHASE: THEORETICAL, never tested on a bench. The control law and
+# its calibration constants are three-phase measurements (single-phase
+# annex: docs/en/BEHAVIOR.md, fr: docs/fr/40_LOI_DE_COMMANDE.md); the
+# structure degenerates cleanly to one phase, the numbers have not been
+# re-measured. See docs/en/TESTPLAN.md (fr: docs/fr/TESTPLAN.md) for the
+# bench campaign before trusting this on a real installation.
+#
 # Derived from charger-kc868-a6.yaml with `phase_count: "1"`: phases B/C are
 # forced to 0 by the core (contract §2 still publishes 6 quantities on UDP),
 # and only the L1 mirror entities matter (single-phase mirror is L1-only).
+# Pair it with a single-phase provider (e.g.
+# esphome/packages/providers/teleinfo-fr-mono.yaml via
+# meter-teleinfo-mono-olimex-poe.yaml): the three-phase teleinfo provider
+# reads SINSTS1/2/3, labels a single-phase Linky never emits - its UDP feed
+# would never become fresh and this node would sit in fail-safe forever.
+#
+# Commissioning ladder (single-phase guideline): commission in OMBRE-MAX
+# first and observe via "Shadow Published Current"; keep any stay in RAW as
+# short as possible (in RAW the B/C channels publish ~0 constant, a dead
+# signal if the wallbox averages its CT registers).
 #
 # Copy this file into your ESPHome dashboard, adjust the substitutions, put
 # your secrets in secrets.yaml (see ../secrets.yaml.example), flash.
@@ -34,13 +51,20 @@ substitutions:
   meter_node_name: loadpilot-meter
   # Max Conductor Limit exactly as set in the Tesla One installer menu (A).
   twc_conductor_limit_a: "21"
-  # Your service breaker (A) - fail-safe value.
-  main_breaker_limit_a: "40"
+  # Your service breaker (A) - fail-safe value. Must be >= the contract
+  # limit (France single-phase 9 kVA -> 45 A service breaker).
+  main_breaker_limit_a: "45"
   # Default grid-contract limit (A) (runtime-adjustable in HA).
   # France single-phase 9 kVA -> 45 A.
   contract_limit_default_a: "45"
   # SINGLE-PHASE install: B/C measures forced to 0 by the core.
   phase_count: "1"
+  # Bias lever upper bound (A): a full pause requires bias >= the vehicle
+  # current, and a single-phase TWC Gen 3 draws up to 32 A on its one phase
+  # (the 16 A three-phase default could not pause it). At the fixed ramp
+  # (1 A / 5 s up) a full 32 A pause takes ~160 s; "Charge Stop" remains
+  # the immediate lever.
+  bias_max_a: "32"
   # HA mirror entities (backup measure path) - single-phase uses L1 only.
   # The B/C defaults inherited from twc-core.yaml are ignored (phases forced
   # to 0), no need to override them.

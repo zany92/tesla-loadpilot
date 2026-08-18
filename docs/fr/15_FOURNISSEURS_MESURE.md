@@ -11,7 +11,7 @@
 | Élément | Valeur | Pourquoi |
 |---|---|---|
 | Transport | ESPHome `udp` + `packet_transport` (platform udp), port **18511** | Composants OFFICIELS (rien d'écrasable par une MàJ), socket non-bloquant côté récepteur |
-| Grandeurs | 6 capteurs : `lky_ia/ib/ic` (courant par phase, A) + `lky_pa/pb/pc` (puissance apparente par phase, VA) | Ce que le cœur publie à la borne (registres courant ET puissance). Monophasé : publier les phases B/C à 0 |
+| Grandeurs | 6 capteurs : `lky_ia/ib/ic` (courant par phase, A) + `lky_pa/pb/pc` (puissance apparente par phase, VA) | Ce que le cœur publie à la borne (registres courant ET puissance). Monophasé : publier les phases B/C à 0, ASSERVIES au watchdog (0 seulement tant que la phase A est vivante ; NAN sur les SIX grandeurs en panne). Des zéros B/C constants, indépendants de la santé de la phase A, rafraîchiraient la fraîcheur côté cœur pour toujours avec une TIC morte : la résurrection exacte du piège QA M3 |
 | Cadence | `update_interval: 1s` = re-diffusion COMPLÈTE (heartbeat) ; les changements de valeur partent EN PLUS immédiatement (paquet incrémental, boucle suivante) | La fraîcheur côté cœur est jugée sur le dernier paquet reçu (`udp_fresh_ms` 5 s = 5 heartbeats manqués avant bascule sur le miroir HA) |
 | Chiffrement | `encryption:` (XXTEA, clé hachée SHA-256) **identique des deux côtés** + `rolling_code_enable: true` (anti-rejeu, persisté en flash, usure nulle) | Sans la clé, impossible de forger les mesures publiées à la borne depuis le LAN |
 | Adressage | broadcast 255.255.255.255 par défaut ; **unicast** vers l'IP du cœur si le réseau bloque le broadcast LAN→WLAN. **Une seule destination à la fois** (le rolling code rejette les doublons) | |
@@ -97,14 +97,19 @@ toute la famille.
 | Provider | Pays / cas | Composant ESPHome | Matériel | Statut |
 |---|---|---|---|---|
 | **Téléinfo TIC standard** | France (Linky) | `teleinfo` | Hat Hallard « WeMos TeleInfo » (https://www.tindie.com/products/hallard/wemos-teleinfo/), RX seul, 9600 bd 7E1 | **EN PRODUCTION** (référence, `20_FIRMWARE.md` §1). Tri : IRMS1-3 + SINSTS1-3 natifs |
+| **Téléinfo TIC standard MONO** | France (Linky monophasé) | `teleinfo` | Même hat Hallard, RX seul, 9600 bd 7E1 | **THÉORIQUE** (jamais testé sur compteur mono). Les étiquettes indexées n'existent pas en mono : `SINSTS` (sans indice) + `URMS1`, provider dédié `teleinfo-fr-mono.yaml` (impossible par substitution : on n'ajoute pas/ne retire pas de capteurs ainsi). B/C à 0 asservis au watchdog (§1) |
 | **Port P1 / DSMR** | Pays-Bas, Belgique, Luxembourg (et Scandinavie via variantes) | `dsmr` | Câble P1 (RJ12) + inversion éventuelle, l'ESP se branche directement | Squelette à écrire. DSMR expose courant et puissance PAR PHASE en standard |
 | **Tête IR SML** | Allemagne, Autriche (compteurs eHZ/MME) | `sml` | Tête de lecture IR (photodiode) collée au compteur | Squelette à écrire. ⚠️ beaucoup de compteurs SML ne donnent que la puissance TOTALE signée - reconstruire les phases exige des pinces, ou publier total/3 (dégradé, à documenter honnêtement) |
 | **Pinces CT universelles** | Tout pays, tout compteur | capteur natif HA (Shelly Pro 3EM en local push) OU `pzemac`/PZEM-004T v3, OU `atm90e32` (6 canaux) | Shelly Pro 3EM (~120 €), PZEM-004T (~15 €/phase), carte ATM90E32 | Squelette à écrire. C'est AUSSI la voie « étage sub-seconde » : des pinces dédiées lues par l'ESP passent sous la seconde, là où un compteur fiscal plafonne (Linky ~1 Hz) |
 
 Notes de généralisation :
 - **Monophasé** (TWC Gen 3 mono, majorité des pays) : un seul courant/une
-  seule puissance à mesurer, publier B/C à 0 - le cœur et la borne
-  fonctionnent tels quels (la borne raisonne alors sur sa seule phase).
+  seule puissance à mesurer, publier B/C à 0 asservis au watchdog (§1) - le
+  cœur et la borne fonctionnent tels quels (la borne raisonne alors sur sa
+  seule phase). Périmètre : monophasé européen 230 V, 1 CT logique ; le
+  split-phase US (240 V, 2 CT) est une TROISIÈME topologie, hors périmètre
+  à ce jour (étude dédiée nécessaire, `voltage` 230 codé en dur dans le
+  cœur).
 - Le **miroir HA** du cœur (source 2) est indépendant du provider UDP : tout
   capteur HA courant/puissance par phase peut le nourrir via les
   substitutions `ha_*_entity` - un provider UDP sans miroir HA est valide

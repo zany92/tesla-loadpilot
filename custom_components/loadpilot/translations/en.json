@@ -34,7 +34,7 @@
         },
         "data_description": {
           "contract_preset": "Pick your subscribed power to fill in the limit for you - or choose “Other” and enter the amps yourself below.",
-          "contract_limit_a": "In France: 6 kVA single-phase = 30 A · 9 kVA = 45 A · 12 kVA = 60 A · 15 kVA = 75 A · 18 kVA = 90 A. Three-phase, per phase: 6 kVA = 10 A · 9 kVA = 15 A · 12 kVA = 20 A · 15 kVA = 25 A · 18 kVA = 30 A.",
+          "contract_limit_a": "In France: 3 kVA single-phase = 15 A · 6 kVA = 30 A · 9 kVA = 45 A · 12 kVA = 60 A · 15 kVA = 75 A · 18 kVA = 90 A. Three-phase, per phase: 6 kVA = 10 A · 9 kVA = 15 A · 12 kVA = 20 A · 15 kVA = 25 A · 18 kVA = 30 A.",
           "buffer_pct": "With a 10% buffer, the car only uses 90% of your contract: the rest absorbs surges (an oven or a pump starting) without tripping the breaker."
         }
       },
@@ -142,6 +142,7 @@
     "contract_preset": {
       "options": {
         "custom": "Other (enter the limit in amps)",
+        "mono_3": "3 kVA single-phase - 15 A",
         "mono_6": "6 kVA single-phase - 30 A",
         "mono_9": "9 kVA single-phase - 45 A",
         "mono_12": "12 kVA single-phase - 60 A",
@@ -187,17 +188,17 @@
   "services": {
     "set_bias": {
       "name": "Set charging slowdown (bias)",
-      "description": "Deliberately slows the vehicle down by reserving amps for the rest of the house. 0 = no slowdown, 16 = charging paused. The value ramps smoothly - the ramp is handled by the charger node.",
+      "description": "Deliberately slows the vehicle down by reserving amps for the rest of the house. 0 = no slowdown; the maximum (16 A on three-phase, 32 A on single-phase) = charging paused. The value ramps smoothly - the ramp is handled by the charger node.",
       "fields": {
         "amps": {
           "name": "Reserved amps",
-          "description": "Amps taken away from the vehicle, per phase (0 to 16, step 0.5)."
+          "description": "Amps taken away from the vehicle, per phase (0 to 16 on three-phase, 0 to 32 on single-phase, step 0.5)."
         }
       }
     },
     "pause": {
       "name": "Pause charging",
-      "description": "Cleanly pauses vehicle charging by reserving the full budget (bias 16 A). The vehicle stops in about 2 minutes without error. Resume with “Resume charging”."
+      "description": "Cleanly pauses vehicle charging by reserving the full bias (16 A on three-phase, 32 A on single-phase). The vehicle stops in a few minutes without error - the bias ramps smoothly, so a full single-phase pause takes longer. Resume with “Resume charging”."
     },
     "resume": {
       "name": "Resume charging",

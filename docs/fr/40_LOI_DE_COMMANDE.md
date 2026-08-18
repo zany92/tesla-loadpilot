@@ -281,3 +281,40 @@ mesure là où le compteur national est inéligible
   L + 0,1 pour les arrêts francs ;
 - le DPM natif de la borne (morsure/coupure) n'est plus qu'un **filet
   qu'on ne sollicite jamais** : le clamp l'empêche de voir un excès.
+
+## 11. Annexe monophasé (THÉORIQUE - conçu, jamais validé sur banc)
+
+Le support monophasé (`phase_count: "1"`, provider `teleinfo-fr-mono.yaml`)
+réutilise cette loi sans modification ; rien dans cette annexe n'est mesuré
+sur une installation monophasée. On sépare ce qui est structurellement
+invariant de ce qui est une calibration triphasée NON transférée.
+
+Invariant supposé (la structure, pas les chiffres) :
+
+- La loi au caractère près : pire phase = la seule phase
+  (`worst = max(m1, 0, 0)`), budget = abonnement x (1 - réserve %) déjà
+  exprimé en ampères de LA phase, le clamp, l'escalade, le dither du
+  fail-safe et la sémantique de boot sont indépendants du nombre de phases.
+- Publication symétrique sur les 3 registres CT (argument du §1) : la
+  fonctionnelle de service exacte en commissioning mono est inconnue, et la
+  symétrie est la seule stratégie correcte à la fois sous lecteur CT1 seul,
+  moyenne et max. Un vrai Neurio mono a ses CT2/3 non câblés (~0 + bruit) :
+  la tolérance de la borne à des CT2/3 non nuls en mono est LE point de
+  banc numéro 1.
+- Plausibilité 1:1 (§3) : la leçon « jamais de dilution » s'applique telle
+  quelle ; le plancher de gain ~0,5 reste une limite absolue.
+
+Calibration triphasée NON transférée (chiffres à re-mesurer sur banc) :
+
+- Bande morte au-dessus de L (L+0,5..L+0,9), intégrale de coupure
+  (~20 A.s), latence service (5-20 s), remontée (~1 A / 30 s), pente de la
+  micro-loi L+0,1, minimum véhicule ~6 A, et le jeu de registres CT
+  réellement lus par une borne commissionnée monophasée dans Tesla One.
+- Registres `ct_total` = 3x la valeur unique (effet de bord de la
+  publication symétrique, déjà accepté en triphasé) : accepté ou flaggé en
+  commissioning mono, inconnu.
+- Dimensionnement du biais : l'exemple mono monte `bias_max_a` à 32 A (un
+  TWC Gen 3 mono débite jusqu'à 32 A) ; une pause complète prend alors
+  ~160 s de rampe.
+
+Campagne banc : docs/fr/TESTPLAN.md, cas monophasés (C10 et C14+).

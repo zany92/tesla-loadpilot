@@ -1,0 +1,262 @@
+# Tesla LoadPilot - ready-to-import Lovelace VIEW, SINGLE-PHASE variant
+# ---------------------------------------------------------------------------
+# Same view as loadpilot-overview.yaml with every L2/L3 row removed:
+# single-phase installs have no headroom_l2/_l3 sensors (the integration
+# does not create them) and the meter node only exposes L1 entities.
+#
+# SINGLE-PHASE support is THEORETICAL: never validated on a bench (see
+# docs/en/TESTPLAN.md, single-phase campaign). This view only removes rows;
+# it adds nothing.
+#
+# Home Assistant CORE cards only - zero HACS dependency.
+#
+# HOW TO IMPORT
+#   Dashboard → edit → Raw configuration editor → add this view under
+#   "views:", or create a new dashboard and paste the view body.
+#   Entity ids assume the default node names (loadpilot-twc /
+#   loadpilot-meter). If you renamed your nodes, search & replace.
+#
+# GAUGES
+#   The gauge maximum is set for a 45 A contract (9 kVA single-phase in
+#   France). Set "max" to YOUR contract limit, and the severity thresholds
+#   to roughly 10% / 25% of it.
+#   KNOWN LIMIT: the Home Assistant core gauge card only accepts a static
+#   number for "max" - it cannot follow number.loadpilot_twc_contract_limit.
+#   Making it dynamic would require a HACS template card, which this view
+#   deliberately avoids (core cards only). Adjust manually if your contract
+#   changes.
+#
+# PAUSE NOTE (single-phase): loadpilot.pause reserves the full bias of the
+# install type - 32 A here (the mono charger example sets bias_max_a:
+# "32"). At the fixed ramp a full 32 A pause takes ~160 s; "Charge Stop"
+# on the node remains the immediate lever.
+#
+# This project is not affiliated with, endorsed by, or sponsored by Tesla, Inc.
+# ---------------------------------------------------------------------------
+
+title: LoadPilot
+path: loadpilot
+icon: mdi:ev-station
+cards:
+
+  # ===== 1. Master card - the everyday face (see loadpilot_card.yaml) =====
+  - type: vertical-stack
+    cards:
+      - type: tile
+        entity: switch.loadpilot_twc_control_enabled
+        name: Charge regulation
+        icon: mdi:car-speed-limiter
+        color: green
+        tap_action:
+          action: toggle
+          confirmation:
+            text: >-
+              Toggle charge regulation? When OFF, the wall connector returns
+              to factory behaviour at FULL power - your electricity contract
+              is no longer protected.
+        icon_tap_action:
+          action: more-info
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: sensor.loadpilot_state
+        name: Status
+        icon: mdi:shield-check
+        tap_action:
+          action: more-info
+        icon_tap_action:
+          action: more-info
+
+  # ===== 2. Alerts - appear only when relevant ============================
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: switch.loadpilot_twc_control_enabled
+        state: "off"
+    card:
+      type: markdown
+      content: >-
+        ⚠️ **Regulation OFF** - charger at full power, contract not
+        protected.
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: binary_sensor.loadpilot_twc_escalation_active
+        state: "on"
+    card:
+      type: markdown
+      content: >-
+        🛑 **Sustained overload - clean stop in progress** (budget exceeded
+        for 2 minutes; charging is being stopped safely).
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.loadpilot_twc_source_active
+        state: "HA"
+    card:
+      type: markdown
+      content: >-
+        🟠 **Running on Home Assistant backup** - direct meter link down,
+        degraded responsiveness. Check the meter node.
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.loadpilot_twc_source_active
+        state: "FAILSAFE"
+    card:
+      type: markdown
+      content: >-
+        ⛔ **No measurement - charging blocked for safety.** Your contract
+        can never be exceeded.
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: binary_sensor.loadpilot_meter_overload
+        state: "on"
+    card:
+      type: markdown
+      content: >-
+        🔴 **The utility meter itself reports an overload in progress.**
+        LoadPilot is shedding the vehicle first.
+
+  # ===== 3. Headroom ======================================================
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.loadpilot_headroom_l1
+        name: Headroom
+        unit: A
+        min: 0
+        max: 45          # <-- set to YOUR contract limit (A)
+        severity:
+          red: 0
+          yellow: 4      # ~10% of the limit
+          green: 11      # ~25% of the limit
+
+  # ===== 4. Published vs measured =========================================
+  - type: entities
+    title: Published vs measured
+    show_header_toggle: false
+    entities:
+      - entity: sensor.loadpilot_twc_published_current_l1
+        name: Published to charger (setpoint)
+        icon: mdi:ev-station
+      - entity: sensor.loadpilot_twc_real_current_l1
+        name: House measured (active source)
+        icon: mdi:home-lightning-bolt
+      - entity: sensor.loadpilot_twc_real_power_l1
+        name: House power
+        icon: mdi:flash
+
+  # ===== 5. Last 24 h =====================================================
+  - type: history-graph
+    title: Published vs measured - 24 h
+    hours_to_show: 24
+    entities:
+      - entity: sensor.loadpilot_twc_published_current_l1
+        name: Published
+      - entity: sensor.loadpilot_twc_real_current_l1
+        name: Measured
+
+  # ===== 6. Pause / resume ================================================
+  # "Paused" is inferred from bias_applied >= 15 A (no explicit paused
+  # state in v0 - see UX_COPY.md §Demandes, item 2). On single-phase the
+  # banner therefore appears while the bias is still ramping to 32 A (the
+  # vehicle is being shed but not fully stopped yet) - see the PAUSE NOTE
+  # in the header.
+  - type: conditional
+    conditions:
+      - condition: numeric_state
+        entity: sensor.loadpilot_twc_bias_applied
+        above: 14.9
+    card:
+      type: vertical-stack
+      cards:
+        - type: markdown
+          content: >-
+            ⏸️ **Charging paused (load-shedding).** The vehicle was stopped
+            cleanly; the house keeps the full budget.
+        - type: button
+          name: Resume charging
+          icon: mdi:play-circle-outline
+          tap_action:
+            action: perform-action
+            perform_action: loadpilot.resume
+            confirmation:
+              text: Resume vehicle charging?
+          hold_action:
+            action: none
+          double_tap_action:
+            action: none
+  - type: conditional
+    conditions:
+      - condition: numeric_state
+        entity: sensor.loadpilot_twc_bias_applied
+        below: 1
+      - condition: state
+        entity: switch.loadpilot_twc_control_enabled
+        state: "on"
+    card:
+      type: button
+      name: Pause charging
+      icon: mdi:pause-circle-outline
+      tap_action:
+        action: perform-action
+        perform_action: loadpilot.pause
+        confirmation:
+          text: >-
+            Pause vehicle charging? It stops cleanly in about 2 minutes,
+            without any vehicle error.
+      hold_action:
+        action: none
+      double_tap_action:
+        action: none
+
+  # ===== 7. Settings ======================================================
+  - type: entities
+    title: Settings
+    show_header_toggle: false
+    entities:
+      - entity: number.loadpilot_twc_contract_limit
+        name: Contract limit (A)
+        icon: mdi:file-sign
+      - entity: number.loadpilot_twc_buffer_pct
+        name: Safety buffer (%)
+        icon: mdi:shield-half-full
+      - entity: number.loadpilot_twc_bias_target
+        name: Slowdown target (bias, A)
+        icon: mdi:car-speed-limiter
+      - entity: sensor.loadpilot_twc_bias_applied
+        name: Slowdown applied
+        icon: mdi:speedometer-slow
+
+  # ===== 8. Diagnostics - for the curious and for support =================
+  - type: entities
+    title: Diagnostics
+    show_header_toggle: false
+    entities:
+      - entity: sensor.loadpilot_twc_source_active
+        name: Active measurement source
+        icon: mdi:source-branch
+      - entity: sensor.loadpilot_twc_udp_age
+        name: Age of last meter packet
+        icon: mdi:timer-sand
+      - entity: binary_sensor.loadpilot_twc_udp_fresh
+        name: Direct meter link fresh (< 5 s)
+        icon: mdi:lan-connect
+      - entity: binary_sensor.loadpilot_twc_polling_active
+        name: Charger polling (Modbus)
+        icon: mdi:swap-horizontal
+      - entity: sensor.loadpilot_twc_poll_interval
+        name: Poll interval (~190–200 ms expected)
+        icon: mdi:timer-outline
+      - entity: binary_sensor.loadpilot_twc_escalation_active
+        name: Escalation active (clean stop)
+        icon: mdi:alert-octagon-outline
+      - entity: sensor.loadpilot_twc_fw_version
+        name: Firmware version
+        icon: mdi:chip
+      # Throttled meter-node copy (recorder-friendly history):
+      - entity: sensor.loadpilot_meter_current_l1
+        name: Meter current
+        icon: mdi:counter

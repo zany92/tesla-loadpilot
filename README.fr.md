@@ -144,11 +144,13 @@ Tout ce qui concerne l'utilisateur se joue à deux endroits :
 | Gain d'écho de la loi | 0,5 | **jamais sous ~0,5** | En dessous de ce plancher, les rampes propres de la borne se diluent dans le signal publié et la couche de vraisemblance rejette le compteur (appris à nos dépens). |
 | Excursion max de la loi | 1,0 A | 0,8-1,0 A | La borne a une bande morte jusqu'à ~limite + 0,9 : plafonner plus bas coûte de l'intégrale pour rien. |
 | Traînée (variante B) | 0 (inerte) | 0-2,5 A | Anti-oscillation ; à activer en connaissance de cause, la validation en boucle fermée reste à faire. |
-| Biais | 0 | 0-16 A | Le levier de pause ; piloté par le délestage HA, mode manuel disponible. |
+| Biais | 0 | 0-16 A en triphasé, 0-32 A en monophasé | Le levier de pause ; piloté par le délestage HA, mode manuel disponible. Un TWC Gen 3 monophasé débite jusqu'à 32 A sur sa seule phase : une pause complète exige le plafond de 32 A (support monophasé théorique, voir ci-dessous). |
 | Interrupteur STOP | off | | Ordre d'arrêt immédiat. |
 | Interrupteur compteur absent | off | | Interrupteur de test : fait taire complètement le serveur Modbus (la borne retombe sur son plafond documenté de 6 A). |
 
 3. **La table de correspondance des entités** (options, avancé) : si votre nœud borne est antérieur au paquet générique et nomme ses entités autrement, associez explicitement chacune des 21 entités suivies ; une clé peut aussi être déclarée absente. C'est ainsi que tourne le site pilote lui-même.
+
+**Monophasé ou triphasé.** Le type d'installation se choisit à trois endroits cohérents : la substitution `phase_count` de l'exemple de nœud borne que vous copiez (`"3"` dans `charger-kc868-a6.yaml`, `"1"` dans `charger-mono-exemple.yaml`, qui monte aussi le plafond de biais à `bias_max_a: "32"`), le fournisseur de mesure (`teleinfo-fr.yaml` en triphasé, `teleinfo-fr-mono.yaml` en monophasé : un Linky monophasé émet d'autres étiquettes TIC), et le préréglage d'abonnement dans le config flow (3 à 24 kVA en monophasé, 6 à 36 kVA en triphasé). Des variantes monophasées des dashboards sont livrées à côté (`dashboards/*-mono.yaml`). Rappel : le support monophasé est théorique, jamais validé sur banc ; le pas-à-pas est dans [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
 
 ## Ce que le pilote nous a appris
 
@@ -162,6 +164,7 @@ Le vrai capital du projet, c'est le modèle de comportement mesuré du wall conn
 ## Les limites connues, sans détour
 
 - **Un seul site pilote, un seul firmware.** Tout est calibré contre le firmware TWC 26.18 sur une installation triphasée française. Les constantes (bande morte, intégrale, planchers) peuvent dériver au gré des mises à jour Tesla ; gelez le firmware de votre borne.
+- **Le support monophasé est conçu mais THÉORIQUE.** Il n'a jamais été validé sur banc : les constantes de la loi de commande sont des mesures triphasées, et les registres CT qu'une borne commissionnée en monophasé lit réellement sont inconnus (campagne banc dans [docs/fr/TESTPLAN.md](docs/fr/TESTPLAN.md), cas C14-C20).
 - **La couche de défiance est le risque structurel.** Notre loi est conçue pour ne jamais la déclencher, et les portes d'entrée que nous avons identifiées sont fermées (valeurs impossibles, rampes absorbées, fail-safe statique), mais Tesla durcit cette couche version après version et pourrait un jour fermer complètement le contournement de mise en service.
 - **La variante B (traînée anti-oscillation) est conçue et livrée, mais inerte** : sa validation en boucle fermée est le prochain essai au calendrier. Traînée coupée, une charge domestique qui flotte pile au budget peut entretenir un cycle limite de ±2,5 A qui finit en coupure de protection.
 - **HA 2026.8 ignore `suggested_object_id`** : les capteurs dérivés peuvent naître avec des identifiants traduits sur les instances non anglophones ; renommez-les une fois pour toutes dans le registre (documenté dans les notes de version ; un correctif propre est à l'étude).
