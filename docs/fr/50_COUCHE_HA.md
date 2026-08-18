@@ -88,6 +88,24 @@ réglage humain vécus avant son ajout). La purge de fin de session reste
 EXEMPTE (le débranchement nettoie toujours). Garde codée en
 `not is_state(..., 'on')` : entité absente = garde inactive (fail-open).
 
+## 4bis. Limite manuelle de charge (plafond utilisateur)
+
+Motif validé sur le site pilote le 18/08/2026. Un plafond de courant
+choisi par l'utilisateur (indépendant de la consigne du véhicule), sans
+jamais fabriquer un signal compteur décorrélé : ce raccourci, rapporté
+par la communauté (« lire /vitals et publier des valeurs simulées »),
+désactive la corrélation 1:1 et finit dans l'état de défiance décrit
+dans BEHAVIOR §4. À la place, une boucle lente (30 s) côté HA calcule
+
+    biais_cible = marge pire phase + courant véhicule (vitals) − limite
+
+et l'écrit dans le number de biais du nœud borne, qui applique sa
+propre rampe. L'écho du compteur reste intact (les vitals ne portent
+que sur l'offset lent), toutes les protections restent actives : la
+limite agit comme un plafond, la voiture prend min(limite, place
+laissée par la maison). Candidat à l'intégration (il faut une source
+locale du courant véhicule, par exemple l'intégration Wall Connector).
+
 ## 5. Notifications
 
 Patron transposable : une notification de SITUATION par épisode (annonce +
