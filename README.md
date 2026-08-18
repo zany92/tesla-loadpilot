@@ -87,6 +87,9 @@ The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on 
 |---|---|---|---|
 | Tesla Wall Connector Gen 3 | The charger being steered | Validated firmwares: 26.18 (calibration reference) and 26.26.1 (full revalidation, BEHAVIOR section 12). **Freeze firmware updates** (e.g. block its WAN access at the router) and only unblock for a supervised update, see the runbook. | [Product page](https://www.tesla.com/wall-connector) |
 | Kincony KC868-A6 | Charger-side ESP32 node (Neurio emulation) | ESP32 board with an onboard RS485 transceiver (MAX13487E, hardware auto-direction), relays and inputs as a bonus. Any ESP32 plus a MAX485-class transceiver works too. | [Hardware details](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [KinCony store](https://www.kincony.com/) |
+| Kincony ESP32-S3 Core Board (alternative) | Budget alternative for the charger node | ESP32-S3 module (ESP32-S3-WROOM-1U); the vendor page lists an RS485 bus and a wired Ethernet port. A draft board pack exists (`esphome/packages/boards/esp32-s3-core.yaml`, `board: esp32-s3-devkitc-1`): it compiles but has NEVER been validated against a wallbox, so treat it as untested. If you use any bare ESP32-S3 devkit instead, add an external MAX485/MAX13487-class RS485 transceiver (plain devkits have none). | [Product page](https://www.kincony.com/kincony-esp32-s3-core-board.html) |
+| Waveshare ESP32-S3-RS485-CAN | Charger-side alternative (industrial) | Isolated RS485 with automatic direction control, digital and power isolation, TVS/surge/ESD, 7-36 V screw terminal. On paper the most robust alternative; not bench-validated yet. | [Product page](https://www.waveshare.com/esp32-s3-rs485-can.htm) |
+| Olimex ESP32-POE + MOD-RS485-ISO | Charger-side alternative (uniform Olimex fleet) | Same board family as the meter node, PoE powered. The UEXT RS485 module is NOT auto-direction: ESPHome must drive DE//RE via flow_control_pin; prefer the isolated MOD-RS485-ISO variant. Theoretical, not bench-validated. | [MOD-RS485](https://www.olimex.com/Products/Modules/Interface/MOD-RS485/open-source-hardware) |
 | Olimex ESP32-POE | Meter-side ESP32 node | Powered over Ethernet next to the meter; any ESP32 with a free UART works. | [Product page](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Teleinfo (TIC) receiver shield, Charles Hallard design | Reads the Linky's TIC output (I1/I2 terminals) | Opto-isolated serial receiver, ESP32-compatible. Sold assembled. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
 | RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; in practice short unterminated runs are fine: the pilot site runs a plain twisted pair from an Ethernet cable over 2 m without any issue. | Tesla app note, see [docs/en/INSTALL.md](docs/en/INSTALL.md) |
@@ -114,11 +117,15 @@ From zero to a regulating charger, in order:
    gated behind installer credentials; the workaround (generic Tesla
    account, "Tesla device settings") is documented step by step in
    [docs/en/INSTALL.md](docs/en/INSTALL.md).
-4. **Install the integration.** In HACS: menu (three dots) > Custom
-   repositories > add `https://github.com/zany92/tesla-loadpilot` with
-   category *Integration*, then install and restart Home Assistant.
-   Manual alternative: copy `custom_components/loadpilot/` into your
-   `config/custom_components/` and restart.
+4. **Install the integration.** With [HACS](https://hacs.xyz/) already
+   installed: open HACS > menu (three dots, top right) > *Custom
+   repositories* > paste `https://github.com/zany92/tesla-loadpilot`,
+   pick category *Integration*, *Add*. Search "Tesla LoadPilot" in HACS,
+   open it, *Download*, then restart Home Assistant. Detailed walkthrough
+   (each screen described): [docs/en/INSTALL.md](docs/en/INSTALL.md),
+   section 5. Manual alternative (no HACS): copy
+   `custom_components/loadpilot/` into your `config/custom_components/`
+   and restart.
 5. **Add the integration** (Settings > Devices and services > Add
    integration > Tesla LoadPilot) and follow the 5-step config flow
    described below.
@@ -186,6 +193,7 @@ The project's real asset is the measured behavior model of the wall connector, a
 | `custom_components/loadpilot/` | The Home Assistant integration (config flow, coordinator, sensors, repairs, services, diagnostics, EN/FR). |
 | `esphome/packages/` | The generic firmware: charger core (publication law) and meter providers. |
 | `esphome/examples/` | Ready-to-adapt node files (three-phase, single-phase, meter node). |
+| `tools/simulate_gain.py` | Closed-loop simulator: publication law + measured pilot hysteresis. Predicts how the knobs shape engagement and equilibrium (cannot predict distrust). |
 | `dashboards/` | Lovelace cards (user face: one switch + live info; settings face). |
 | `docs/en/BEHAVIOR.md` | The measured TWC Gen 3 behavior model. Start here if you want the science. |
 | `docs/en/INSTALL.md` | Full installation guide. |

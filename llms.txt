@@ -1,0 +1,80 @@
+# Tesla LoadPilot
+
+> Local, cloud-free dynamic load management for the Tesla Wall Connector
+> Gen 3, driven by the utility meter. Two ESP32 nodes emulate the Tesla
+> (Neurio) reference meter on the charger's RS485 bus and feed it a shaped
+> version of the real house measurements over an encrypted UDP link; a Home
+> Assistant integration (HACS) observes, configures and orchestrates on
+> top. The control law is firmware-resident: it survives Home Assistant,
+> WiFi and cloud outages. One pilot site (France, three-phase 15 kVA,
+> TWC firmware 26.18 calibration, revalidated on 26.26.1).
+
+Key facts for any assistant working on this repo:
+
+- The measured wallbox behaviour model is the core asset; never "improve"
+  the control law without reading it first.
+- The publication law lives in `esphome/packages/twc-core.yaml`; the HA
+  integration in `custom_components/loadpilot/` never sits in the
+  real-time loop.
+- Firmware and integration are released in lockstep under one git tag;
+  ESPHome `ref:` and HACS must install the same tag.
+- Single-phase support is designed but THEORETICAL (never bench-validated).
+- No Tesla imagery, no personal data of the site owner, attribution to
+  PVi1/esphome-twc-control and LucaTNT is mandatory in emulation docs.
+
+## Condensed knowledge
+
+- [AI knowledge base](docs/AI_KNOWLEDGE.md): single self-contained English
+  document with the architecture, the full publication law and all measured
+  constants, the TWC behaviour model (dead band, distrust), the numbered
+  lessons, the control patterns and the fr/en glossary. Read this first.
+
+## Core documentation
+
+- [README](README.md): pitch, hardware BOM, protection layers, quick start.
+- [Measured TWC Gen 3 behaviour model](docs/en/BEHAVIOR.md): service loop,
+  protection integral, plausibility, distrust state, validations
+  (MEASURED / INFERRED / REPORTED labels).
+- [Installation guide](docs/en/INSTALL.md): hardware, wiring, flashing,
+  Tesla One commissioning, HACS, shadow-first test ladder.
+- [Architecture decisions](ARCHITECTURE.md): product form, ESP/HA boundary,
+  abstractions, versioning.
+- [Team and interface contracts](CONTRACTS.md): entity contract, UDP
+  contract, service contract (French).
+- [Operator runbook](docs/en/RUNBOOK_INCIDENTS.md): incident signatures and
+  responses.
+- [Test plan](docs/en/TESTPLAN.md): validation campaign, GO/NO-GO criteria.
+
+## Reference corpus (French)
+
+- [Control law, definitive model](docs/fr/40_LOI_DE_COMMANDE.md): the
+  measured law, historical reference document.
+- [Hardware BOM and wiring](docs/fr/10_MATERIEL.md)
+- [Measure providers and UDP contract](docs/fr/15_FOURNISSEURS_MESURE.md)
+- [Firmware notes and traps](docs/fr/20_FIRMWARE.md)
+- [Tesla One commissioning](docs/fr/30_COMMISSIONING_TESLA_ONE.md)
+- [Design studies](docs/fr/DESIGN_LOI_COVARIANTE.md): co-variant law,
+  [variant B tail](docs/fr/DESIGN_VARIANTE_B.md),
+  [anti-glitch firewall](docs/fr/DESIGN_ANTI_GLITCH.md),
+  [meter-absent](docs/fr/DESIGN_METER_ABSENT.md),
+  [abandoned synthesizer architecture](docs/fr/60_ETUDE_SYNTHETISEUR.md)
+  (negative results, published on purpose).
+
+## Code
+
+- [Charger-node core firmware](esphome/packages/twc-core.yaml): the law.
+- [Meter providers](esphome/packages/README.md): teleinfo-fr proven,
+  others skeletons.
+- [Ready-to-copy node examples](esphome/examples/README.md)
+- [HA integration](custom_components/loadpilot/): config flow,
+  coordinator, pure control policies in `control.py`, tests in `tests/`.
+- [Dashboards](dashboards/README.md): Lovelace cards, EN/FR UX copy.
+
+## Optional
+
+- [Release notes 1.3.0](RELEASE_NOTES_1.3.0.md): charge cap, trim,
+  distrust detector, law-settings enforcement.
+- [Contributing](CONTRIBUTING.md): TWC firmware version mandatory in
+  every report.
+- [Security policy](SECURITY.md)
+- [Law simulator](tools/simulate_gain.py): closed-loop law + pilot-hysteresis simulator for knob studies

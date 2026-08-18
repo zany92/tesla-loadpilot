@@ -7,12 +7,12 @@
 > telemetry output), Olimex ESP32-POE meter node + Hallard hat, Kincony
 > KC868-A6 charger node, Tesla Wall Connector Gen 3 (firmware ≥ 26.18).
 >
-> **Project status: private beta.** The generic ESPHome packages
-> (`esphome/packages/`) and the HACS integration are being extracted
-> from the reference firmware; the steps that depend on them are written
-> in the future tense and tagged `TODO-sync`. The hardware steps, the
-> Tesla One commissioning and the pitfalls, on the other hand, are lived
-> and validated in production.
+> The generic ESPHome packages (`esphome/packages/`), the ready-to-copy
+> entry files (`esphome/examples/`) and the HACS integration
+> (`custom_components/loadpilot/`) all ship in this repository and are
+> released in lockstep under one tag. The hardware steps, the Tesla One
+> commissioning and the pitfalls are lived and validated in production
+> on the pilot site.
 >
 > *Independent project, not affiliated with Tesla, Inc.*
 
@@ -57,13 +57,107 @@
 
 ### Secrets - BEFORE any flash
 
-Copy `esphome/secrets.yaml.example` to your ESPHome `secrets.yaml` and fill
-in every value (WiFi, ESPHome API keys, OTA passwords, and the **shared UDP
-key** between the two nodes: it is what encrypts the measurements with
-XXTEA). The `secrets.yaml` file **is never committed**
+Copy `esphome/secrets.yaml.example` to your ESPHome `secrets.yaml`
+(Device Builder: top-right menu > *Secrets editor*; CLI: a `secrets.yaml`
+file next to your node YAMLs) and fill in **all 6 keys**:
+
+| Key | Content | How to generate |
+|---|---|---|
+| `loadpilot_api_key` | ESPHome native-API encryption key (base64, 32 bytes) | `openssl rand -base64 32` on any machine, or take the key ESPHome generates when you create a new device (shown as `api: encryption: key:`) |
+| `loadpilot_ota_password` | OTA update password | any strong password, e.g. `openssl rand -hex 16` |
+| `loadpilot_udp_key` | **Shared UDP key**: encrypts the meter measurements (XXTEA) between the two nodes. MUST be strictly identical on the meter node and the charger node | any long random passphrase, e.g. `openssl rand -hex 16`; paste the SAME value once, both nodes read it from the same `secrets.yaml` |
+| `loadpilot_wifi_ssid` | WiFi network of the charger node | your SSID |
+| `loadpilot_wifi_password` | WiFi password | your password |
+| `loadpilot_ap_password` | Fallback hotspot password of the node | any password you will remember in front of the panel |
+
+The `secrets.yaml` file **is never committed**
 (see [`../SECURITY.md`](../../SECURITY.md)).
 
+### Flashing the nodes: Device Builder or CLI (read once, then do sections 2 and 3)
+
+Both nodes flash the same way; only the YAML file differs. **Order
+matters: flash the METER node first**, check its 6 measurements arrive,
+**then the charger node** - the charger node judges the UDP feed by its
+freshness, so it needs a live meter node to leave fail-safe.
+
+**Path (a): ESPHome Device Builder (the Home Assistant add-on, easiest).**
+
+1. Install the add-on: Settings > Add-ons > Add-on store > "ESPHome
+   Device Builder" > Install > Start, then open its web UI (sidebar).
+2. Fill the *Secrets editor* (top-right menu) as per the table above.
+3. Click *+ New device* > give it the node name (`loadpilot-meter` for
+   the meter node) > skip the automatic setup when offered ("Skip"): you
+   will paste a full config instead.
+4. On the new device card: menu (three dots) > *Edit*, delete the
+   generated content and paste the matching example from
+   [`esphome/examples/`](../../esphome/examples/)
+   (`meter-teleinfo-olimex-poe.yaml` for the meter node,
+   `charger-kc868-a6.yaml` for the charger node), adjust the
+   substitutions (contract limit, breaker, node names), *Save*.
+5. **First flash over USB**: connect the board to the machine running
+   the browser, card menu > *Install* > *Plug into this computer* >
+   pick the serial port. If the port never shows up or flashing fails
+   immediately, hold the board's **BOOT** button while plugging the USB
+   cable (or hold BOOT and tap RST/EN), then retry: most ESP32 boards
+   need it to enter the bootloader.
+6. **Every later flash is OTA**: *Install* > *Wirelessly*. No cable, no
+   BOOT button. Reminder from section 0: never OTA the charger node
+   during an active charge.
+
+**Path (b): the `esphome` CLI (no Home Assistant needed to flash).**
+
+```bash
+pip install esphome            # once, Python 3.10+
+cd <folder with your yaml + secrets.yaml>
+esphome run meter-teleinfo-olimex-poe.yaml     # compile + flash + logs
+```
+
+`esphome run` asks USB or OTA when both are possible; `esphome logs
+<file>.yaml` streams the node logs afterwards. The same `secrets.yaml`
+sits in the same folder as the YAML files.
+
+**Trap on small machines (measured on the pilot): ONE build at a time.**
+Two simultaneous ESPHome compilations crashed the build machine - the
+shipped packages even set `compile_process_limit: 1`. Compile the meter
+node, wait for the end, then compile the charger node; never both in
+parallel on a Raspberry-class host.
+
 ## 2. Meter node (Olimex ESP32-POE + Hallard hat)
+
+### Why this hardware: Olimex ESP32-POE + TIC hat
+
+The meter node lives next to the electrical panel, a place with few
+power outlets and (often) poor WiFi. The **Olimex ESP32-POE** solves
+both at once: **Power over Ethernet means ONE single cable** brings
+power and network to the node, and wired Ethernet is far more reliable
+than WiFi in a metal panel enclosure. It is open-source hardware with a
+free UART for the TIC. Buy it from
+[Olimex](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware)
+(a PoE switch or injector on the other end of the cable powers it; USB
+works too if you have an outlet).
+
+The **Hallard "WeMos TeleInfo" hat** is the TIC receiver: it adapts and
+**opto-isolates** the Linky's telemetry output (terminals **I1/I2**)
+down to a clean UART signal for the ESP32. It reads the TIC in standard
+mode at **9600 baud, 7E1**, and lands on **RX GPIO36** when mounted on
+the Olimex's UART port. Sold assembled:
+[design on GitHub](https://github.com/hallard/WeMos-TIC),
+[Tindie](https://www.tindie.com/products/25467/),
+[Lectronz](https://lectronz.com/products/wemos-tic).
+
+Known pitfalls of this pair (details:
+[`10_MATERIEL.md` (French)](../fr/10_MATERIEL.md)):
+
+- **`power_pin: GPIO12` must stay in the Ethernet block**: it is the
+  GPIO powering the LAN8720 PHY; without it, Ethernet may never come
+  back after a soft reset on some board revisions (the shipped example
+  declares it);
+- **`rx_buffer_size: 1024` is mandatory** on the TIC UART (a Tempo
+  frame exceeds 400 bytes; see the checks below);
+- any ESP32 with a free UART can replace the Olimex, but you lose the
+  single-cable PoE argument and revalidate the network block yourself.
+
+### Assembly and flash
 
 1. **TIC wiring**: two wires between the Linky's **I1/I2** terminals and
    the Hallard hat's TIC input (opto-isolated, no critical polarity on this
@@ -73,13 +167,12 @@ XXTEA). The `secrets.yaml` file **is never committed**
    or USB). The config declares `power_pin: GPIO12` (power supply of the
    LAN8720 PHY); without it, Ethernet may not come back after a soft reset
    on some units ([`20_FIRMWARE.md` (French)](../fr/20_FIRMWARE.md) §1.2).
-3. **Flash**: compile and flash the meter node YAML from the ESPHome
-   dashboard (first flash over USB, OTA afterwards).
-   `TODO-sync`: the file to use will be
-   `esphome/packages/providers/teleinfo-fr.yaml` consumed through an
-   example entrypoint (`esphome/examples/`), pinned on the release tag
-   (`ref: vX.Y.Z`). Until the extraction lands, the sanitised reference
-   file is `esphome/olimex-portail.yaml`.
+3. **Flash**: follow the walkthrough of section 1 ("Flashing the
+   nodes") with the example entry file
+   [`esphome/examples/meter-teleinfo-olimex-poe.yaml`](../../esphome/examples/meter-teleinfo-olimex-poe.yaml)
+   (it consumes `esphome/packages/providers/teleinfo-fr.yaml` as a
+   remote package; keep `ref:` pinned on a release tag, never `main`).
+   First flash over USB, OTA afterwards.
 4. **Checks**:
    - the 6 quantities (IRMS1-3, SINSTS1-3) show up in HA and vary;
    - pitfall #1: **`rx_buffer_size: 1024` is mandatory** (a standard Tempo
@@ -114,11 +207,17 @@ become fresh and the charger node would sit in fail-safe forever.
      link or in a noisy environment, align with it. Note: community
      builds work without common ground or termination (LucaTNT gist); our
      reference uses the common ground, both exist in the field.
-3. **Flash** the charger node firmware (same remarks: first flash over
-   USB, `secrets.yaml` filled in). `TODO-sync`: target =
-   `esphome/packages/twc-core.yaml` + `esphome/packages/boards/kc868-a6.yaml`
-   pinned on a tag; until then, the sanitised reference is
-   `esphome/kc868-a6-1.yaml` ("PVi1-GRADE 17/08" block).
+3. **Flash** the charger node firmware (walkthrough in section 1,
+   "Flashing the nodes": first flash over USB, `secrets.yaml` filled
+   in) with the example entry file
+   [`esphome/examples/charger-kc868-a6.yaml`](../../esphome/examples/charger-kc868-a6.yaml)
+   (it consumes `esphome/packages/twc-core.yaml` +
+   `esphome/packages/boards/kc868-a6.yaml` as remote packages pinned on
+   a release tag). Budget alternative: the Kincony ESP32-S3 Core Board
+   has a draft board pack (`esphome/packages/boards/esp32-s3-core.yaml`,
+   `board: esp32-s3-devkitc-1`) that compiles but was NEVER validated
+   against a wallbox; a bare ESP32-S3 devkit additionally needs an
+   external MAX485/MAX13487-class RS485 transceiver.
 4. **Substitutions to adjust to YOUR installation**:
    - contract limit per phase (e.g. 15 kVA three-phase: 5,000 VA / 230 V
      ≈ 21 A);
@@ -236,22 +335,55 @@ The control-law constants are three-phase measurements.
 
 ## 5. Home Assistant integration (HACS)
 
-`TODO-sync`: the integration is under development; the target path will
-be:
+The integration installs from this repository as a **HACS custom
+repository**. No screenshots here, so each screen is described.
 
-1. HACS → custom repositories → add this repository (category
-   *Integration*) → install **Tesla LoadPilot** → restart HA.
-2. Settings → Devices and services → Add integration
-   "Tesla LoadPilot": the config flow will ask for the ESPHome nodes
-   (charger, meter), the number of phases (1|3), the contract limit, the
-   buffer, and the mirror entities (6 current/power sensors: the BACKUP
-   source when UDP goes silent).
-3. The integration will write the settings **resident on the charger
-   node** (limit, buffer, bias, kill-switch): an HA reboot changes nothing
-   on the wallbox, and regulation lives without HA.
+**Prerequisite**: [HACS](https://hacs.xyz/) itself is installed and
+visible in the Home Assistant sidebar. If not, follow the HACS
+documentation first.
 
-The integration will raise an HA *Repair* for any firmware/integration
-version skew (both channels install from the **same tag**).
+1. **Open HACS** from the sidebar. You land on the HACS main list.
+2. **Open the overflow menu**: the **three-dots button in the top-right
+   corner** of the HACS page > choose **Custom repositories**. A dialog
+   opens with two fields.
+3. **Add the repository**: in the *Repository* field paste
+   `https://github.com/zany92/tesla-loadpilot`; in the *Type* (category)
+   field select **Integration**; click **Add**. The repository appears
+   in the dialog's list; close the dialog.
+4. **Download the integration**: back in the HACS list, search for
+   **"Tesla LoadPilot"** (it may already be shown as "New repository").
+   Open its page: you get the repository description with a
+   **Download** button in the bottom-right corner. Click *Download* and
+   confirm the version (take the latest release; the firmware `ref:` of
+   your nodes should point at the SAME tag).
+5. **Restart Home Assistant**: Settings > System > top-right power menu
+   > *Restart Home Assistant*. A custom integration is only loaded at
+   startup; this restart is not optional.
+6. **Add the integration**: Settings > Devices and services > bottom
+   right **+ Add integration** > search **"Tesla LoadPilot"** > open
+   it. The 5-step config flow starts: country profile, the two ESPHome
+   node names (validated against your entity registry), electrical
+   settings (phases 1|3, contract preset or custom per-phase limit,
+   safety buffer), the 6 mirror entities (current/power per phase: the
+   BACKUP measure path when UDP goes silent), and a confirmation screen
+   showing the computed budget.
+
+The integration writes the settings **resident on the charger node**
+(limit, buffer, bias, kill-switch): an HA reboot changes nothing on the
+wallbox, and regulation lives without HA. It raises an HA *Repair* for
+any firmware/integration version skew (both channels install from the
+**same tag**).
+
+### Manual installation (fallback without HACS)
+
+1. Download this repository (git clone, or GitHub *Code > Download
+   ZIP*).
+2. Copy the whole `custom_components/loadpilot/` folder into your Home
+   Assistant configuration directory so you end up with
+   `config/custom_components/loadpilot/manifest.json`.
+3. Restart Home Assistant, then add the integration as in step 6 above.
+   You will NOT get update notifications: watch the releases page
+   yourself.
 
 ## 6. First tests - ALWAYS shadow first
 

@@ -4,12 +4,12 @@
 > standard, nœud compteur Olimex ESP32-POE + hat Hallard, nœud borne
 > Kincony KC868-A6, Tesla Wall Connector Gen 3 (firmware ≥ 26.18).
 >
-> **État du projet : bêta privée.** Les paquets ESPHome génériques
-> (`esphome/packages/`) et l'intégration HACS sont en cours d'extraction
-> depuis le firmware de référence - les étapes qui en dépendent sont
-> décrites au futur et balisées `TODO-sync`. Les étapes matérielles,
-> le commissioning Tesla One et les pièges sont, eux, vécus et validés
-> en production.
+> Les paquets ESPHome génériques (`esphome/packages/`), les fichiers
+> d'entrée prêts à copier (`esphome/examples/`) et l'intégration HACS
+> (`custom_components/loadpilot/`) sont tous livrés dans ce dépôt et
+> publiés en même temps sous un même tag. Les étapes matérielles, le
+> commissioning Tesla One et les pièges sont vécus et validés en
+> production sur le site pilote.
 >
 > *Projet indépendant, non affilié à Tesla, Inc.*
 
@@ -53,13 +53,119 @@
 
 ### Secrets - AVANT tout flash
 
-Copiez `esphome/secrets.yaml.example` vers votre `secrets.yaml` ESPHome et
-renseignez toutes les valeurs (WiFi, clés API ESPHome, mots de passe OTA,
-**clé UDP partagée** entre les deux nœuds - c'est elle qui chiffre les
-mesures en XXTEA). Le fichier `secrets.yaml` **ne se commite jamais**
+Copiez `esphome/secrets.yaml.example` vers votre `secrets.yaml` ESPHome
+(Device Builder : menu en haut à droite > *Secrets editor* ; CLI : un
+fichier `secrets.yaml` à côté de vos YAML de nœud) et renseignez les
+**6 clés** :
+
+| Clé | Contenu | Comment la générer |
+|---|---|---|
+| `loadpilot_api_key` | Clé de chiffrement de l'API native ESPHome (base64, 32 octets) | `openssl rand -base64 32` sur n'importe quelle machine, ou reprenez la clé qu'ESPHome génère à la création d'un appareil (affichée sous `api: encryption: key:`) |
+| `loadpilot_ota_password` | Mot de passe des mises à jour OTA | n'importe quel mot de passe robuste, ex. `openssl rand -hex 16` |
+| `loadpilot_udp_key` | **Clé UDP partagée** : elle chiffre les mesures (XXTEA) entre les deux nœuds. Elle DOIT être strictement identique sur le nœud compteur et le nœud borne | n'importe quelle phrase aléatoire longue, ex. `openssl rand -hex 16` ; collez la MÊME valeur une seule fois, les deux nœuds la lisent dans le même `secrets.yaml` |
+| `loadpilot_wifi_ssid` | Réseau WiFi du nœud borne | votre SSID |
+| `loadpilot_wifi_password` | Mot de passe WiFi | votre mot de passe |
+| `loadpilot_ap_password` | Mot de passe du hotspot de secours du nœud | un mot de passe dont vous vous souviendrez devant le tableau |
+
+Le fichier `secrets.yaml` **ne se commite jamais**
 (voir [`../SECURITY.md`](../../SECURITY.md)).
 
+### Flasher les nœuds : Device Builder ou CLI (à lire une fois, avant les sections 2 et 3)
+
+Les deux nœuds se flashent de la même façon ; seul le fichier YAML
+change. **L'ordre compte : flashez d'abord le nœud COMPTEUR**, vérifiez
+que ses 6 grandeurs remontent, **puis le nœud borne** - le nœud borne
+juge le flux UDP à sa fraîcheur, il lui faut donc un nœud compteur
+vivant pour sortir du fail-safe.
+
+**Voie (a) : ESPHome Device Builder (le module complémentaire Home
+Assistant, la plus simple).**
+
+1. Installez le module : Paramètres > Modules complémentaires >
+   Boutique > « ESPHome Device Builder » > Installer > Démarrer, puis
+   ouvrez son interface web (barre latérale).
+2. Remplissez le *Secrets editor* (menu en haut à droite) selon le
+   tableau ci-dessus.
+3. Cliquez *+ New device* > donnez le nom du nœud (`loadpilot-meter`
+   pour le nœud compteur) > passez l'assistant automatique quand il se
+   propose (« Skip ») : vous allez coller une config complète à la
+   place.
+4. Sur la carte du nouvel appareil : menu (trois points) > *Edit*,
+   effacez le contenu généré et collez l'exemple correspondant de
+   [`esphome/examples/`](../../esphome/examples/)
+   (`meter-teleinfo-olimex-poe.yaml` pour le nœud compteur,
+   `charger-kc868-a6.yaml` pour le nœud borne), ajustez les
+   substitutions (limite de contrat, disjoncteur, noms de nœuds),
+   *Save*.
+5. **Premier flash par USB** : reliez la carte à la machine qui fait
+   tourner le navigateur, menu de la carte > *Install* > *Plug into
+   this computer* > choisissez le port série. Si le port n'apparaît
+   jamais ou si le flash échoue aussitôt, maintenez le bouton **BOOT**
+   de la carte en branchant le câble USB (ou maintenez BOOT et pressez
+   brièvement RST/EN), puis réessayez : la plupart des cartes ESP32 en
+   ont besoin pour entrer en mode bootloader.
+6. **Tous les flashs suivants se font en OTA** : *Install* >
+   *Wirelessly*. Ni câble, ni bouton BOOT. Rappel de la section 0 :
+   jamais d'OTA du nœud borne pendant une charge en cours.
+
+**Voie (b) : la CLI `esphome` (aucun Home Assistant requis pour
+flasher).**
+
+```bash
+pip install esphome            # une fois, Python 3.10+
+cd <dossier avec vos yaml + secrets.yaml>
+esphome run meter-teleinfo-olimex-poe.yaml     # compile + flash + logs
+```
+
+`esphome run` propose USB ou OTA quand les deux sont possibles ;
+`esphome logs <fichier>.yaml` affiche ensuite les logs du nœud. Le même
+`secrets.yaml` se place dans le même dossier que les fichiers YAML.
+
+**Piège sur les petites machines (mesuré sur le pilote) : UNE seule
+compilation à la fois.** Deux compilations ESPHome simultanées ont fait
+planter la machine de build - les paquets livrés fixent d'ailleurs
+`compile_process_limit: 1`. Compilez le nœud compteur, attendez la fin,
+puis compilez le nœud borne ; jamais les deux en parallèle sur un hôte
+type Raspberry.
+
 ## 2. Nœud compteur (Olimex ESP32-POE + hat Hallard)
+
+### Pourquoi ce matériel : Olimex ESP32-POE + hat TIC
+
+Le nœud compteur vit à côté du tableau électrique, un endroit pauvre en
+prises de courant et (souvent) mal couvert en WiFi. L'**Olimex
+ESP32-POE** règle les deux d'un coup : le **Power over Ethernet, c'est
+UN seul câble** qui apporte à la fois l'alimentation et le réseau, et
+l'Ethernet filaire est bien plus fiable que le WiFi dans une gaine
+technique métallique. C'est du matériel open source avec un UART libre
+pour la TIC. Achat chez
+[Olimex](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware)
+(un switch ou injecteur PoE à l'autre bout du câble l'alimente ; l'USB
+convient aussi si vous avez une prise).
+
+Le **hat Hallard « WeMos TeleInfo »** est le récepteur TIC : il adapte
+et **opto-isole** la sortie téléinformation du Linky (bornes **I1/I2**)
+en un signal UART propre pour l'ESP32. Il lit la TIC en mode standard à
+**9600 bauds, 7E1**, et arrive sur **RX GPIO36** une fois monté sur le
+port UART de l'Olimex. Vendu assemblé :
+[design sur GitHub](https://github.com/hallard/WeMos-TIC),
+[Tindie](https://www.tindie.com/products/25467/),
+[Lectronz](https://lectronz.com/products/wemos-tic).
+
+Pièges connus de ce couple (détails :
+[`10_MATERIEL.md`](10_MATERIEL.md)) :
+
+- **`power_pin: GPIO12` doit rester dans le bloc Ethernet** : c'est le
+  GPIO qui alimente le PHY LAN8720 ; sans lui, l'Ethernet peut ne
+  jamais revenir après un soft-reset sur certaines révisions de carte
+  (l'exemple livré le déclare) ;
+- **`rx_buffer_size: 1024` obligatoire** sur l'UART TIC (une trame
+  Tempo dépasse 400 octets ; voir les vérifications ci-dessous) ;
+- n'importe quel ESP32 avec un UART libre peut remplacer l'Olimex, mais
+  vous perdez l'argument du câble unique PoE et vous revalidez le bloc
+  réseau vous-même.
+
+### Assemblage et flash
 
 1. **Câblage TIC** : deux fils entre les bornes **I1/I2** du Linky et
    l'entrée TIC du hat Hallard (opto-isolée, pas de polarité critique sur
@@ -69,13 +175,12 @@ mesures en XXTEA). Le fichier `secrets.yaml` **ne se commite jamais**
    USB). La config déclare `power_pin: GPIO12` (alimentation du PHY
    LAN8720) - sans lui, l'Ethernet peut ne pas revenir après un soft-reset
    sur certains exemplaires ([`20_FIRMWARE.md`](20_FIRMWARE.md) §1.2).
-3. **Flash** : compilez et flashez le YAML du nœud compteur depuis le
-   dashboard ESPHome (premier flash par USB, ensuite OTA).
-   `TODO-sync` : le fichier à utiliser sera
-   `esphome/packages/providers/teleinfo-fr.yaml` consommé via un
-   entrypoint d'exemple (`esphome/examples/`), épinglé sur le tag de
-   release (`ref: vX.Y.Z`) - en attendant l'extraction, le fichier de
-   référence assaini est `esphome/olimex-portail.yaml`.
+3. **Flash** : suivez le pas-à-pas de la section 1 (« Flasher les
+   nœuds ») avec le fichier d'entrée d'exemple
+   [`esphome/examples/meter-teleinfo-olimex-poe.yaml`](../../esphome/examples/meter-teleinfo-olimex-poe.yaml)
+   (il consomme `esphome/packages/providers/teleinfo-fr.yaml` en paquet
+   distant ; gardez `ref:` épinglé sur un tag de release, jamais
+   `main`). Premier flash par USB, ensuite OTA.
 4. **Vérifications** :
    - les 6 grandeurs (IRMS1-3, SINSTS1-3) remontent dans HA et varient ;
    - piège n°1 : **`rx_buffer_size: 1024` obligatoire** (une trame Tempo
@@ -109,11 +214,18 @@ nœud borne resterait en fail-safe pour toujours.
      alignez-vous dessus. À noter : des montages communautaires
      fonctionnent sans masse commune ni terminaison (gist LucaTNT) - notre
      référence utilise la masse commune, les deux existent sur le terrain.
-3. **Flash** du firmware nœud borne (mêmes remarques : premier flash USB,
-   `secrets.yaml` renseigné). `TODO-sync` : cible =
-   `esphome/packages/twc-core.yaml` + `esphome/packages/boards/kc868-a6.yaml`
-   épinglés sur tag ; en attendant, référence assainie =
-   `esphome/kc868-a6-1.yaml` (bloc « PVi1-GRADE 17/08 »).
+3. **Flash** du firmware nœud borne (pas-à-pas en section 1, « Flasher
+   les nœuds » : premier flash USB, `secrets.yaml` renseigné) avec le
+   fichier d'entrée d'exemple
+   [`esphome/examples/charger-kc868-a6.yaml`](../../esphome/examples/charger-kc868-a6.yaml)
+   (il consomme `esphome/packages/twc-core.yaml` +
+   `esphome/packages/boards/kc868-a6.yaml` en paquets distants épinglés
+   sur un tag de release). Alternative économique : la Kincony ESP32-S3
+   Core Board dispose d'un board pack à l'état d'ébauche
+   (`esphome/packages/boards/esp32-s3-core.yaml`,
+   `board: esp32-s3-devkitc-1`) qui compile mais n'a JAMAIS été validé
+   face à une borne ; un devkit ESP32-S3 nu demande en plus un
+   transceiver RS485 externe type MAX485/MAX13487.
 4. **Substitutions à ajuster à VOTRE installation** :
    - limite de contrat par phase (ex. 15 kVA tri : 5 000 VA / 230 V ≈ 21 A) ;
    - disjoncteur de branchement (`main_breaker`) - c'est la valeur publiée
@@ -232,22 +344,58 @@ triphasées.
 
 ## 5. Intégration Home Assistant (HACS)
 
-`TODO-sync` - l'intégration est en cours de développement ; le parcours
-cible sera :
+L'intégration s'installe depuis ce dépôt en **dépôt personnalisé
+HACS**. Pas de captures d'écran ici, donc chaque écran est décrit.
 
-1. HACS → dépôts personnalisés → ajouter ce dépôt (catégorie
-   *Intégration*) → installer **Tesla LoadPilot** → redémarrer HA.
-2. Paramètres → Appareils et services → Ajouter l'intégration
-   « Tesla LoadPilot » : le config flow demandera les nœuds ESPHome
-   (borne, compteur), le nombre de phases (1|3), la limite de contrat, le
-   buffer, et les entités miroir (6 capteurs courant/puissance - la source
-   de SECOURS quand l'UDP se tait).
-3. L'intégration écrira les réglages **résidents sur le nœud borne**
-   (limite, buffer, biais, kill-switch) : un reboot de HA ne change rien à
-   la borne, et la régulation vit sans HA.
+**Prérequis** : [HACS](https://hacs.xyz/) lui-même est installé et
+visible dans la barre latérale de Home Assistant. Sinon, suivez d'abord
+la documentation de HACS.
 
-L'intégration signalera par une *Réparation* HA tout écart de version
-firmware/intégration (les deux canaux s'installent sur le **même tag**).
+1. **Ouvrez HACS** depuis la barre latérale. Vous arrivez sur la liste
+   principale de HACS.
+2. **Ouvrez le menu débordant** : le **bouton trois points en haut à
+   droite** de la page HACS > choisissez **Dépôts personnalisés**
+   (*Custom repositories*). Une boîte de dialogue s'ouvre avec deux
+   champs.
+3. **Ajoutez le dépôt** : dans le champ *Dépôt*, collez
+   `https://github.com/zany92/tesla-loadpilot` ; dans le champ *Type*
+   (catégorie), sélectionnez **Integration** ; cliquez **Ajouter**. Le
+   dépôt apparaît dans la liste de la boîte de dialogue ; fermez-la.
+4. **Téléchargez l'intégration** : de retour sur la liste HACS,
+   cherchez **« Tesla LoadPilot »** (parfois déjà mis en avant comme
+   « Nouveau dépôt »). Ouvrez sa fiche : la description du dépôt
+   s'affiche avec un bouton **Télécharger** en bas à droite. Cliquez
+   *Télécharger* et confirmez la version (prenez la dernière release ;
+   le `ref:` du firmware de vos nœuds doit pointer sur le MÊME tag).
+5. **Redémarrez Home Assistant** : Paramètres > Système > menu
+   d'alimentation en haut à droite > *Redémarrer Home Assistant*. Une
+   intégration personnalisée n'est chargée qu'au démarrage ; ce
+   redémarrage n'est pas optionnel.
+6. **Ajoutez l'intégration** : Paramètres > Appareils et services >
+   bouton **+ Ajouter une intégration** en bas à droite > cherchez
+   **« Tesla LoadPilot »** > ouvrez-la. Le config flow en 5 étapes
+   démarre : profil pays, les noms des deux nœuds ESPHome (validés
+   contre votre registre d'entités), les réglages électriques (phases
+   1|3, préréglage d'abonnement ou limite par phase personnalisée,
+   tampon de sécurité), les 6 entités miroir (courant/puissance par
+   phase : la source de SECOURS quand l'UDP se tait), et un écran de
+   confirmation qui affiche le budget calculé.
+
+L'intégration écrit les réglages **résidents sur le nœud borne**
+(limite, buffer, biais, kill-switch) : un reboot de HA ne change rien à
+la borne, et la régulation vit sans HA. Elle signale par une
+*Réparation* HA tout écart de version firmware/intégration (les deux
+canaux s'installent sur le **même tag**).
+
+### Installation manuelle (secours sans HACS)
+
+1. Téléchargez ce dépôt (git clone, ou GitHub *Code > Download ZIP*).
+2. Copiez le dossier `custom_components/loadpilot/` entier dans votre
+   répertoire de configuration Home Assistant, pour obtenir au final
+   `config/custom_components/loadpilot/manifest.json`.
+3. Redémarrez Home Assistant, puis ajoutez l'intégration comme à
+   l'étape 6 ci-dessus. Vous n'aurez PAS de notification de mise à
+   jour : surveillez vous-même la page des releases.
 
 ## 6. Premiers tests - TOUJOURS en ombre d'abord
 

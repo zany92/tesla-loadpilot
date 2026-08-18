@@ -87,6 +87,9 @@ Le budget vaut `limite contrat × (1 - tampon %)` : avec le tampon par défaut
 |---|---|---|---|
 | Tesla Wall Connector Gen 3 | La borne pilotée | Firmwares validés : 26.18 (référence de calibration) et 26.26.1 (revalidation complète, BEHAVIOR §12). **Gelez les mises à jour** (bloquez par exemple son accès WAN au niveau du routeur) et ne les débloquez que pour une mise à jour supervisée, voir le runbook. | [Page produit](https://www.tesla.com/wall-connector) |
 | Kincony KC868-A6 | Nœud ESP32 côté borne (émulation Neurio) | Carte ESP32 avec transceiver RS485 intégré (MAX13487E, direction gérée en matériel), relais et entrées en prime. N'importe quel ESP32 associé à un transceiver type MAX485 convient aussi. | [Détails matériels](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [Boutique KinCony](https://www.kincony.com/) |
+| Kincony ESP32-S3 Core Board (alternative) | Alternative économique pour le nœud borne | Module ESP32-S3 (ESP32-S3-WROOM-1U) ; la page constructeur annonce un bus RS485 et un port Ethernet filaire. Un board pack au stade d'ébauche existe (`esphome/packages/boards/esp32-s3-core.yaml`, `board: esp32-s3-devkitc-1`) : il compile mais n'a JAMAIS été validé face à une borne, à considérer comme non testé. Si vous partez d'un devkit ESP32-S3 nu, ajoutez un transceiver RS485 externe type MAX485/MAX13487 (les devkits nus n'en ont pas). | [Page produit](https://www.kincony.com/kincony-esp32-s3-core-board.html) |
+| Waveshare ESP32-S3-RS485-CAN | Alternative nœud borne (industrielle) | RS485 isolé à direction automatique, isolation numérique et d'alimentation, TVS/surtension/ESD, bornier 7-36 V. Sur le papier l'alternative la plus robuste ; pas encore validée sur banc. | [Fiche produit](https://www.waveshare.com/esp32-s3-rs485-can.htm) |
+| Olimex ESP32-POE + MOD-RS485-ISO | Alternative nœud borne (flotte Olimex uniforme) | Même famille de carte que le nœud compteur, alimentation PoE. Le module RS485 UEXT n'est PAS à direction automatique : ESPHome doit piloter DE//RE via flow_control_pin ; préférer la variante isolée MOD-RS485-ISO. Théorique, non validé sur banc. | [MOD-RS485](https://www.olimex.com/Products/Modules/Interface/MOD-RS485/open-source-hardware) |
 | Olimex ESP32-POE | Nœud ESP32 côté compteur | Alimenté par Ethernet (PoE) à côté du compteur ; n'importe quel ESP32 avec un UART libre fait l'affaire. | [Page produit](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Carte de réception Téléinfo (TIC), design Charles Hallard | Lit la sortie TIC du Linky (bornes I1/I2) | Récepteur série opto-isolé, compatible ESP32. Vendu assemblé. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
 | Câblage RS485 | Du nœud borne au wall connector | Paire torsadée blindée 1,5 mm² recommandée par Tesla, 120 m maximum, drain à la terre côté tableau ; en pratique, les tronçons courts non terminés passent très bien : sur le site pilote, une simple paire torsadée d'un câble Ethernet fonctionne parfaitement sur 2 m. | Note d'application Tesla, voir [docs/fr/INSTALL.md](docs/fr/INSTALL.md) |
@@ -114,10 +117,14 @@ De zéro à une borne régulée, dans l'ordre :
    menu est verrouillé derrière des identifiants installateur ; le
    contournement (compte Tesla générique, « Tesla device settings ») est
    documenté pas à pas dans [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
-4. **Installer l'intégration.** Dans HACS : menu (trois points) > Dépôts
-   personnalisés > ajouter `https://github.com/zany92/tesla-loadpilot`
-   en catégorie *Integration*, installer, puis redémarrer Home Assistant.
-   Alternative manuelle : copier `custom_components/loadpilot/` dans
+4. **Installer l'intégration.** Avec [HACS](https://hacs.xyz/) déjà en
+   place : ouvrez HACS > menu (trois points, en haut à droite) > *Dépôts
+   personnalisés* > collez `https://github.com/zany92/tesla-loadpilot`,
+   catégorie *Integration*, *Ajouter*. Cherchez « Tesla LoadPilot » dans
+   HACS, ouvrez la fiche, *Télécharger*, puis redémarrez Home Assistant.
+   Pas-à-pas détaillé (chaque écran décrit) :
+   [docs/fr/INSTALL.md](docs/fr/INSTALL.md), section 5. Alternative
+   manuelle (sans HACS) : copier `custom_components/loadpilot/` dans
    `config/custom_components/` et redémarrer.
 5. **Ajouter l'intégration** (Paramètres > Appareils et services >
    Ajouter une intégration > Tesla LoadPilot) et suivre le config flow en
@@ -177,6 +184,7 @@ Le vrai capital du projet, c'est le modèle de comportement mesuré du wall conn
 | `custom_components/loadpilot/` | L'intégration Home Assistant (config flow, coordinateur, capteurs, réparations, services, diagnostics, EN/FR). |
 | `esphome/packages/` | Le firmware générique : cœur borne (loi de publication) et fournisseurs de mesure. |
 | `esphome/examples/` | Fichiers de nœud prêts à adapter (triphasé, monophasé, nœud compteur). |
+| `tools/simulate_gain.py` | Simulateur en boucle fermée : loi de publication + hystérésis pilote mesurée. Prédit l'effet des réglages sur l'engagement et l'équilibre (ne prédit pas la défiance). |
 | `dashboards/` | Cartes Lovelace (face utilisateur : un interrupteur + l'essentiel en direct ; face réglages). |
 | `docs/fr/BEHAVIOR.md` | Le modèle de comportement mesuré du TWC Gen 3. Commencez ici si c'est la science qui vous intéresse. |
 | `docs/fr/INSTALL.md` | Guide d'installation complet (en français). |
