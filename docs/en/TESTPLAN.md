@@ -122,6 +122,11 @@ On a CLEAN HA instance (VM) + the two spare ESP32s if possible:
 | C19 | Single-phase: 32 A bias pause | `bias_max_a: "32"`, loadpilot.set_bias amps: 32 during a 32 A charge | full pause effective; ~160 s ramp acceptable; vehicle give-up behaviour (~3 disturbed sessions) identical to three-phase | pause never completes or vehicle errors |
 | C20 | Single-phase: fail-safe and Meter Absent | meter absent / fail-safe on the single-phase bench | Tesla-documented 6 A fallback identical; boot main_breaker = charge blocked | uncontrolled charge under fallback |
 
+Compile status (18 Aug): the CI now builds the single-phase charger and
+meter configs for real; the packet_transport duplicated-sensor question
+is SETTLED (compiles and links, run 32152173724). Bench behavior remains
+untested.
+
 Single-phase status: the whole C14-C20 campaign is OPEN - single-phase
 support is THEORETICAL until it runs (no single-phase bench available at
 design time, 18 Aug 2026).

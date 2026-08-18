@@ -165,6 +165,11 @@ propre 9,1 → 15,7 A en ~6 s. Trace :
 reste active en production (2,0 A).
 
 
+Statut compilation (18/08) : la CI compile désormais réellement les
+configs chargeur et compteur monophasées ; la question du capteur
+dupliqué dans packet_transport est TRANCHÉE (compile et linke, run
+32152173724). Le comportement sur banc reste non testé.
+
 ## Relevé A16 (18/08) : revalidation firmware 26.26.1 et plafond manuel
 
 Mise à jour 26.26.1 sous supervision (WAN ouvert 2 h, re-bloqué dans
