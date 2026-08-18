@@ -163,7 +163,7 @@ Le vrai capital du projet, c'est le modèle de comportement mesuré du wall conn
 
 ## Les limites connues, sans détour
 
-- **Un seul site pilote, un seul firmware.** Tout est calibré contre le firmware TWC 26.18 sur une installation triphasée française. Les constantes (bande morte, intégrale, planchers) peuvent dériver au gré des mises à jour Tesla ; gelez le firmware de votre borne.
+- **Un seul site pilote.** La calibration a été établie sur le firmware TWC 26.18 (installation triphasée française) et revalidée point par point sur 26.26.1 (BEHAVIOR §12). Les constantes (bande morte, intégrale, planchers) peuvent dériver aux prochaines mises à jour Tesla ; gelez le firmware et ne le mettez à jour qu'en supervisé.
 - **Le support monophasé est conçu mais THÉORIQUE.** Il n'a jamais été validé sur banc : les constantes de la loi de commande sont des mesures triphasées, et les registres CT qu'une borne commissionnée en monophasé lit réellement sont inconnus (campagne banc dans [docs/fr/TESTPLAN.md](docs/fr/TESTPLAN.md), cas C14-C20).
 - **La couche de défiance est le risque structurel.** Notre loi est conçue pour ne jamais la déclencher, et les portes d'entrée que nous avons identifiées sont fermées (valeurs impossibles, rampes absorbées, fail-safe statique), mais Tesla durcit cette couche version après version et pourrait un jour fermer complètement le contournement de mise en service.
 - **La variante B (traînée anti-oscillation) est conçue et livrée, mais inerte** : sa validation en boucle fermée est le prochain essai au calendrier. Traînée coupée, une charge domestique qui flotte pile au budget peut entretenir un cycle limite de ±2,5 A qui finit en coupure de protection.
