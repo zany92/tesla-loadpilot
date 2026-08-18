@@ -96,5 +96,8 @@ window (anti-cycling "meal" hysteresis armed by two pauses in under
 
 Remedy: write 0 to the bias number, then start the charge. Permanent
 fix shipped on the pilot: an "empty pause" exemption in the release
-logic (vehicle max current under 1 A over 2 min skips the long-calm
-requirement; the room projections and the anti-yo-yo hold remain).
+logic. Refinement learned the same day: the emptiness must be captured
+AT POSE TIME (a flag written when the pause is posted), because any
+frozen pause idles the vehicle within 2 min and a live test would
+neutralize the anti-cycling hysteresis for legitimate pauses. The room
+projections and the anti-yo-yo hold remain in all cases.

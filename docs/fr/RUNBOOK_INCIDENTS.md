@@ -110,6 +110,9 @@ relâchait jamais le biais.
 
 Remède : écrire 0 dans le number de biais, puis relancer la charge.
 Correctif permanent déployé sur le pilote : une exemption « pause à
-vide » dans la logique de relâche (courant véhicule max sous 1 A sur
-2 min saute l'exigence de calme long ; les projections de place et le
-blocage anti-yo-yo restent).
+vide » dans la logique de relâche. Raffinement appris le jour même :
+le caractère « à vide » doit être capturé AU MOMENT DE LA POSE (flag
+écrit quand la pause est posée), car toute pause gelée immobilise le
+véhicule en 2 min et un test vivant neutraliserait l'hystérésis
+anti-cycles pour les pauses légitimes. Les projections de place et le
+blocage anti-yo-yo restent dans tous les cas.
