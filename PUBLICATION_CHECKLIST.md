@@ -7,12 +7,17 @@ PVi1 and Klangen82. Remaining polish items, none of them blocking:
   `docs/assets/hero.png` and regenerate without the V1.0 caption.
 - [x] **CI re-hardened** : `continue-on-error` removed from the HACS job
   (17 Aug); only the brands check stays ignored until the brands PR merges.
-- [x] **Brands PR opened** : home-assistant/brands#10992 (icon 256 + 512,
-  original artwork, `docs/assets/icon.png` in this repo).
-- [x] **HACS default store PR opened** : hacs/default#10084. Its checks
-  depend on the brands PR being merged first; expect a few weeks of review.
-- [ ] **After the brands PR merges** : drop the `ignore: brands` line in
-  `.github/workflows/validate.yml`.
+- [x] **Brand icons shipped in the integration** (`custom_components/
+  loadpilot/brand/`), per the HA 2026.3 mechanism. The home-assistant/brands
+  PR (#10992) was auto-closed: that repo no longer accepts custom
+  integrations, no action needed.
+- [x] **License detection fixed** : pure MIT text in LICENSE (GitHub SPDX
+  detection broke on the inline attribution paragraph), attribution moved
+  to NOTICE.md, stale LICENSE.placeholder removed.
+- [ ] **HACS default store PR** : first attempt (hacs/default#10084) closed
+  by the bot (template checklist + 3 links required, HACS action run must
+  be green without `ignore`). Reopen with the full template once CI is
+  green and a fresh release exists.
 - [ ] **From-scratch install test** (TESTPLAN volet B) on a clean HA.
 - [ ] **HACS custom-repository instructions** : verify the install flow end
   to end once the brands PR is merged.

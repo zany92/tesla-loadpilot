@@ -1,10 +1,6 @@
 MIT License
 
-Copyright (c) 2026 zany92 (Tesla LoadPilot)
-
-Portions of the ESPHome node configuration are derived from
-esphome-twc-control, Copyright (c) PVi1, itself based on work by
-Klangen82, both released under the MIT License.
+Copyright (c) 2026 zany92
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

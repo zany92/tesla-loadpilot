@@ -31,9 +31,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           category: integration
-          # Ignored until the home-assistant/brands PR for the loadpilot
-          # domain is merged; drop this line right after.
-          ignore: brands
 
   python:
     name: Python syntax and JSON
