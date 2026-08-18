@@ -112,7 +112,7 @@ ways they can move under us.
   Tesla account → More → "Tesla device settings", validated on 26.18) is
   unofficial and revocable by Tesla at any update. This is a fragile
   dependency of the whole install path - documented in
-  [`INSTALL_FR.md`](../fr/INSTALL.md) §4.
+  [`INSTALL_FR.md`](INSTALL.md) §4.
 - **ESPHome breaking changes.** The community has already been bitten:
   ESPHome 2026.5.1 broke a comparable project's YAML via the
   `modbus_controller` → `modbus_server` migration (Klangen82's repo,

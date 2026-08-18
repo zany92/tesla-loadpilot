@@ -50,7 +50,7 @@ flowchart LR
 
 ### La loi de publication (le cœur du projet)
 
-Comportement mesuré du firmware Gen 3 (voir [docs/en/BEHAVIOR.md](docs/en/BEHAVIOR.md) pour le modèle complet, avec ses étiquettes MESURÉ/INFÉRÉ/RAPPORTÉ) :
+Comportement mesuré du firmware Gen 3 (voir [docs/fr/BEHAVIOR.md](docs/fr/BEHAVIOR.md) pour le modèle complet, avec ses étiquettes MESURÉ/INFÉRÉ/RAPPORTÉ) :
 
 - sa boucle de *service* s'engage sur une fonction symétrique des trois CT rapportés, tient exactement à la limite, fait descendre la voiture au-dessus, la laisse remonter en dessous ;
 - sa *protection* surveille la pire phase avec un critère intégral ;
@@ -156,8 +156,8 @@ Le vrai capital du projet, c'est le modèle de comportement mesuré du wall conn
 
 - Le service s'engage sur la *moyenne* des phases ; la protection, elle, mord sur la *pire phase*, avec une intégrale d'environ 20 A.s au-dessus de la limite (pour des excursions >= 1 A ; sous +0,5 A la borne tolère beaucoup plus et ne fait à peu près rien).
 - Cascade complète validée sans la moindre intervention, une vraie danse d'équilibre : pic de cuisson, descente continue de 16 à 12 A qui épouse la pente, pause quand quatre climatiseurs ont dépassé ce que la voiture pouvait céder, relâche automatique, reprise de session autonome, zéro cycle de contacteur.
-- L'état de défiance est réel, tenace et absent de toute documentation Tesla : les portes d'entrée, les non-guérisons et le protocole de cure qui fonctionne (coupure secteur, puis des heures de signal honnête, puis un démarrage de session maison calme) sont consignés dans [docs/en/BEHAVIOR.md](docs/en/BEHAVIOR.md), section 4, traces brutes à l'appui, publiées avec nos conclusions sur le suivi de tickets du projet amont.
-- Les signatures d'incident et les gestes de l'exploitant sont catalogués dans [docs/en/RUNBOOK_INCIDENTS.md](docs/en/RUNBOOK_INCIDENTS.md).
+- L'état de défiance est réel, tenace et absent de toute documentation Tesla : les portes d'entrée, les non-guérisons et le protocole de cure qui fonctionne (coupure secteur, puis des heures de signal honnête, puis un démarrage de session maison calme) sont consignés dans [docs/fr/BEHAVIOR.md](docs/fr/BEHAVIOR.md), section 4, traces brutes à l'appui, publiées avec nos conclusions sur le suivi de tickets du projet amont.
+- Les signatures d'incident et les gestes de l'exploitant sont catalogués dans [docs/fr/RUNBOOK_INCIDENTS.md](docs/fr/RUNBOOK_INCIDENTS.md).
 
 ## Les limites connues, sans détour
 
@@ -176,9 +176,9 @@ Le vrai capital du projet, c'est le modèle de comportement mesuré du wall conn
 | `esphome/packages/` | Le firmware générique : cœur borne (loi de publication) et fournisseurs de mesure. |
 | `esphome/examples/` | Fichiers de nœud prêts à adapter (triphasé, monophasé, nœud compteur). |
 | `dashboards/` | Cartes Lovelace (face utilisateur : un interrupteur + l'essentiel en direct ; face réglages). |
-| `docs/en/BEHAVIOR.md` | Le modèle de comportement mesuré du TWC Gen 3. Commencez ici si c'est la science qui vous intéresse. |
+| `docs/fr/BEHAVIOR.md` | Le modèle de comportement mesuré du TWC Gen 3. Commencez ici si c'est la science qui vous intéresse. |
 | `docs/fr/INSTALL.md` | Guide d'installation complet (en français). |
-| `docs/en/RUNBOOK_INCIDENTS.md` | Le manuel de l'exploitant. |
+| `docs/fr/RUNBOOK_INCIDENTS.md` | Le manuel de l'exploitant. |
 | `docs/fr/TESTPLAN.md` | Campagne de validation et critères GO/NO-GO. |
 | `docs/DESIGN_*.md` | Études de conception, y compris les résultats négatifs qui ont façonné la loi. |
 

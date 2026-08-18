@@ -89,14 +89,14 @@ The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on 
 | Kincony KC868-A6 | Charger-side ESP32 node (Neurio emulation) | ESP32 board with an onboard RS485 transceiver (MAX13487E, hardware auto-direction), relays and inputs as a bonus. Any ESP32 plus a MAX485-class transceiver works too. | [Hardware details](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [KinCony store](https://www.kincony.com/) |
 | Olimex ESP32-POE | Meter-side ESP32 node | Powered over Ethernet next to the meter; any ESP32 with a free UART works. | [Product page](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Teleinfo (TIC) receiver shield, Charles Hallard design | Reads the Linky's TIC output (I1/I2 terminals) | Opto-isolated serial receiver, ESP32-compatible. Sold assembled. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
-| RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; short unterminated runs are fine in practice (measured on the pilot). | Tesla app note, see [docs/fr/INSTALL.md](docs/fr/INSTALL.md) |
+| RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; short unterminated runs are fine in practice (measured on the pilot). | Tesla app note, see [docs/en/INSTALL.md](docs/en/INSTALL.md) |
 | (Optional) Tesla Neurio W2 meter | Reference instrument only | Useful to sniff genuine meter traffic or as an A/B test against the emulation. Not needed for LoadPilot itself: your utility meter replaces it. | [Example EU reseller](https://www.wallboxdiscounter.com/fr/tesla-neurio-energy-meter.html) |
 
 **Software:**
 
 - Home Assistant >= 2025.12, ESPHome >= 2025.2 (encrypted `packet_transport`).
 - The two firmware packages from [`esphome/packages/`](esphome/packages/) (charger core + a meter provider; France TIC is production-proven, DSMR/SML/CT-clamp providers are skeletons).
-- Commissioning through the Tesla app or Tesla One: on firmware >= 26.2 the external-meter menu is gated behind installer credentials, with a documented workaround (generic Tesla account, "Tesla device settings"), see [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
+- Commissioning through the Tesla app or Tesla One: on firmware >= 26.2 the external-meter menu is gated behind installer credentials, with a documented workaround (generic Tesla account, "Tesla device settings"), see [docs/en/INSTALL.md](docs/en/INSTALL.md).
 
 ## Installation
 
@@ -114,7 +114,7 @@ From zero to a regulating charger, in order:
    wall connector adopts it as its Neurio. On firmware >= 26.2 the menu is
    gated behind installer credentials; the workaround (generic Tesla
    account, "Tesla device settings") is documented step by step in
-   [docs/fr/INSTALL.md](docs/fr/INSTALL.md).
+   [docs/en/INSTALL.md](docs/en/INSTALL.md).
 4. **Install the integration.** In HACS: menu (three dots) > Custom
    repositories > add `https://github.com/zany92/tesla-loadpilot` with
    category *Integration*, then install and restart Home Assistant.
@@ -128,8 +128,8 @@ From zero to a regulating charger, in order:
    Then plug the car in and watch the pilot follow the house.
 
 The full guide with photos, wiring details and the commissioning
-walkthrough is [docs/fr/INSTALL.md](docs/fr/INSTALL.md) (French; an
-English translation is on the roadmap).
+walkthrough is [docs/en/INSTALL.md](docs/en/INSTALL.md), also available
+in [French](docs/fr/INSTALL.md).
 
 ## Configuration
 
@@ -166,7 +166,7 @@ The project's real asset is the measured behavior model of the wall connector, a
 - **With the tail off**, a house load hovering exactly at the budget can produce a +/-2.5 A limit cycle that ends in a protective cut. The decaying-tail variant closes it (validated in closed loop on the pilot); it ships inert and must be enabled deliberately.
 - **HA 2026.8 ignores `suggested_object_id`**: derived sensors may be created with translated ids on non-English instances; rename them once in the registry (documented in the release notes; a proper fix is being investigated).
 - **Upstream lineage.** The publication law grew from the fundamentals of [PVi1/esphome-twc-control](https://github.com/PVi1/esphome-twc-control), now MIT-licensed; this project is published under MIT with explicit attribution to PVi1 and Klangen82 (see [LICENSE](LICENSE)).
-- Remaining physical tests: TIC watchdog unplug test, meter-absent 6 A fallback test, from-scratch install campaign ([docs/fr/TESTPLAN.md](docs/fr/TESTPLAN.md)).
+- Remaining physical tests: TIC watchdog unplug test, meter-absent 6 A fallback test, from-scratch install campaign ([docs/en/TESTPLAN.md](docs/en/TESTPLAN.md)).
 
 ## Repository map
 
@@ -177,9 +177,9 @@ The project's real asset is the measured behavior model of the wall connector, a
 | `esphome/examples/` | Ready-to-adapt node files (three-phase, single-phase, meter node). |
 | `dashboards/` | Lovelace cards (user face: one switch + live info; settings face). |
 | `docs/en/BEHAVIOR.md` | The measured TWC Gen 3 behavior model. Start here if you want the science. |
-| `docs/fr/INSTALL.md` | Full installation guide (French). |
+| `docs/en/INSTALL.md` | Full installation guide. |
 | `docs/en/RUNBOOK_INCIDENTS.md` | Operator playbook. |
-| `docs/fr/TESTPLAN.md` | Validation campaign and GO/NO-GO criteria. |
+| `docs/en/TESTPLAN.md` | Validation campaign and GO/NO-GO criteria. |
 | `docs/DESIGN_*.md` | Design studies, including the negative results that shaped the law. |
 
 ## Credits
