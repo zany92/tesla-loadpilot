@@ -134,3 +134,17 @@ From [`../ARCHITECTURE.md`](../../ARCHITECTURE.md):
 - No vehicle cloud API in the shipped product.
 - No YAML-only install path for the integration (config flow only).
 - No Tesla imagery, ever.
+
+## Manual hard limit (validated pattern, pilot site, 18 Aug 2026)
+
+A user-chosen charge ceiling (N amps, independent of the vehicle's own
+setting), implemented WITHOUT synthesizing a decorrelated meter signal
+(that path latches distrust, see BEHAVIOR section 4). Instead it reuses
+the node's bias channel: every 30 s, Home Assistant computes
+bias_target = worst_phase_headroom + vehicle_current(local vitals) − limit
+and writes it to the bias number; the node's own anti-trip ramp applies
+it. The Linky echo stays 1:1 (vitals freshness only affects the slow
+offset, never the correlation), and every protection layer stays active,
+so the limit acts as a cap: the car draws min(limit, what the house
+leaves). Candidate for productization in the integration (needs the
+vitals integration or any per-vehicle current source).
