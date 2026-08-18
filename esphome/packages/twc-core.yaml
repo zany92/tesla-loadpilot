@@ -85,6 +85,14 @@ substitutions:
   # --- Loop timings (measured, see docs/40_LOI_DE_COMMANDE.md §5) -----------
   recompute_interval: 1000ms
   escalation_timeout_ms: "120000"     # sustained zero-avail before L+0.1
+  # Stage-2 escalation (18 Aug 2026): after 2x the timeout in SUSTAINED
+  # constraint, publish at least L + escalation_kick_a to BREAK the dead-band
+  # hysteresis (BEHAVIOR section 12: from rest the pilot only engages at
+  # about L+0.85; once pulling it follows down to published = L, the exact
+  # budget equilibrium). One kick per episode: the descent leaves the
+  # constraint and resets capped_since_ms. Makes budget convergence
+  # autonomous, no Home Assistant needed. Field-validated on the pilot.
+  escalation_kick_a: "0.9"
   udp_fresh_ms: "5000"                # 5 missed 1 Hz heartbeats -> HA mirror
   ha_mirror_debounce_ms: "10000"      # HA mirror unavailability debounce
   contactor_mirror_grace_ms: "30000"  # contactor mirror grace window
@@ -1214,6 +1222,10 @@ script:
                 if (bnow - id(capped_since_ms) >= (uint32_t)${escalation_timeout_ms}) {
                   o = std::max(o, L + ${law_nudge_min_a}f);
                   esc = true;
+                }
+                // Stage 2: firmware anti-hysteresis kick (autonomous trim).
+                if (bnow - id(capped_since_ms) >= 2u * (uint32_t)${escalation_timeout_ms}) {
+                  o = std::max(o, L + ${escalation_kick_a}f);
                 }
               }
               if (id(twc_charge_stop).state) o = std::max(o, L + ${law_nudge_min_a}f);

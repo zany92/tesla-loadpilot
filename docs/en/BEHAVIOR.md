@@ -558,4 +558,8 @@ while approaching it from a deep constraint converges to the exact
 budget. Any external controller nudging the charger (bias trims) must
 account for this asymmetry: raise fast, release slowly, and kick
 through the L + 0.85 threshold when the vehicle idles above the target
-(see the manual-limit pattern in the roadmap).
+(see the manual-limit pattern in the roadmap). Since 18 Aug the shipped
+core also carries a stage-2 escalation: after four minutes of sustained
+constraint the firmware itself publishes at least L + 0.9
+(`escalation_kick_a`), breaking the hysteresis autonomously, no Home
+Assistant needed.

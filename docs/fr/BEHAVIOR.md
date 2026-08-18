@@ -567,4 +567,7 @@ contrôleur externe qui pilote la borne par retouches de biais doit
 composer avec cette asymétrie : monter vite, relâcher lentement, et
 donner un coup de kick au-delà du seuil L + 0,85 quand le véhicule
 stagne au-dessus de la cible (voir le motif de limite manuelle dans la
-feuille de route).
+feuille de route). Depuis le 18/08, le cœur livré embarque aussi une
+escalade palier 2 : après quatre minutes de contrainte soutenue, le
+firmware publie lui-même au moins L + 0,9 (`escalation_kick_a`) et
+brise l'hystérésis de façon autonome, sans Home Assistant.

@@ -318,3 +318,15 @@ Calibration triphasée NON transférée (chiffres à re-mesurer sur banc) :
   ~160 s de rampe.
 
 Campagne banc : docs/fr/TESTPLAN.md, cas monophasés (C10 et C14+).
+
+
+## Escalade palier 2 (18/08/2026, déployée sur le pilote)
+
+Après 2 × `escalation_timeout_ms` (soit 4 min) de contrainte soutenue,
+le firmware publie au moins L + `escalation_kick_a` (0,9 par défaut)
+pour briser l'hystérésis de la bande morte (BEHAVIOR §12) : la traction
+s'engage, le pilote suit jusqu'à publié = L (l'équilibre budget exact)
+et l'épisode sort de contrainte, ce qui désarme le kick (un seul par
+épisode). La convergence au budget devient autonome, sans Home
+Assistant. Le trim HA (kick à 3 min) reste la première ligne quand HA
+est présent ; le firmware est le filet.
