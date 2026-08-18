@@ -22,7 +22,7 @@
 
 ## 1. Formule du coussin proportionnel - analyse et DÉCISION
 
-Sémantique demandée par Vincent : « buffer 10 % ⇒ le système n'exploite que 90 % des
+Sémantique demandée par le propriétaire du site : « buffer 10 % ⇒ le système n'exploite que 90 % des
 ressources disponibles ». Ressources disponibles pour la voiture = `L − maison`.
 
 ### 1.1 Variante A (formule littérale proposée) - ÉCARTÉE
@@ -55,7 +55,7 @@ Propriétés vérifiées :
 - **Sémantique exacte et PERSISTANTE.** Régime établi (Î→Î_dc, S_e2→pub) :
   `S' = maison + I + b·(L − maison)` ; équilibre `S' = L` ⇒
   **`I* = (1−b)·(L − maison)`** - la voiture n'exploite jamais que (1−b) de la ressource,
-  même après des heures. C'est la demande de Vincent, mot pour mot.
+  même après des heures. C'est la demande du propriétaire du site, mot pour mot.
 - **Pente conservée = α** (plausibilité 26.18) : `d(S')/d(I) = α − b·(1 − dÎ/dI) = α`
   quand vitals suivent (dÎ/dI = 1). T2 teste donc EXACTEMENT la pente 0,75 prévue par
   l'étude, quel que soit b - la variante A aurait contaminé le test. Résidu pendant le
@@ -119,7 +119,7 @@ if (std::isnan(b) || b < 0.0f || b > 30.0f) b = 10.0f; const float bfrac = b / 1
 tourne dans tous les modes) → les shadows L1-3 montrent l'effet du buffer sans toucher la
 borne = validation T0 gratuite avant T2. Aucun switch dédié : buffer à 0 = neutre.
 
-## 3. Protocole T2 finalisé (opérateurs : coordinateur + Vincent)
+## 3. Protocole T2 finalisé (opérateurs : coordinateur + propriétaire du site)
 
 ### 3.1 Préconditions (toutes vérifiables avant bascule)
 
@@ -167,7 +167,7 @@ vitals stale > 60 s pendant le test → RAW (le test n'est plus celui d'α=0,75)
   survit pas au reboot de toute façon - `restore_value: false`). Consigner : entrée
   datée dans `contrat_electrique_LOGIQUE.md` (T2 PASS + mesures : amplitude d'oscillation,
   équilibre, durée), note d'état dans `60_ETUDE_SYNTHETISEUR.md`, mode manuel biais OFF,
-  borne_seul selon le souhait de Vincent.
+  borne_seul selon le souhait du propriétaire du site.
 - **ÉCHEC** : select RAW, mode manuel biais OFF, borne_seul restauré ; consigner le mode
   d'échec exact (ignoré / trip / polling) + traces WS ; NE PAS retenter avant analyse -
   le repli V1 (gain constant PVi1) devient l'option sur la table.

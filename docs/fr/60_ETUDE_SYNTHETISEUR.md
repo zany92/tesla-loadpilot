@@ -1,6 +1,6 @@
 # Étude de conception - SYNTHÉTISEUR DE SIGNAL pour le DPM du TWC Gen 3
 
-> **Document d'étude, 14/08/2026 - AUCUNE mise en œuvre.** Idée de Vincent :
+> **Document d'étude, 14/08/2026 - AUCUNE mise en œuvre.** Idée du propriétaire du site :
 > faire évoluer le firmware du KC868-A6 de « compteur fidèle » (sémantique
 > RAW) vers un **synthétiseur de signal** - lire la téléinfo, PUBLIER un
 > signal FAÇONNÉ, réaliste et crédible, conçu pour que le DPM natif de la
@@ -298,7 +298,7 @@ bornée par le budget J et par le coussin_max (§6, I1) ; les vraies
 urgences restent gérées au-dessus (pause = biais plein, qui PRIME sur le
 plancher - §6, I6) et par le fail-safe (inchangé).
 
-### 4.5 Feed-forward événementiel + extrapolation (addendum Vincent) - OUI, cœur de l'architecture
+### 4.5 Feed-forward événementiel + extrapolation (addendum du propriétaire du site) - OUI, cœur de l'architecture
 
 Développés en §5.3-5.4. Point de théorie demandé - **pourquoi le
 feed-forward ne peut pas osciller** : une boucle oscille quand la sortie
@@ -752,7 +752,7 @@ variante V1 (gain constant PVi1) ou le statu quo binaire.
 ---
 
 *Étude rédigée le 14/08/2026 (agent architecte). Aucun fichier vivant
-modifié. Prochain pas si Vincent valide : lot S1 (mode ombre, zéro risque).*
+modifié. Prochain pas si le propriétaire du site valide : lot S1 (mode ombre, zéro risque).*
 
 ---
 

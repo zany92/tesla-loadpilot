@@ -29,7 +29,7 @@ README portera en tête le disclaimer standard : *« This project is not
 affiliated with, endorsed by, or sponsored by Tesla, Inc. »* - et aucun
 logo/visuel Tesla ne sera utilisé.
 
-## Architecture de publication : DEUX MODULES (décision Vincent, 14/08)
+## Architecture de publication : DEUX MODULES (décision du site pilote, 14/08)
 
 1. **Le cœur universel** (nœud borne) : émulation Neurio, sémantique RAW,
    biais/rampe, fail-safe, priorité de sources, loi de commande mesurée.
@@ -84,7 +84,7 @@ tesla-loadpilot/
     └── packages/…
 ```
 
-## Décisions ACTÉES (Vincent, 14/08/2026)
+## Décisions ACTÉES (site pilote, 14/08/2026)
 
 - **Nom : « Tesla LoadPilot »** (dépôt probable `tesla-loadpilot`) - voir la
   note de nommage ci-dessus (disclaimer non-affiliation obligatoire).
@@ -106,7 +106,7 @@ tesla-loadpilot/
     documentée, toute la loi de commande mesurée (40_), la couche HA (50_).
 - **Structure deux modules** cœur universel + providers enfichables
   (ci-dessus).
-- **Nœud téléinfo de référence = Olimex ESP32-POE** (confirmé Vincent,
+- **Nœud téléinfo de référence = Olimex ESP32-POE** (confirmé sur le site pilote,
   fiche : https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware)
   - réconciliation de la config Ethernet dans `10_MATERIEL.md` /
   `20_FIRMWARE.md` §1.2.
@@ -120,7 +120,7 @@ tesla-loadpilot/
   (`10_MATERIEL.md` §2). Photos personnelles de l'installation bienvenues
   plus tard.
 
-## Questions ouvertes pour Vincent
+## Questions ouvertes pour le propriétaire du site
 
 1. **Licence du dépôt.** MIT (écosystème ESPHome) ? GPLv3 ? À articuler avec
    l'accord à obtenir de PVi1 (pas de licence explicite chez lui) et le
