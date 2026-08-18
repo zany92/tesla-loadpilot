@@ -1,0 +1,33 @@
+# =============================================================================
+# Tesla LoadPilot - CI harness: METER NODE, single-phase Linky TIC
+# (Olimex ESP32-POE).
+#
+# Mirrors esphome/examples/meter-teleinfo-mono-olimex-poe.yaml, with ONE
+# difference: the example pins `packages:` to the released GitHub tag
+# (correct for users), while CI must validate the packages of THIS working
+# tree - so the provider is included by relative path instead. Board and
+# network blocks are copied verbatim from the example. Do not flash this
+# file; use the example.
+#
+# Secrets: cp esphome/ci/secrets.ci.yaml esphome/ci/secrets.yaml first.
+# =============================================================================
+packages:
+  provider: !include ../packages/providers/teleinfo-fr-mono.yaml
+
+substitutions:
+  node_name: ci-loadpilot-meter-mono
+  friendly_name: CI LoadPilot Meter Mono
+  tic_rx_pin: GPIO36
+
+esp32:
+  board: esp32-poe
+  framework:
+    type: arduino
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12

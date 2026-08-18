@@ -1,8 +1,13 @@
 # CI validation for Tesla LoadPilot.
-# Four independent jobs: hassfest (Home Assistant manifest rules),
+# Six jobs: hassfest (Home Assistant manifest rules),
 # HACS validation (repository structure for the integration category),
 # a lightweight Python/JSON sanity check with no heavy dependencies,
-# and the pure pytest suite over control.py (no HA harness).
+# the pure pytest suite over control.py (no HA harness),
+# esphome-config (full schema validation of the 4 firmware configs, fast),
+# and esphome-compile (real firmware build of both charger variants plus
+# the single-phase meter - the config carrying the duplicated
+# packet_transport ids - on main pushes and PRs only; PlatformIO/build
+# caches keep the job time reasonable).
 name: Validate
 
 on:
@@ -76,3 +81,79 @@ jobs:
         run: pip install pytest
       - name: Run the pure tests (control.py, no HA harness)
         run: pytest tests/ -q
+
+  esphome-config:
+    name: ESPHome config validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install ESPHome
+        run: pip install esphome
+      - name: Put the CI dummy secrets in place
+        # .gitignore ignores every secrets.yaml, hence the committed .ci name.
+        run: cp esphome/ci/secrets.ci.yaml esphome/ci/secrets.yaml
+      - name: Validate the 4 firmware configs (esphome config)
+        run: |
+          set -u
+          fail=0
+          for cfg in \
+            esphome/ci/charger-kc868-a6.yaml \
+            esphome/ci/charger-mono.yaml \
+            esphome/ci/meter-teleinfo-olimex-poe.yaml \
+            esphome/ci/meter-teleinfo-mono-olimex-poe.yaml
+          do
+            echo "::group::esphome config $cfg"
+            # Validation errors land on STDOUT (the rendered config does
+            # too, hence the capture file instead of live output).
+            if esphome config "$cfg" > /tmp/esphome-config.log 2>&1; then
+              echo "OK $cfg"
+            else
+              echo "FAIL $cfg"
+              cat /tmp/esphome-config.log
+              fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$fail"
+
+  esphome-compile:
+    name: ESPHome compile (charger tri + mono, meter mono)
+    runs-on: ubuntu-latest
+    # Real builds are expensive: main pushes and PRs only (no cron).
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: esphome-config
+    continue-on-error: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install ESPHome
+        run: pip install esphome
+      - name: Cache PlatformIO and ESPHome build dirs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            esphome/ci/.esphome
+          key: esphome-build-${{ runner.os }}-${{ hashFiles('esphome/packages/**/*.yaml', 'esphome/ci/*.yaml') }}
+          restore-keys: |
+            esphome-build-${{ runner.os }}-
+      - name: Put the CI dummy secrets in place
+        run: cp esphome/ci/secrets.ci.yaml esphome/ci/secrets.yaml
+      - name: Compile charger three-phase (twc-core + kc868-a6)
+        run: esphome compile esphome/ci/charger-kc868-a6.yaml
+      - name: Compile charger single-phase (twc-core + kc868-a6, phase_count 1)
+        run: esphome compile esphome/ci/charger-mono.yaml
+      - name: Compile meter single-phase (teleinfo-fr-mono)
+        # Deliberate: this is the config whose packet_transport lists the
+        # same sensor id twice (B/C zeros on lky_ib/ic and lky_pb/pc).
+        # `esphome config` accepts it; only real codegen proves it links.
+        run: esphome compile esphome/ci/meter-teleinfo-mono-olimex-poe.yaml

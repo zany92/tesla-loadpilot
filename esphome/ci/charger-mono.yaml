@@ -1,0 +1,27 @@
+# =============================================================================
+# Tesla LoadPilot - CI harness: CHARGER NODE, single-phase (KC868-A6).
+#
+# Mirrors esphome/examples/charger-mono-exemple.yaml, with ONE difference:
+# the example pins `packages:` to the released GitHub tag (correct for
+# users), while CI must validate the packages of THIS working tree - so the
+# packages are included by relative path instead. Substitutions are copied
+# verbatim from the example. Do not flash this file; use the example.
+#
+# Secrets: cp esphome/ci/secrets.ci.yaml esphome/ci/secrets.yaml first.
+# =============================================================================
+packages:
+  core: !include ../packages/twc-core.yaml
+  board: !include ../packages/boards/kc868-a6.yaml
+
+substitutions:
+  node_name: ci-loadpilot-twc-mono
+  friendly_name: CI LoadPilot TWC Mono
+  meter_node_name: loadpilot-meter
+  twc_conductor_limit_a: "21"
+  main_breaker_limit_a: "45"
+  contract_limit_default_a: "45"
+  phase_count: "1"
+  bias_max_a: "32"
+  ha_current_a_entity: sensor.loadpilot_meter_current_l1
+  ha_power_a_entity: sensor.loadpilot_meter_power_l1
+  ha_contactor_entity: binary_sensor.tesla_wall_connector_contactor_closed
