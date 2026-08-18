@@ -2,7 +2,7 @@
 
 🇫🇷 [Version française](README.fr.md)
 
-![Tesla LoadPilot: the utility meter at the service entrance, two ESP32 nodes bridging the distance over an encrypted link, and the wall connector charging a car in the garage](docs/assets/hero.png)
+![Tesla LoadPilot: the utility meter at the service entrance, two ESP32 nodes bridging the distance over an encrypted link, and the wall connector charging a car in the garage](docs/assets/hero-v2.png)
 
 [![Validate](https://github.com/zany92/tesla-loadpilot/actions/workflows/validate.yml/badge.svg)](https://github.com/zany92/tesla-loadpilot/actions/workflows/validate.yml)
 
