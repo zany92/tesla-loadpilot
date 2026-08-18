@@ -17,15 +17,14 @@
 - [ ] Extract generic ESPHome packages (`twc-core.yaml`,
   `boards/kc868-a6.yaml`, `providers/teleinfo-fr.yaml`) from the reference
   firmware - **in progress**
-- [ ] `loadpilot` HACS integration: config flow, derived sensors
-  (state / headroom / worst phase), services (`set_bias`, `pause`,
-  `resume`), diagnostics, Repairs (version skew, stale sources), EN + FR
-  translations - **in progress**
-- [ ] Lovelace overview dashboard (core cards only) - **in progress**
-- [ ] Settle the **PVi1 attribution agreement** and publish a real LICENSE
-  (MIT intended) - **blocking for any public release**, see
-  [`../../LICENSE`](../../LICENSE)
-- [ ] First non-reference installation validates → exit criteria for 1.0
+- [x] `loadpilot` HACS integration: config flow, derived sensors
+  (state / headroom / worst phase), entity mapping, diagnostics, EN + FR
+  translations (shipped in 1.0, running on the pilot)
+- [x] Lovelace overview dashboard (deployed on the pilot site, 18 Aug)
+- [x] Licensing settled: PVi1 added an MIT license upstream (17 Aug); this
+  project is MIT with attribution, see [`../../LICENSE`](../../LICENSE)
+  and [`../../NOTICE.md`](../../NOTICE.md)
+- [ ] First non-reference installation validates → exit criteria met
 
 ## Meter providers - France first, then the matrix
 

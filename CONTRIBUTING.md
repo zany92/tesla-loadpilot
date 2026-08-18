@@ -63,8 +63,7 @@ keys, UDP keys) or precise home location data into an issue.
 
 ## Licensing note
 
-There is **no LICENSE yet** (see
-[`LICENSE`](LICENSE)): publication is blocked on an
-attribution agreement with PVi1. By submitting a contribution you accept
-that it will be released under the project's eventual OSI-approved license
-(MIT intended).
+The project is released under the MIT License (see [`LICENSE`](LICENSE)),
+with attribution to PVi1 and Klangen82 preserved in [`NOTICE.md`](NOTICE.md).
+By submitting a contribution you accept that it is released under the same
+license.
