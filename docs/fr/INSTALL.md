@@ -145,6 +145,8 @@ nœud borne resterait en fail-safe pour toujours.
    - `Source Active` = UDP et `UDP Fresh` = on (si le réseau
      bloque le broadcast LAN→WLAN, passez l'UDP en unicast vers l'IP du
      nœud borne - une seule destination à la fois).
+     Sur le site pilote, une simple paire torsadée d'un câble Ethernet
+     fonctionne parfaitement sur 2 m (non blindée, non terminée).
 
 ## 4. Commissioning Tesla One - sans lui, RIEN ne bride
 

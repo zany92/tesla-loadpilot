@@ -89,7 +89,7 @@ The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on 
 | Kincony KC868-A6 | Charger-side ESP32 node (Neurio emulation) | ESP32 board with an onboard RS485 transceiver (MAX13487E, hardware auto-direction), relays and inputs as a bonus. Any ESP32 plus a MAX485-class transceiver works too. | [Hardware details](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [KinCony store](https://www.kincony.com/) |
 | Olimex ESP32-POE | Meter-side ESP32 node | Powered over Ethernet next to the meter; any ESP32 with a free UART works. | [Product page](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Teleinfo (TIC) receiver shield, Charles Hallard design | Reads the Linky's TIC output (I1/I2 terminals) | Opto-isolated serial receiver, ESP32-compatible. Sold assembled. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
-| RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; short unterminated runs are fine in practice (measured on the pilot). | Tesla app note, see [docs/en/INSTALL.md](docs/en/INSTALL.md) |
+| RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; in practice short unterminated runs are fine: the pilot site runs a plain twisted pair from an Ethernet cable over 2 m without any issue. | Tesla app note, see [docs/en/INSTALL.md](docs/en/INSTALL.md) |
 
 **Software:**
 

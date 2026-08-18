@@ -152,6 +152,8 @@ become fresh and the charger node would sit in fail-safe forever.
    - `Source Active` = UDP and `UDP Fresh` = on (if the network blocks
      LAN→WLAN broadcast, switch UDP to unicast towards the charger node's
      IP: a single destination at a time).
+     On the pilot site a plain twisted pair from an Ethernet cable works
+     perfectly over 2 m (unshielded, unterminated).
 
 ## 4. Tesla One commissioning - without it, NOTHING throttles
 

@@ -89,7 +89,7 @@ Le budget vaut `limite contrat × (1 - tampon %)` : avec le tampon par défaut
 | Kincony KC868-A6 | Nœud ESP32 côté borne (émulation Neurio) | Carte ESP32 avec transceiver RS485 intégré (MAX13487E, direction gérée en matériel), relais et entrées en prime. N'importe quel ESP32 associé à un transceiver type MAX485 convient aussi. | [Détails matériels](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [Boutique KinCony](https://www.kincony.com/) |
 | Olimex ESP32-POE | Nœud ESP32 côté compteur | Alimenté par Ethernet (PoE) à côté du compteur ; n'importe quel ESP32 avec un UART libre fait l'affaire. | [Page produit](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Carte de réception Téléinfo (TIC), design Charles Hallard | Lit la sortie TIC du Linky (bornes I1/I2) | Récepteur série opto-isolé, compatible ESP32. Vendu assemblé. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
-| Câblage RS485 | Du nœud borne au wall connector | Paire torsadée blindée 1,5 mm² recommandée par Tesla, 120 m maximum, drain à la terre côté tableau ; en pratique, les tronçons courts non terminés passent très bien (mesuré sur le pilote). | Note d'application Tesla, voir [docs/fr/INSTALL.md](docs/fr/INSTALL.md) |
+| Câblage RS485 | Du nœud borne au wall connector | Paire torsadée blindée 1,5 mm² recommandée par Tesla, 120 m maximum, drain à la terre côté tableau ; en pratique, les tronçons courts non terminés passent très bien : sur le site pilote, une simple paire torsadée d'un câble Ethernet fonctionne parfaitement sur 2 m. | Note d'application Tesla, voir [docs/fr/INSTALL.md](docs/fr/INSTALL.md) |
 
 **Logiciel :**
 
