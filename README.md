@@ -94,6 +94,18 @@ The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on 
 | Teleinfo (TIC) receiver shield, Charles Hallard design | Reads the Linky's TIC output (I1/I2 terminals) | Opto-isolated serial receiver, ESP32-compatible. Sold assembled. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
 | RS485 wiring | Charger node to wall connector | Shielded twisted pair 1.5 mm2 recommended by Tesla, 120 m max, drain grounded panel-side; in practice short unterminated runs are fine: the pilot site runs a plain twisted pair from an Ethernet cable over 2 m without any issue. | Tesla app note, see [docs/en/INSTALL.md](docs/en/INSTALL.md) |
 
+### The boards at a glance
+
+| Meter node | Charger node (validated) | Charger-node alternatives |
+|:---:|:---:|:---:|
+| <img src="docs/assets/boards/olimex-esp32-poe.jpg" width="200" alt="Olimex ESP32-POE"><br>Olimex ESP32-POE | <img src="docs/assets/boards/kincony-kc868-a6.jpg" width="240" alt="Kincony KC868-A6"><br>Kincony KC868-A6 | <img src="docs/assets/boards/waveshare-esp32-s3-rs485-can.jpg" width="160" alt="Waveshare ESP32-S3-RS485-CAN"><br>Waveshare S3-RS485-CAN |
+| <img src="docs/assets/boards/olimex-mod-rs485.jpg" width="200" alt="Olimex MOD-RS485"><br>MOD-RS485(-ISO) module | | <img src="docs/assets/boards/kincony-esp32-s3-core.jpg" width="160" alt="Kincony ESP32-S3 Core"><br>Kincony S3 Core Board |
+
+These are the reference and verified-alternative boards, not an exhaustive
+list: **any ESP32 with a free UART (meter side) or a half-duplex RS485
+transceiver (charger side) can run the packages**, with a board-specific
+substitution block. Pick what your drawer already holds.
+
 **Software:**
 
 - Home Assistant >= 2025.12, ESPHome >= 2025.2 (encrypted `packet_transport`).

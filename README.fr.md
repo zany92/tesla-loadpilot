@@ -94,6 +94,19 @@ Le budget vaut `limite contrat × (1 - tampon %)` : avec le tampon par défaut
 | Carte de réception Téléinfo (TIC), design Charles Hallard | Lit la sortie TIC du Linky (bornes I1/I2) | Récepteur série opto-isolé, compatible ESP32. Vendu assemblé. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
 | Câblage RS485 | Du nœud borne au wall connector | Paire torsadée blindée 1,5 mm² recommandée par Tesla, 120 m maximum, drain à la terre côté tableau ; en pratique, les tronçons courts non terminés passent très bien : sur le site pilote, une simple paire torsadée d'un câble Ethernet fonctionne parfaitement sur 2 m. | Note d'application Tesla, voir [docs/fr/INSTALL.md](docs/fr/INSTALL.md) |
 
+### Les cartes en un coup d'œil
+
+| Nœud compteur | Nœud borne (validé) | Alternatives nœud borne |
+|:---:|:---:|:---:|
+| <img src="docs/assets/boards/olimex-esp32-poe.jpg" width="200" alt="Olimex ESP32-POE"><br>Olimex ESP32-POE | <img src="docs/assets/boards/kincony-kc868-a6.jpg" width="240" alt="Kincony KC868-A6"><br>Kincony KC868-A6 | <img src="docs/assets/boards/waveshare-esp32-s3-rs485-can.jpg" width="160" alt="Waveshare ESP32-S3-RS485-CAN"><br>Waveshare S3-RS485-CAN |
+| <img src="docs/assets/boards/olimex-mod-rs485.jpg" width="200" alt="Olimex MOD-RS485"><br>Module MOD-RS485(-ISO) | | <img src="docs/assets/boards/kincony-esp32-s3-core.jpg" width="160" alt="Kincony ESP32-S3 Core"><br>Kincony S3 Core Board |
+
+Ce sont les cartes de référence et les alternatives vérifiées, pas une
+liste exhaustive : **tout ESP32 avec un UART libre (côté compteur) ou un
+transceiver RS485 half-duplex (côté borne) peut faire tourner les
+packages**, moyennant un bloc de substitutions propre à la carte.
+Prenez ce que votre tiroir contient déjà.
+
 **Logiciel :**
 
 - Home Assistant >= 2025.12, ESPHome >= 2025.2 (`packet_transport` chiffré).
