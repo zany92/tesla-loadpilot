@@ -72,9 +72,12 @@ CONTRACT = 21.7
 OFFSET = 1.47            # L - budget = 21 - 21.7 * 0.9, locked by these tests
 TOL = 0.15               # justified in the module docstring
 
-# Stage-2 kick disabled (not present in the traced firmware, see above)
-# and dither_a = 0 (pre-dither replay, see the methodology note).
-PARAMS_TRACED_FW = LawParams(escalation_kick_a=0.0, dither_a=0.0)
+# Stage-2 kick disabled (not present in the traced firmware, see above),
+# dither_a = 0 (pre-dither replay, see the methodology note) and gain
+# pinned to 0.5: every trace in data/traces was recorded on the 0.5-era
+# firmware (the shipped default moved to 0.75 in 1.3.x; a future trace
+# recorded on that firmware must pin 0.75 here).
+PARAMS_TRACED_FW = LawParams(gain=0.5, escalation_kick_a=0.0, dither_a=0.0)
 
 
 # ------------------------------------------------------------------

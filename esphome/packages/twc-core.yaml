@@ -62,7 +62,10 @@ substitutions:
   # --- Co-variant law knobs (flash #2, docs/DESIGN_LOI_COVARIANTE.md) ------
   # Compression gain above L (runtime-adjustable via "Law Echo Gain";
   # restore_value false: the law must always boot at its validated default).
-  law_gain_default: "0.5"
+  # 0.75 since 1.3.x: PVi1's original value, quantitatively vindicated on
+  # the pilot bench (engagement gap shrinks from ~1.7 A to ~1.1 A). The
+  # measured distrust floor is ~0.5: NEVER go below it (lesson 31).
+  law_gain_default: "0.75"
   # Max excursion above L (A) - runtime-adjustable via "Law Max Excursion".
   law_emax_default: "1.0"
   # Minimum nudge above L (A): the smallest slow-down signal, and the floor

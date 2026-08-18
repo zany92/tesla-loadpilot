@@ -171,3 +171,20 @@ variant A only; the decaying-tail branch that killed the limit cycle
 (validated 17 Aug, runs in production on the pilot) exists only in the
 pilot's site firmware. Port it with its `Law Decay Tail` number so the
 `law_drag` integration knob gains a generic default.
+
+
+## Spike damper and episode-grouped announcements (site pattern, 18 Aug)
+
+Validated on the pilot: when the worst phase crosses (pause threshold
+minus 4 points) for 8 s during a charge, immediately post a bias of
+min(vehicle current - 6, 6) A: the pull engages before the shedding
+layer reaches its pause threshold, so the episode resolves by reduction
+instead of an interruption (and the vehicle stops notifying "charging
+interrupted"). Release by the damper itself after 2 min below threshold
+minus 8, only if the bias is still its own. Companion pattern: a dynamic
+announcement dedup window (2 min normally, 20 min while two pauses fall
+inside the anti-cycling hysteresis window) so a cycling appliance yields
+one announcement per episode. Bias-writer stacking rule: shedding pause
+> damper > manual cap > trim; each writer only acts when the bias is 0
+or its own remembered value. Candidate for the integration after the
+cap and trim prove themselves in the field.

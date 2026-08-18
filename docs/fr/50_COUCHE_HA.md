@@ -130,6 +130,29 @@ officielle Tesla Wall Connector (poll ~30 s, mode dégradé, garde de
 fraîcheur 60 s). Sans elle, les entités restent indisponibles et le
 trim inerte.
 
+## 4ter. Amortisseur de pointe et annonces groupées (motif site, 18/08/2026)
+
+Deux motifs de confort validés sur le pilote, complémentaires du plafond
+et du trim :
+
+- **Amortisseur de pointe** : quand la pire phase franchit (seuil de
+  pause − 4 points) pendant 8 s avec une charge active, poser
+  immédiatement un biais = min(courant véhicule − 6, 6) A. La traction
+  s'engage avant que le délestage n'atteigne son seuil de pause :
+  l'épisode se règle par réduction, pas par coupure, et le véhicule
+  n'envoie plus de notification « charge interrompue ». Relâche par
+  l'amortisseur lui-même (2 min sous seuil − 8, seulement si le biais
+  est encore le sien) ; le filet de rattrapage reste en second rideau.
+- **Fenêtre d'annonce dynamique** : le délai anti-doublon des annonces
+  passe de 2 à 20 minutes dès que deux pauses tombent dans la fenêtre
+  d'hystérésis « repas », et revient à 2 minutes après 15 minutes de
+  calme : une annonce par épisode de consommateur cyclique, pas une par
+  cycle. Les chemins critiques ne portent pas cette garde.
+- **Règle d'empilement des écrivains de biais** (indispensable dès que
+  plusieurs boucles existent) : pause délestage > amortisseur > plafond
+  manuel > trim ; chaque écrivain n'agit que si le biais vaut 0 ou sa
+  propre valeur mémorisée.
+
 ## 5. Notifications
 
 Patron transposable : une notification de SITUATION par épisode (annonce +

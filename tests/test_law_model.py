@@ -14,7 +14,10 @@ import pytest
 
 from tests.law_model import LawInputs, LawParams, LawState, publish
 
-P = LawParams()
+# Unit expectations are anchored on the TRACED constants (gain 0.5 era,
+# 17-18 Aug bench): pin the gain explicitly so the shipped default (0.75
+# since 1.3.x) can evolve without rewriting the measured arithmetic below.
+P = LawParams(gain=0.5)
 L = P.conductor_limit_a          # 21.0
 OFF = L - P.budget_a             # 1.47
 D = P.dither_a                   # 0.05
@@ -174,7 +177,7 @@ class TestDither:
 # Variant B: decaying tail on constraint exit (kc868 pilot firmware)
 # ------------------------------------------------------------------
 class TestVariantBTail:
-    PB = LawParams(tail_r0_a=1.5)
+    PB = LawParams(gain=0.5, tail_r0_a=1.5)
 
     def _exit_sequence(self, t_out_end, worst_out=17.0):
         # 10 s in constraint, then out at worst_out until t_out_end.
@@ -223,7 +226,7 @@ class TestVariantBTail:
 
     def test_r0_zero_is_exactly_variant_A(self):
         seq = self._exit_sequence(20)
-        outs_a, _ = run(seq, params=LawParams(tail_r0_a=0.0))
+        outs_a, _ = run(seq, params=LawParams(gain=0.5, tail_r0_a=0.0))
         # Variant A never deviates from the shifted reality after exit.
         for k, t in enumerate(range(10, 20)):
             assert outs_a[10 + k] == pytest.approx(
@@ -336,7 +339,7 @@ class TestSafetyBranches:
 # ------------------------------------------------------------------
 class TestSinglePhase:
     def test_worst_is_the_only_phase(self):
-        p1 = LawParams(phase_count=1)
+        p1 = LawParams(gain=0.5, phase_count=1)
         pub, _ = publish(LawInputs(t_s=0.0, currents_a=(12.0, 99.0, 99.0)),
                          LawState(), p1)
         # Phases 2 and 3 are forced to 0: they never drive the worst.

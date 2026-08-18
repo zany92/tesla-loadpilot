@@ -44,8 +44,10 @@ class LawParams:
     contract_limit_a: float = 21.7
     # line 58: buffer_default_pct (the vehicle only exploits (1-b) of the margin)
     buffer_pct: float = 10.0
-    # line 65: law_gain_default (compression gain above L)
-    gain: float = 0.5
+    # line 65+: law_gain_default (compression gain above L). 0.75 since
+    # 1.3.x; the golden replays pin 0.5 explicitly because the traces
+    # were recorded on the 0.5-era firmware.
+    gain: float = 0.75
     # line 67: law_emax_default (max excursion above L)
     emax_a: float = 1.0
     # line 70: law_nudge_min_a (smallest slow-down signal, NOT a knob)
