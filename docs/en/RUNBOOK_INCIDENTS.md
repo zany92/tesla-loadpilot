@@ -78,3 +78,23 @@ not a fault. BEHAVIOR §4 (micro-law).
 - After **several** interrupted sessions the vehicle silently gives up
   (`evse_state` 9, zero wallbox alerts): that one needs the app or an
   unplug/replug, see BEHAVIOR §5.
+
+
+## Signature: "charging failed" right after a pause, house calm
+
+Observed 18 Aug 2026. The app reports "charging failed" on a start
+attempt, the house is calm, no distrust, but the published value sits
+near the conductor limit with the contactor open: the pause bias (16 A)
+is still applied, so the charger sees zero availability and refuses to
+open the session.
+
+Root cause on the pilot: the shedding logic posted its pause at the
+exact moment the user paused from the app, so no charge was running;
+the release path required either an active session or a long calm
+window (anti-cycling "meal" hysteresis armed by two pauses in under
+30 min), and nothing ever released the bias.
+
+Remedy: write 0 to the bias number, then start the charge. Permanent
+fix shipped on the pilot: an "empty pause" exemption in the release
+logic (vehicle max current under 1 A over 2 min skips the long-calm
+requirement; the room projections and the anti-yo-yo hold remain).

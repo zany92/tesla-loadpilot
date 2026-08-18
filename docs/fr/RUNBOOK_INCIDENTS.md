@@ -91,3 +91,25 @@ la protection qui fonctionne, pas une panne. BEHAVIOR §4 (micro-loi).
 - Après **plusieurs** sessions interrompues, le véhicule abandonne en
   silence (`evse_state` 9, zéro alerte borne) : celui-là exige l'app ou
   un débranchage/rebranchage, voir BEHAVIOR §5.
+
+
+## Signature : « charging failed » juste après une pause, maison calme
+
+Observé le 18/08/2026. L'app affiche « charging failed » à la relance,
+la maison est calme, aucune défiance, mais le publié campe près de la
+limite conducteur avec le contacteur ouvert : le biais de pause (16 A)
+est resté appliqué, la borne voit zéro disponibilité et refuse
+d'ouvrir la session.
+
+Cause racine sur le pilote : le délestage a posé sa pause au moment
+exact où l'utilisateur mettait en pause depuis l'app, donc aucune
+charge ne tournait ; le chemin de relâche exigeait soit une session
+active, soit une longue fenêtre de calme (hystérésis « repas »
+anti-cycles armée par deux pauses en moins de 30 min), et rien ne
+relâchait jamais le biais.
+
+Remède : écrire 0 dans le number de biais, puis relancer la charge.
+Correctif permanent déployé sur le pilote : une exemption « pause à
+vide » dans la logique de relâche (courant véhicule max sous 1 A sur
+2 min saute l'exigence de calme long ; les projections de place et le
+blocage anti-yo-yo restent).

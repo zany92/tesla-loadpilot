@@ -163,3 +163,19 @@ positif de seuil, détecteur recalé à L+0,85) ; Y5 reprise : sortie
 propre 9,1 → 15,7 A en ~6 s. Trace :
 `data/traces/2026-08-17_2256_variantB_closed_loop.log`. La traînée
 reste active en production (2,0 A).
+
+
+## Relevé A16 (18/08) : revalidation firmware 26.26.1 et plafond manuel
+
+Mise à jour 26.26.1 sous supervision (WAN ouvert 2 h, re-bloqué dans
+la minute suivant l'installation). Verdicts : compteur émulé survivant
+(commissioning intact, poll repris à +1 min), modèle de comportement
+identique à 26.18 sur tous les axes rejoués (écho, bande morte,
+traction, pause, relâche, reprise), stress réel 115 % absorbé, zéro
+défiance. Découverte : la bande morte est une hystérésis (engagement
+~L+0,85 depuis le repos, suivi jusqu'à publié = L une fois en
+traction, tenue mesurée 95 s). Boucle de plafond manuel affinée en
+conditions réelles : symétrique rapide = cycle limite 11-16 A période
+20 s ; asymétrique (hausse immédiate, baisse 0,5 A par tick de 10 s,
+kick anti-hystérésis) = 13,2 A stable sur cible 13. Traces dans
+`data/traces/` (deux fichiers du 18/08).

@@ -168,3 +168,19 @@ threshold false positive, detector recalibrated to L+0.85); Y5 resume:
 clean exit 9.1 → 15.7 A in ~6 s. Trace:
 `data/traces/2026-08-17_2256_variantB_closed_loop.log`. The decaying
 tail remains active in production (2.0 A).
+
+
+## Record A16 (18 Aug): firmware 26.26.1 revalidation and manual cap
+
+26.26.1 update under supervision (WAN open 2 h, re-blocked within a
+minute of the install). Verdicts: emulated meter survived
+(commissioning intact, polling resumed at +1 min), behavior model
+identical to 26.18 on every replayed axis (echo, dead band, pull,
+pause, release, resume), real 115 percent stress absorbed, zero
+distrust. Finding: the dead band is a hysteresis (engagement at about
+L+0.85 from rest, tracking down to published = L once pulling, hold
+measured for 95 s). Manual-cap loop field-tuned: a fast symmetric loop
+produced an 11-16 A limit cycle with a 20 s period; the asymmetric one
+(raise immediately, decay 0.5 A per 10 s tick, anti-hysteresis kick)
+held 13.2 A steady against a 13 A target. Traces in `data/traces/`
+(two files dated 18 Aug).

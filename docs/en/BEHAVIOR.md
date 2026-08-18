@@ -519,3 +519,43 @@ Three-phase calibration NOT transferred (numbers to re-measure on a bench):
   TWC Gen 3 draws up to 32 A); a full pause then takes ~160 s of ramp.
 
 Bench campaign: docs/en/TESTPLAN.md, single-phase cases (C10 and C14+).
+
+
+## 12. Firmware 26.26.1 revalidation (18 Aug 2026, MEASURED)
+
+Tesla rolled out 26.26.1 during the night of 17 to 18 Aug (two community
+reports). The pilot site updated under supervision (WAN opened, update
+landed at 12:20, WAN re-blocked within the minute) and the whole
+behavior model was revalidated in a real charge session the same hour:
+
+- The commissioned emulated meter SURVIVED the update: config status
+  unchanged, the charger resumed polling the emulated Neurio one minute
+  after its reboot.
+- Session accept, echo correlation on three separate startup ramps,
+  firm pull response in 5 to 8 s, bias-16 pause, automatic release,
+  autonomous session resume in 25 s: all identical to 26.18.
+- Real stress test: a house spike stacked to 24.97 A on one phase
+  (115 percent of the contract) was absorbed by a 15.5 to 10.1 A pull
+  in 12 s; a floor stop (nothing left above the 6 A vehicle minimum)
+  opened the contactor cleanly and the session resumed alone 25 s
+  later. Zero distrust all day.
+- Raw traces: `data/traces/2026-08-18_1253_fw26261_revalidation.log`
+  and `data/traces/2026-08-18_1317_manual_limit_tuning.log`.
+
+Deliberately not re-measured: the fine protection constants (integral,
+bites) and the distrust entry and recovery paths.
+
+### Dead band refined: it is a hysteresis
+
+The day's sessions settled a point the 26.18 campaign left ambiguous.
+From REST (pilot idle), the pilot only engages a downward correction
+once the published value reaches about L + 0.85. But once PULLING, it
+keeps following down to published = L, where it HOLDS (measured: 95 s
+pinned within 0.1 A), and it re-ramps when published drops below L. So
+approaching the budget from below parks the vehicle above the exact
+equilibrium (the published sits in the dead band and nothing moves),
+while approaching it from a deep constraint converges to the exact
+budget. Any external controller nudging the charger (bias trims) must
+account for this asymmetry: raise fast, release slowly, and kick
+through the L + 0.85 threshold when the vehicle idles above the target
+(see the manual-limit pattern in the roadmap).

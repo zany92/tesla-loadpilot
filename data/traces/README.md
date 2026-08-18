@@ -27,3 +27,6 @@ where attribution matters are flagged in [docs/en/BEHAVIOR.md](../../docs/en/BEH
 
 These are debugging-grade primary data: if you are reproducing our findings
 or challenging the behavior model, start here.
+
+| `2026-08-18_1253_fw26261_revalidation.log` | Full 26.26.1 revalidation session: startup ramps, dead-band hold, pull episodes, floor stop, autonomous resume, 24.97 A house spike absorbed. 3 s cadence. |
+| `2026-08-18_1317_manual_limit_tuning.log` | Manual 13 A cap tuning: symmetric-loop limit cycle (11-16 A), then asymmetric writer converging to a 13.2 A steady hold. 3 s cadence. |

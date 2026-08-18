@@ -524,3 +524,47 @@ en ~6 s une fois la contrainte retombée). La seule alerte émise était un
 faux positif du détecteur (seuil posé dans la bande morte ; recalibré à
 L+0,85). Trace brute :
 `data/traces/2026-08-17_2256_variantB_closed_loop.log`.
+
+
+## 12. Revalidation firmware 26.26.1 (18/08/2026, MESURÉ)
+
+Tesla a déployé 26.26.1 dans la nuit du 17 au 18/08 (deux retours
+communautaires). Le site pilote a fait la mise à jour sous supervision
+(WAN ouvert, mise à jour arrivée à 12:20, WAN re-bloqué dans la
+minute) et le modèle de comportement entier a été revalidé en session
+de charge réelle dans l'heure :
+
+- Le compteur émulé commissionné a SURVÉCU à la mise à jour : statut
+  de configuration inchangé, la borne a repris le poll du Neurio émulé
+  une minute après son reboot.
+- Ouverture de session, corrélation d'écho sur trois rampes de
+  démarrage distinctes, traction ferme en 5 à 8 s, pause par biais 16,
+  relâche automatique, reprise autonome en 25 s : tout est identique
+  à 26.18.
+- Stress test réel : une pointe maison cumulée à 24,97 A sur une phase
+  (115 % du contrat) absorbée par une traction 15,5 vers 10,1 A en
+  12 s ; un arrêt plancher (plus rien au-dessus du minimum véhicule de
+  6 A) a ouvert le contacteur proprement et la session a repris seule
+  25 s plus tard. Zéro défiance sur la journée.
+- Traces brutes : `data/traces/2026-08-18_1253_fw26261_revalidation.log`
+  et `data/traces/2026-08-18_1317_manual_limit_tuning.log`.
+
+Volontairement non re-mesurés : les constantes fines de protection
+(intégrale, morsures) et les chemins d'entrée et de sortie de défiance.
+
+### Bande morte précisée : c'est une hystérésis
+
+Les sessions du jour ont tranché un point resté ambigu dans la
+campagne 26.18. Depuis le REPOS (pilote inactif), le pilote n'engage
+une correction à la baisse que lorsque le publié atteint environ
+L + 0,85. Mais une fois EN TRACTION, il continue de suivre jusqu'à
+publié = L, où il TIENT (mesuré : 95 s épinglé à 0,1 A près), et il
+remonte quand le publié repasse sous L. Aborder le budget par en
+dessous gare donc le véhicule au-dessus de l'équilibre exact (le
+publié stagne en bande morte et rien ne bouge), tandis que l'aborder
+par une contrainte profonde converge vers le budget exact. Tout
+contrôleur externe qui pilote la borne par retouches de biais doit
+composer avec cette asymétrie : monter vite, relâcher lentement, et
+donner un coup de kick au-delà du seuil L + 0,85 quand le véhicule
+stagne au-dessus de la cible (voir le motif de limite manuelle dans la
+feuille de route).
