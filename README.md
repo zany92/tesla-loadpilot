@@ -85,7 +85,7 @@ The budget is `contract_limit x (1 - buffer%)`: with the default 10 % buffer on 
 
 | Part | Role | Notes | Links |
 |---|---|---|---|
-| Tesla Wall Connector Gen 3 | The charger being steered | Firmware 26.18 is the calibration reference. **Freeze its firmware updates** (e.g. block its WAN access at the router), see the runbook. | [Product page](https://www.tesla.com/wall-connector) |
+| Tesla Wall Connector Gen 3 | The charger being steered | Validated firmwares: 26.18 (calibration reference) and 26.26.1 (full revalidation, BEHAVIOR section 12). **Freeze firmware updates** (e.g. block its WAN access at the router) and only unblock for a supervised update, see the runbook. | [Product page](https://www.tesla.com/wall-connector) |
 | Kincony KC868-A6 | Charger-side ESP32 node (Neurio emulation) | ESP32 board with an onboard RS485 transceiver (MAX13487E, hardware auto-direction), relays and inputs as a bonus. Any ESP32 plus a MAX485-class transceiver works too. | [Hardware details](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [KinCony store](https://www.kincony.com/) |
 | Olimex ESP32-POE | Meter-side ESP32 node | Powered over Ethernet next to the meter; any ESP32 with a free UART works. | [Product page](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Teleinfo (TIC) receiver shield, Charles Hallard design | Reads the Linky's TIC output (I1/I2 terminals) | Opto-isolated serial receiver, ESP32-compatible. Sold assembled. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
@@ -172,7 +172,7 @@ The project's real asset is the measured behavior model of the wall connector, a
 
 ## Known limitations, honestly
 
-- **One pilot site, one firmware.** Everything is calibrated against TWC fw 26.18 on a French three-phase installation. The constants (dead band, integral, floors) may drift with Tesla updates; freeze your charger's firmware.
+- **One pilot site.** Calibration was established on TWC fw 26.18 (French three-phase installation) and revalidated point by point on 26.26.1 (BEHAVIOR section 12). The constants (dead band, integral, floors) may drift with future Tesla updates; freeze the firmware and only update under supervision.
 - **Single-phase support is designed but THEORETICAL.** It has never been validated on a bench: the control-law constants are three-phase measurements, and the CT registers a wallbox commissioned single-phase actually reads are unknown (bench campaign in [docs/en/TESTPLAN.md](docs/en/TESTPLAN.md), cases C14-C20).
 - **The distrust layer is the structural risk.** The law is designed to never trigger it, and the entry points I found are closed (impossible values, absorbed ramps, static fail-safe), but Tesla hardens this layer version after version and could close the commissioning workaround entirely.
 - **With the tail off**, a house load hovering exactly at the budget can produce a +/-2.5 A limit cycle that ends in a protective cut. The decaying-tail variant closes it (validated in closed loop on the pilot); it ships inert and must be enabled deliberately.

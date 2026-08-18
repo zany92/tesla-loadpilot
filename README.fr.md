@@ -85,7 +85,7 @@ Le budget vaut `limite contrat × (1 - tampon %)` : avec le tampon par défaut
 
 | Élément | Rôle | Remarques | Liens |
 |---|---|---|---|
-| Tesla Wall Connector Gen 3 | La borne pilotée | Le firmware 26.18 est la référence de calibration. **Gelez ses mises à jour** (bloquez par exemple son accès WAN au niveau du routeur), voir le runbook. | [Page produit](https://www.tesla.com/wall-connector) |
+| Tesla Wall Connector Gen 3 | La borne pilotée | Firmwares validés : 26.18 (référence de calibration) et 26.26.1 (revalidation complète, BEHAVIOR §12). **Gelez les mises à jour** (bloquez par exemple son accès WAN au niveau du routeur) et ne les débloquez que pour une mise à jour supervisée, voir le runbook. | [Page produit](https://www.tesla.com/wall-connector) |
 | Kincony KC868-A6 | Nœud ESP32 côté borne (émulation Neurio) | Carte ESP32 avec transceiver RS485 intégré (MAX13487E, direction gérée en matériel), relais et entrées en prime. N'importe quel ESP32 associé à un transceiver type MAX485 convient aussi. | [Détails matériels](https://www.kincony.com/kc868-a6-hardware-design-details.html) - [Boutique KinCony](https://www.kincony.com/) |
 | Olimex ESP32-POE | Nœud ESP32 côté compteur | Alimenté par Ethernet (PoE) à côté du compteur ; n'importe quel ESP32 avec un UART libre fait l'affaire. | [Page produit](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Carte de réception Téléinfo (TIC), design Charles Hallard | Lit la sortie TIC du Linky (bornes I1/I2) | Récepteur série opto-isolé, compatible ESP32. Vendu assemblé. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
