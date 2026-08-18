@@ -148,7 +148,16 @@ Everything user-facing happens in two places:
 | STOP switch | off | | Immediate stop order. |
 | Meter-absent switch | off | | Test switch: silences the Modbus server entirely (the charger falls back to its documented 6 A cap). |
 
-3. **Entity mapping** (options flow, advanced): if your charger node predates the generic package and uses different entity names, map each of the 21 tracked entities explicitly; keys can also be declared absent. This is how the pilot site itself runs.
+3. **Entity mapping** (options flow, advanced): if your charger node predates the generic package and uses different entity names, map each of the tracked entities explicitly; keys can also be declared absent. This is how the pilot site itself runs.
+
+4. **Optional orchestration capabilities** (axis B, all opt-in, everything defaults to the historic behaviour). Their shared prerequisite is the `vehicle_current_entity` option (advanced entity mapping): a sensor exposing the vehicle charging current, e.g. the wall connector's local vitals (5 s poll, the pilot setup) or the official Tesla Wall Connector integration (~30 s poll, works in degraded mode; freshness guard at 60 s). Without it the first three stay unavailable or inert:
+
+| Capability | What it does |
+|---|---|
+| Charge cap (`number.loadpilot_charge_cap`, 0 = auto) | User-chosen charge ceiling. A slow 10 s loop steers the node's bias so the car draws min(cap, what the house leaves); anti-hysteresis kick and asymmetric writer field-tuned on the pilot (a 13 A cap held at 13.2 A steady). The real-time law stays in firmware: if HA dies mid-cap the node keeps every protection. |
+| Convergence trim (option, default OFF) | Fixes the dead-band parking: after 3 minutes of shallow sustained constraint it fires a transient 2 A bias kick (25 s at most, conditional release) so the charge converges to the exact budget. Ordered redundancy with the firmware's own 4 minute stage-2 kick, never a conflict (see [docs/en/BEHAVIOR.md](docs/en/BEHAVIOR.md), section 12). |
+| Meter distrust detector (`binary_sensor.loadpilot_meter_distrust`) | Raises a problem flag plus a Repairs issue when the published value saturates at L + 0.85 for 120 s while the vehicle still pulls above 9 A: the charger has stopped listening to the emulated meter. Auto-cleared; deliberately disabled (not degraded) without the vehicle-current source. |
+| Law-settings enforcement (options, empty = never touched) | The law knobs live on the node with restore_value off: a firmware flash silently resets your tuning. Set the gain / excursion / drag options and the integration re-pushes them at setup and on every node reboot. |
 
 **Single-phase or three-phase.** The installation type is chosen in three matching places: the `phase_count` substitution of the charger-node example you copy (`"3"` in `charger-kc868-a6.yaml`, `"1"` in `charger-mono-exemple.yaml`, which also raises the bias ceiling to `bias_max_a: "32"`), the meter provider (`teleinfo-fr.yaml` three-phase, `teleinfo-fr-mono.yaml` single-phase: a single-phase Linky emits different TIC labels), and the contract preset in the config flow (3 to 24 kVA single-phase, 6 to 36 kVA three-phase). Single-phase variants of the dashboards ship alongside (`dashboards/*-mono.yaml`). Reminder: single-phase support is theoretical, never validated on a bench; the walkthrough is in [docs/en/INSTALL.md](docs/en/INSTALL.md).
 

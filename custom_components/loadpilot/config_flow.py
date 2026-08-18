@@ -46,9 +46,16 @@ from .const import (
     CONF_CONTRACT_PRESET,
     CONF_COUNTRY_PROFILE,
     CONF_ENTITY_OVERRIDES,
+    CONF_LAW_DRAG_A,
+    CONF_LAW_EXCURSION_A,
+    CONF_LAW_GAIN_A,
+    CONF_MAX_CONDUCTOR_A,
     CONF_METER_NODE,
     CONF_MIRROR_ENTITIES,
     CONF_PHASES,
+    CONF_TRIM_ENABLED,
+    CONF_VEHICLE_CURRENT_ENTITY,
+    LAW_OVERRIDE_ONLY_KEYS,
     CONTRACT_PRESET_CUSTOM,
     CONTRACT_PRESETS_A,
     CONTRACT_PRESETS_MONO_A,
@@ -58,6 +65,8 @@ from .const import (
     DEFAULT_BUFFER_PCT,
     DEFAULT_CONTRACT_LIMIT_A,
     DEFAULT_COUNTRY_PROFILE,
+    DEFAULT_MAX_CONDUCTOR_MONO_A,
+    DEFAULT_MAX_CONDUCTOR_TRI_A,
     DEFAULT_PHASES,
     DOMAIN,
     METER_NODE_DEFAULT_NAME,
@@ -280,6 +289,75 @@ def _mirror_schema(
     return vol.Schema(schema)
 
 
+# --- Axis B options (all opt-in; the INITIAL config flow is unchanged) ----
+# Law-option selector bounds: (min, max, step, unit). Gain and excursion
+# mirror the firmware knob ranges (twc-core.yaml); the drag (variant B
+# tail) validated range is 0..2.5 A.
+_LAW_OPTION_BOUNDS: dict[str, tuple[float, float, float, Optional[str]]] = {
+    CONF_LAW_GAIN_A: (0.1, 1.0, 0.05, None),
+    CONF_LAW_EXCURSION_A: (0.1, 1.0, 0.1, "A"),
+    CONF_LAW_DRAG_A: (0.0, 2.5, 0.1, "A"),
+}
+
+
+def _default_max_conductor(phases: int) -> float:
+    """L default: 21 A three-phase (field-validated), 32 A single-phase
+    (theoretical, BEHAVIOR annex §11)."""
+    return (
+        DEFAULT_MAX_CONDUCTOR_MONO_A
+        if phases == 1
+        else DEFAULT_MAX_CONDUCTOR_TRI_A
+    )
+
+
+def _axis_b_schema(options: dict[str, Any], phases: int) -> vol.Schema:
+    """Options-flow fields for the axis-B capabilities (all optional).
+
+    Only the plausibility floor max_conductor_a >= 6 is enforced (the TWC
+    firmware bounds differ per market, stay permissive). Empty law fields
+    = the integration never touches the corresponding node number.
+    """
+    schema: dict[Any, Any] = {
+        vol.Required(
+            CONF_MAX_CONDUCTOR_A,
+            default=float(
+                options.get(
+                    CONF_MAX_CONDUCTOR_A, _default_max_conductor(phases)
+                )
+            ),
+        ): NumberSelector(
+            NumberSelectorConfig(
+                min=6,
+                max=48,
+                step=1,
+                unit_of_measurement="A",
+                mode=NumberSelectorMode.BOX,
+            )
+        ),
+        vol.Optional(
+            CONF_TRIM_ENABLED,
+            default=bool(options.get(CONF_TRIM_ENABLED, False)),
+        ): BooleanSelector(),
+    }
+    for key, (low, high, step, unit) in _LAW_OPTION_BOUNDS.items():
+        current = options.get(key)
+        marker = (
+            vol.Optional(key, description={"suggested_value": current})
+            if current is not None
+            else vol.Optional(key)
+        )
+        config: dict[str, Any] = {
+            "min": low,
+            "max": high,
+            "step": step,
+            "mode": NumberSelectorMode.BOX,
+        }
+        if unit is not None:
+            config["unit_of_measurement"] = unit
+        schema[marker] = NumberSelector(NumberSelectorConfig(**config))
+    return vol.Schema(schema)
+
+
 class LoadPilotConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the LoadPilot config flow."""
 
@@ -470,6 +548,30 @@ class LoadPilotOptionsFlow(OptionsFlow):
                         CONF_ENTITY_OVERRIDES, {}
                     ),
                 }
+                # Axis B fields: stored ONLY when they deviate from the
+                # inert defaults (or were already stored): an options
+                # submit that does not touch them produces the same
+                # options dict as before axis B (non-regression rule).
+                max_conductor = float(user_input[CONF_MAX_CONDUCTOR_A])
+                if (
+                    max_conductor != _default_max_conductor(phases)
+                    or CONF_MAX_CONDUCTOR_A in entry.options
+                ):
+                    options[CONF_MAX_CONDUCTOR_A] = max_conductor
+                trim_enabled = bool(user_input.get(CONF_TRIM_ENABLED, False))
+                if trim_enabled or CONF_TRIM_ENABLED in entry.options:
+                    options[CONF_TRIM_ENABLED] = trim_enabled
+                for law_key in _LAW_OPTION_BOUNDS:
+                    # A cleared number selector is absent from user_input:
+                    # clearing removes the option (enforcement off).
+                    if user_input.get(law_key) is not None:
+                        options[law_key] = float(user_input[law_key])
+                # Preserved as-is unless the mapping step rewrites it.
+                vehicle_entity = entry.options.get(
+                    CONF_VEHICLE_CURRENT_ENTITY
+                )
+                if vehicle_entity:
+                    options[CONF_VEHICLE_CURRENT_ENTITY] = vehicle_entity
                 if user_input.get(CONF_CONFIGURE_MAPPING):
                     self._options = options
                     return await self.async_step_advanced_mapping()
@@ -481,6 +583,9 @@ class LoadPilotOptionsFlow(OptionsFlow):
             phases=phases,
             with_presets=with_presets,
         ).extend(_mirror_schema(current_mirror, phases=phases).schema)
+        schema = schema.extend(
+            _axis_b_schema(dict(entry.options), phases).schema
+        )
         schema = schema.extend(
             {vol.Optional(CONF_CONFIGURE_MAPPING, default=False): BooleanSelector()}
         )
@@ -523,13 +628,39 @@ class LoadPilotOptionsFlow(OptionsFlow):
                 ):
                     overrides[key] = None  # keep the declared-absent marker
             self._options[CONF_ENTITY_OVERRIDES] = overrides
+            # Axis B: dedicated option key (NOT a tracked-entities entry:
+            # its correct default is ABSENT). Same clearing mechanic as
+            # the mirror: a cleared selector removes the option.
+            if user_input.get(CONF_VEHICLE_CURRENT_ENTITY):
+                self._options[CONF_VEHICLE_CURRENT_ENTITY] = user_input[
+                    CONF_VEHICLE_CURRENT_ENTITY
+                ]
+            else:
+                self._options.pop(CONF_VEHICLE_CURRENT_ENTITY, None)
             return self.async_create_entry(title="", data=self._options)
 
         schema: dict[Any, Any] = {}
+        current_vehicle = entry.options.get(CONF_VEHICLE_CURRENT_ENTITY)
+        vehicle_marker = (
+            vol.Optional(
+                CONF_VEHICLE_CURRENT_ENTITY,
+                description={"suggested_value": current_vehicle},
+            )
+            if current_vehicle
+            else vol.Optional(CONF_VEHICLE_CURRENT_ENTITY)
+        )
+        schema[vehicle_marker] = EntitySelector(
+            EntitySelectorConfig(domain="sensor", device_class="current")
+        )
         for key, (platform, _suffix) in CHARGER_TRACKED_ENTITIES.items():
             # Effective current value: override if set, else the generic
             # default; declared-absent keys show an empty field.
-            effective = existing[key] if key in existing else generic[key]
+            # Override-only keys (law_drag: variant-B pilot firmware only)
+            # have NO generic default: empty until the user maps one.
+            if key in LAW_OVERRIDE_ONLY_KEYS:
+                effective = existing.get(key)
+            else:
+                effective = existing[key] if key in existing else generic[key]
             marker = (
                 vol.Optional(key, description={"suggested_value": effective})
                 if effective

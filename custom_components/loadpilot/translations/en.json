@@ -83,11 +83,21 @@
           "power_l1": "Power, phase 1",
           "power_l2": "Power, phase 2",
           "power_l3": "Power, phase 3",
+          "max_conductor_a": "Max Conductor Limit (L, amps)",
+          "trim_enabled": "Automatic convergence trim",
+          "law_gain_a": "Law echo gain (guarded value)",
+          "law_excursion_a": "Law max excursion (guarded value, A)",
+          "law_drag_a": "Law drag / tail (guarded value, A)",
           "configure_entity_mapping": "Configure advanced entity mapping"
         },
         "data_description": {
           "contract_preset": "Pick your subscribed power to fill in the limit for you - or choose “Other” and enter the amps yourself below.",
           "buffer_pct": "With a 10% buffer, the car only uses 90% of your contract: the rest absorbs surges without tripping the breaker.",
+          "max_conductor_a": "The Max Conductor Limit commissioned in Tesla One, in amps. Default 21 A three-phase (validated on the pilot site); 32 A single-phase is theoretical, never bench-validated. It is the reference of the charge cap, the trim and the distrust detector. This is a declaration only: the integration cannot change it on the wall connector.",
+          "trim_enabled": "When the charge idles just above the budget with the published signal parked in the charger's dead band, a brief 2 A bias kick (25 s at most, then release) re-engages the pilot so the charge converges to the exact budget. Requires the vehicle current source (advanced entity mapping below); without it the trim stays inert. Firmware 1.2.0 and later ships its own slower stage-2 kick after 4 minutes of constraint: the integration trim simply acts first (3 minutes) and the two never conflict.",
+          "law_gain_a": "Optional guardian value for the node's law echo gain number. That number is deliberately not flash-restored: a firmware flash resets it to its default. When set here, the integration re-pushes this value at setup and whenever the node reboots. Leave empty so the integration never touches it.",
+          "law_excursion_a": "Optional guardian value for the node's law max excursion number (amps), re-pushed at setup and on node reboot. Leave empty so the integration never touches it.",
+          "law_drag_a": "Optional guardian value for a law drag number (variant B decay tail, amps). Site-specific override only, no generic default: the standard LoadPilot firmware has no drag knob, so this value is enforced ONLY after you map the drag number entity in the advanced entity mapping. Leave empty so the integration never touches it.",
           "configure_entity_mapping": "Only for charger nodes whose entity names do not follow the standard LoadPilot firmware (historic installations). Leave off otherwise."
         }
       },
@@ -115,7 +125,15 @@
           "buffer_pct": "Safety buffer knob (number)",
           "control_enabled": "Control enabled (switch)",
           "escalation_active": "Escalation active",
-          "fw_version": "Firmware version"
+          "fw_version": "Firmware version",
+          "law_gain": "Law echo gain knob (number)",
+          "law_excursion": "Law max excursion knob (number)",
+          "law_drag": "Law drag knob (number)",
+          "vehicle_current_entity": "Vehicle current source (sensor)"
+        },
+        "data_description": {
+          "vehicle_current_entity": "Sensor exposing the vehicle charging current in amps (for example the wall connector's local vitals, or the official Tesla Wall Connector integration). Prerequisite for the charge cap, the automatic trim and the distrust detector: leave empty and those three capabilities stay disabled (their entities show as unavailable). A source refreshing every 10 s or less is recommended for cap comfort; the official ~30 s poll works in degraded mode (freshness guard at 60 s).",
+          "law_drag": "Site-specific override only, no generic default: the standard firmware has no drag number (variant-B pilot firmware only). Leave empty unless your node carries one."
         }
       }
     },
@@ -161,6 +179,16 @@
     }
   },
   "entity": {
+    "number": {
+      "charge_cap": {
+        "name": "Charge cap (0 = auto)"
+      }
+    },
+    "binary_sensor": {
+      "meter_distrust": {
+        "name": "Meter distrust suspected"
+      }
+    },
     "sensor": {
       "state": {
         "name": "State",
@@ -235,6 +263,39 @@
           "confirm": {
             "title": "Charger node not found in Home Assistant",
             "description": "No entity of the charger node “{charger_node}” exists in Home Assistant (node offline since before startup, renamed, or removed from ESPHome). The node itself keeps regulating on its own - the control law lives in its firmware - but Home Assistant can no longer observe or adjust it. Restore the node under this exact name (or remove and re-add the integration with the right name), then confirm."
+          }
+        }
+      }
+    },
+    "meter_distrust": {
+      "title": "Meter distrust suspected (charger ignoring the emulated meter)",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Meter distrust suspected",
+            "description": "The published value has been saturated (L + 0.85 or more) for 120 s while the vehicle kept pulling more than 9 A: the wall connector has most likely stopped believing the emulated meter. What it means: in-session regulation is inoperative (bias and budget no longer move the current session), while the admission gate for NEW sessions stays active. Important: never conclude that trust is back from a refused session start - a refusal is the admission gate doing its job, not a sign of recovery. This issue clears itself once the published signal turns dynamic again (below L - 1 for 60 s) or the charger finally obeys (vehicle below 7 A for 60 s). Recovery protocol: see the distrust section of the behaviour model (learn more link), then confirm."
+          }
+        }
+      }
+    },
+    "charge_cap_inoperative": {
+      "title": "Charge cap set but inoperative (vehicle current source missing)",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Charge cap set but inoperative",
+            "description": "A charge cap above 0 was restored at startup, but no vehicle current source is configured any more: the cap loop cannot act (it needs the vehicle charging current). Either configure the vehicle current source again (options, advanced entity mapping) or set the cap back to 0. The issue clears itself in both cases; confirm once done."
+          }
+        }
+      }
+    },
+    "law_knob_target_missing": {
+      "title": "Law setting configured but its target number is missing",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Law setting configured but its target number is missing",
+            "description": "The following law settings are configured in the options but their target number entity cannot be resolved right now: {knobs}. Enforcement is skipped for them (everything else keeps working). Causes: the node is offline or was flashed with a package that does not carry the knob, the entity was renamed, or the knob is a site-specific override (drag) that has not been mapped in the advanced entity mapping. Restore or map the entity, or clear the option; this issue clears itself as soon as the target appears. Confirm once done."
           }
         }
       }

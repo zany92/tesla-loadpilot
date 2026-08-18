@@ -17,14 +17,11 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfElectricCurrent
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CONF_PHASES,
     DEFAULT_PHASES,
-    DOMAIN,
     PHASE_NAMES,
     STATE_ESCALATING,
     STATE_FAILSAFE,
@@ -33,6 +30,7 @@ from .const import (
     STATE_REGULATING,
 )
 from .coordinator import LoadPilotCoordinator
+from .entity import LoadPilotBaseEntity
 
 
 async def async_setup_entry(
@@ -56,37 +54,13 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class LoadPilotBaseSensor(
-    CoordinatorEntity[LoadPilotCoordinator], SensorEntity
-):
+class LoadPilotBaseSensor(LoadPilotBaseEntity, SensorEntity):
     """Common device/base for the derived sensors.
 
-    Entity ids are CONTRACTUAL (/CONTRACTS.md §3.3): every subclass pins an
-    English ``_attr_suggested_object_id``. Without it, HA derives the object
-    id from the TRANSLATED friendly name at creation time - on a French
-    instance sensor.loadpilot_state would be born sensor.loadpilot_etat,
-    breaking the dashboards and the docs. ``has_entity_name`` +
-    ``translation_key`` stay in place for the DISPLAY name only.
+    The device/base itself moved to entity.py (axis B refactor, shared
+    with number.py and binary_sensor.py) without behaviour change; this
+    subclass keeps the historic name used by every sensor below.
     """
-
-    _attr_has_entity_name = True
-
-    def __init__(
-        self, coordinator: LoadPilotCoordinator, entry: ConfigEntry
-    ) -> None:
-        super().__init__(coordinator)
-        # Device name "LoadPilot" => entity ids sensor.loadpilot_* (contract).
-        device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name="LoadPilot",
-            manufacturer="Tesla LoadPilot project",
-            model="TWC Gen 3 load manager",
-        )
-        # sw_version omis si inconnu : un None dans le registre des devices
-        # casse la comparaison AwesomeVersion (bug vecu au premier run).
-        if coordinator.integration_version:
-            device_info["sw_version"] = str(coordinator.integration_version)
-        self._attr_device_info = device_info
 
 
 class LoadPilotStateSensor(LoadPilotBaseSensor):
@@ -124,6 +98,11 @@ class LoadPilotStateSensor(LoadPilotBaseSensor):
             "udp_fresh": data.udp_fresh,
             "polling_active": data.polling_active,
             "fw_version": data.fw_version,
+            # Axis B diagnostics (additive; inert defaults when the
+            # capabilities are not configured).
+            "charge_cap_a": data.charge_cap_a,
+            "distrust_active": data.distrust_active,
+            "trim_phase": data.trim_phase,
         }
 
 

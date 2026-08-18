@@ -103,8 +103,32 @@ et l'écrit dans le number de biais du nœud borne, qui applique sa
 propre rampe. L'écho du compteur reste intact (les vitals ne portent
 que sur l'offset lent), toutes les protections restent actives : la
 limite agit comme un plafond, la voiture prend min(limite, place
-laissée par la maison). Candidat à l'intégration (il faut une source
-locale du courant véhicule, par exemple l'intégration Wall Connector).
+laissée par la maison).
+
+Statut : LIVRÉ dans l'intégration (axe B), avec trois capacités sœurs,
+toutes opt-in (une entrée existante qui ne touche à rien garde le
+comportement historique à l'octet près) :
+
+- `number.loadpilot_charge_cap` (0 = auto) : le plafond ci-dessus,
+  porté en boucle de 10 s dans le coordinator (logique pure dans
+  `control.py`, tests pytest qui rejouent les traces du 17-18/08) ;
+- trim automatique de convergence (option, défaut OFF) : kick de biais
+  2 A transitoire après 3 min de contrainte peu profonde, redondance
+  ordonnée avec le palier 2 du firmware (4 min), jamais en conflit ;
+- `binary_sensor.loadpilot_meter_distrust` + issue Repairs : détecteur
+  de défiance générique (publié >= L + 0,85 tenu 120 s, véhicule
+  > 9 A), levée automatique ;
+- enforcement des réglages de loi (options gain/excursion/traînée,
+  vides par défaut) : repoussés au setup et à chaque redémarrage du
+  nœud (un flash remet les numbers `restore_value: false` aux défauts,
+  le trou que le YAML ne bouchait pas).
+
+Prérequis commun : l'option `vehicle_current_entity` (mappage avancé),
+une source locale du courant véhicule, par exemple le capteur REST des
+vitals de la borne (poll 5 s, montage pilote) ou l'intégration
+officielle Tesla Wall Connector (poll ~30 s, mode dégradé, garde de
+fraîcheur 60 s). Sans elle, les entités restent indisponibles et le
+trim inerte.
 
 ## 5. Notifications
 

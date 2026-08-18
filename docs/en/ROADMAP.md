@@ -134,7 +134,7 @@ From [`../ARCHITECTURE.md`](../../ARCHITECTURE.md):
 - No YAML-only install path for the integration (config flow only).
 - No Tesla imagery, ever.
 
-## Manual hard limit (validated pattern, pilot site, 18 Aug 2026)
+## Manual hard limit (shipping in the integration, axis B)
 
 A user-chosen charge ceiling (N amps, independent of the vehicle's own
 setting), implemented WITHOUT synthesizing a decorrelated meter signal
@@ -150,5 +150,24 @@ the published value idles in the dead band), and an asymmetric writer
 13 A cap held at 13.2 A steady, equilibrium bias self-found. The Linky echo stays 1:1 (vitals freshness only affects the slow
 offset, never the correlation), and every protection layer stays active,
 so the limit acts as a cap: the car draws min(limit, what the house
-leaves). Candidate for productization in the integration (needs the
-vitals integration or any per-vehicle current source).
+leaves). Status: shipping in the integration (axis B) as
+`number.loadpilot_charge_cap`, the pattern ported to a 10 s coordinator
+tick over pure policy functions (`control.py`, replayed by the pytest
+suite against the field traces). Prerequisite: the
+`vehicle_current_entity` option (advanced entity mapping) pointing at
+any vehicle-current source, for example the wall connector's local
+vitals or the official Tesla Wall Connector integration. Axis B also
+ships the opt-in convergence trim (see BEHAVIOR section 12), the
+optional law-settings enforcement (option values re-pushed on node
+reboot, closing the restore_value:false hole a flash opens) and the
+generic meter-distrust detector
+(`binary_sensor.loadpilot_meter_distrust`).
+
+
+## Port the decaying tail (variant B) to the generic core
+
+Discovered during axis B: the shipped `twc-core.yaml` carries law
+variant A only; the decaying-tail branch that killed the limit cycle
+(validated 17 Aug, runs in production on the pilot) exists only in the
+pilot's site firmware. Port it with its `Law Decay Tail` number so the
+`law_drag` integration knob gains a generic default.

@@ -27,4 +27,5 @@ async def async_get_config_entry_diagnostics(
         "integration_version": coordinator.integration_version,
         "derived": asdict(coordinator.data),
         "tracked_entities": coordinator.diagnostics_snapshot(),
+        "control": coordinator.control_snapshot(),
     }

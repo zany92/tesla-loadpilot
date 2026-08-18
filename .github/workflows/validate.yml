@@ -1,7 +1,8 @@
 # CI validation for Tesla LoadPilot.
-# Three independent jobs: hassfest (Home Assistant manifest rules),
+# Four independent jobs: hassfest (Home Assistant manifest rules),
 # HACS validation (repository structure for the integration category),
-# and a lightweight Python/JSON sanity check with no heavy dependencies.
+# a lightweight Python/JSON sanity check with no heavy dependencies,
+# and the pure pytest suite over control.py (no HA harness).
 name: Validate
 
 on:
@@ -60,3 +61,18 @@ jobs:
                   json.load(handle)
               print(f"OK {path}")
           EOF
+
+  pytest:
+    name: Pure control-policy tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install pytest
+        run: pip install pytest
+      - name: Run the pure tests (control.py, no HA harness)
+        run: pytest tests/ -q

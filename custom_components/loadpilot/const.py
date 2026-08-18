@@ -204,3 +204,81 @@ CONTRACT_PRESETS_A = {**CONTRACT_PRESETS_MONO_A, **CONTRACT_PRESETS_TRI_A}
 ISSUE_FW_VERSION_SKEW = "firmware_version_skew"
 ISSUE_SOURCE_FAILSAFE = "source_failsafe"
 ISSUE_CHARGER_NODE_MISSING = "charger_node_missing"
+
+# =========================================================================
+# Axis B extensions (charge cap / trim / law enforcement / distrust).
+# Everything below is OPT-IN: an existing entry with untouched options
+# behaves exactly as before (no spontaneous bias write, no new Repair).
+# =========================================================================
+
+# Optional options key: full entity_id of a sensor exposing the vehicle
+# charging current (device_class current). Deliberately NOT an entry of
+# CHARGER_TRACKED_ENTITIES: the correct default for this signal is ABSENT
+# (no node publishes it), while that dict's convention is "absent key =
+# generic sensor.<slug>_<suffix> default". Absent or empty = the charge
+# cap and the distrust detector stay unavailable, the trim stays inert.
+CONF_VEHICLE_CURRENT_ENTITY = "vehicle_current_entity"
+
+# Max Conductor Limit (L) commissioned in Tesla One: NOT a node knob, the
+# integration can only declare it. Reference of the dead band
+# [L+0.05 ; L+0.8] and of the distrust threshold L+0.85.
+CONF_MAX_CONDUCTOR_A = "max_conductor_a"
+DEFAULT_MAX_CONDUCTOR_TRI_A = 21.0   # field-validated (pilot)
+DEFAULT_MAX_CONDUCTOR_MONO_A = 32.0  # theoretical (BEHAVIOR annex §11)
+
+# Convergence trim (B2): opt-in, default OFF - an existing entry must
+# never see its bias move on its own.
+CONF_TRIM_ENABLED = "trim_enabled"
+
+# Law-settings enforcement (B3): optional option values pushed to the
+# node-resident law numbers at setup and on node BOOT (restore_value is
+# false on the node: a flash resets the tuning, these options restore it).
+# Empty/None = the integration never touches the corresponding number.
+CONF_LAW_GAIN_A = "law_gain_a"
+CONF_LAW_EXCURSION_A = "law_excursion_a"
+CONF_LAW_DRAG_A = "law_drag_a"
+
+# Optional tracked law knobs (NOT essential: they never participate in
+# the failsafe judgement; a node without them behaves like a node without
+# poll_interval). Suffixes verified against the generic twc-core.yaml
+# object_ids: the package names its numbers "Law Echo Gain" and "Law Max
+# Excursion" -> number.<slug>_law_echo_gain / _law_max_excursion (the
+# historic pilot site remaps them through entity_overrides, mechanics
+# already in place).
+CHARGER_TRACKED_ENTITIES.update(
+    {
+        "law_gain": ("number", "law_echo_gain"),
+        "law_excursion": ("number", "law_max_excursion"),
+        "law_drag": ("number", "law_drag"),
+    }
+)
+
+# law_drag is a SITE-SPECIFIC OVERRIDE ONLY: the generic twc-core.yaml
+# implements the variant A co-variant law and has NO decay-tail (drag)
+# number - the knob only exists on variant-B pilot firmware. Keys listed
+# here have NO generic default entity: they are tracked (and enforced)
+# ONLY when an entity_overrides mapping provides an entity_id, so the
+# default enforcement never targets a phantom generic entity.
+LAW_OVERRIDE_ONLY_KEYS = ["law_drag"]
+
+# The three law keys the enforcement (B3) can push, with their option.
+LAW_KNOB_OPTION_BY_KEY = {
+    "law_gain": CONF_LAW_GAIN_A,
+    "law_excursion": CONF_LAW_EXCURSION_A,
+    "law_drag": CONF_LAW_DRAG_A,
+}
+
+# Control tick of the coordinator (slow orchestration policies only; the
+# real-time law stays firmware, D2).
+CONTROL_TICK_S = 10
+# Freshness required from the vehicle-current source (the prototype polls
+# at 5 s; the official Wall Connector integration polls ~30 s: x2 margin).
+VEHICLE_CURRENT_MAX_AGE_S = 60
+
+# --- Axis B Repairs issue ids ---------------------------------------------
+ISSUE_METER_DISTRUST = "meter_distrust"
+ISSUE_CHARGE_CAP_INOPERATIVE = "charge_cap_inoperative"
+# A law_* option is SET but its target number cannot be resolved (key
+# unmapped for an override-only knob, or entity missing on the node):
+# the enforcement cannot act. Auto-cleared when the entity appears.
+ISSUE_LAW_KNOB_TARGET_MISSING = "law_knob_target_missing"

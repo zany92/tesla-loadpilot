@@ -158,6 +158,8 @@ Noms de nœuds par défaut : `loadpilot-twc` (borne), `loadpilot-meter`
 | `sensor.loadpilot_state` | `regulating` / `idle` / `escalating` / `failsafe` / `off` |
 | `sensor.loadpilot_headroom_l1/_l2/_l3` | marge par phase (budget − mesure), A |
 | `sensor.loadpilot_worst_phase` | index/nom de la pire phase |
+| `number.loadpilot_charge_cap` | axe B1 : plafond de charge utilisateur, A (0 = auto ; 0..16 tri, 0..32 mono) ; `unavailable` sans l'option `vehicle_current_entity` |
+| `binary_sensor.loadpilot_meter_distrust` | axe B4 : défiance compteur suspectée (device_class problem) ; `unavailable` sans l'option `vehicle_current_entity` |
 
 ## 4. Contrat de services (domaine `loadpilot`)
 

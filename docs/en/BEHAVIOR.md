@@ -563,3 +563,19 @@ core also carries a stage-2 escalation: after four minutes of sustained
 constraint the firmware itself publishes at least L + 0.9
 (`escalation_kick_a`), breaking the hysteresis autonomously, no Home
 Assistant needed.
+
+> **Integration trim vs firmware stage 2 (ordered redundancy, never a
+> conflict).** The LoadPilot integration ships an opt-in convergence
+> trim (axis B2): when the constraint is sustained for 3 minutes with
+> the published value parked in the dead band, it writes a transient
+> 2 A bias kick (25 s at most, conditional release). The firmware
+> stage 2 fires at 4 minutes. In the nominal case the integration trim
+> acts FIRST and stage 2 never triggers; the trim also corrects the
+> shallow case stage 2 does not see the same way (constraint of
+> -0.3 A). If the trim is disabled, unconfigured (no vehicle-current
+> source) or Home Assistant is down, stage 2 remains the autonomous
+> safety net. If stage 2 engages during a kick, the integration state
+> leaves `regulating`, the trim machine sees it and abandons cleanly,
+> releasing only its own 2 A kick if the bias is still exactly its own
+> (a foreign bias such as a pause is never overwritten): 3 minutes HA,
+> then 4 minutes firmware, in that order, never fighting.

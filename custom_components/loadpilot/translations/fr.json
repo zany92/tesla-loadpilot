@@ -83,11 +83,21 @@
           "power_l1": "Puissance, phase 1",
           "power_l2": "Puissance, phase 2",
           "power_l3": "Puissance, phase 3",
+          "max_conductor_a": "Max Conductor Limit (L, ampères)",
+          "trim_enabled": "Trim automatique de convergence",
+          "law_gain_a": "Gain d'écho de la loi (valeur gardée)",
+          "law_excursion_a": "Excursion max de la loi (valeur gardée, A)",
+          "law_drag_a": "Traînée de la loi (valeur gardée, A)",
           "configure_entity_mapping": "Configurer le mappage avancé des entités"
         },
         "data_description": {
           "contract_preset": "Choisissez votre puissance souscrite pour remplir la limite automatiquement - ou « Autre » pour saisir les ampères vous-même ci-dessous.",
           "buffer_pct": "Avec 10 % de réserve, la voiture n'exploite que 90 % de votre abonnement : le reste absorbe les à-coups sans faire disjoncter.",
+          "max_conductor_a": "La Max Conductor Limit mise en service dans Tesla One, en ampères. Défaut 21 A en triphasé (validé sur le site pilote) ; 32 A en monophasé est théorique, jamais passé sur banc. C'est la référence du plafond de charge, du trim et du détecteur de défiance. Simple déclaration : l'intégration ne peut pas la modifier sur la borne.",
+          "trim_enabled": "Quand la charge se gare juste au-dessus du budget avec le signal publié immobile dans la bande morte de la borne, un bref coup de biais de 2 A (25 s au plus, puis relâche) réengage le pilote et la charge converge vers le budget exact. Nécessite la source de courant véhicule (mappage avancé ci-dessous) ; sans elle, le trim reste inerte. Le firmware 1.2.0 et suivants embarque son propre palier 2, plus lent (4 minutes de contrainte) : le trim de l'intégration agit simplement avant (3 minutes) et les deux n'entrent jamais en conflit.",
+          "law_gain_a": "Valeur gardienne optionnelle du number « gain d'écho » du boîtier. Ce number n'est volontairement pas restauré en flash : un flash du firmware le remet à sa valeur par défaut. Une fois renseignée ici, l'intégration repousse cette valeur au démarrage et à chaque redémarrage du boîtier. Laissez vide pour que l'intégration n'y touche jamais.",
+          "law_excursion_a": "Valeur gardienne optionnelle du number « excursion max » du boîtier (ampères), repoussée au démarrage et au redémarrage du boîtier. Laissez vide pour que l'intégration n'y touche jamais.",
+          "law_drag_a": "Valeur gardienne optionnelle d'un number de traînée (queue décroissante de la variante B, ampères). Surcharge spécifique au site uniquement, sans défaut générique : le firmware LoadPilot standard n'a pas de réglage de traînée, cette valeur n'est donc appliquée QUE si vous mappez l'entité du number de traînée dans le mappage avancé des entités. Laissez vide pour que l'intégration n'y touche jamais.",
           "configure_entity_mapping": "Uniquement pour les boîtiers borne dont les noms d'entités ne suivent pas le firmware LoadPilot standard (installations historiques). Laissez décoché sinon."
         }
       },
@@ -115,7 +125,15 @@
           "buffer_pct": "Réglage réserve de sécurité (number)",
           "control_enabled": "Régulation activée (switch)",
           "escalation_active": "Escalade active",
-          "fw_version": "Version du firmware"
+          "fw_version": "Version du firmware",
+          "law_gain": "Réglage gain d'écho de la loi (number)",
+          "law_excursion": "Réglage excursion max de la loi (number)",
+          "law_drag": "Réglage traînée de la loi (number)",
+          "vehicle_current_entity": "Source du courant véhicule (sensor)"
+        },
+        "data_description": {
+          "vehicle_current_entity": "Capteur exposant le courant de charge du véhicule en ampères (par exemple les vitals locaux de la borne, ou l'intégration officielle Tesla Wall Connector). Prérequis du plafond de charge, du trim automatique et du détecteur de défiance : laissez vide et ces trois capacités restent désactivées (leurs entités apparaissent indisponibles). Une source rafraîchie toutes les 10 s ou moins est recommandée pour le confort du plafond ; le poll officiel d'environ 30 s fonctionne en mode dégradé (garde de fraîcheur à 60 s).",
+          "law_drag": "Surcharge spécifique au site uniquement, sans défaut générique : le firmware standard n'a pas de number de traînée (firmware pilote variante B uniquement). Laissez vide sauf si votre boîtier en possède un."
         }
       }
     },
@@ -161,6 +179,16 @@
     }
   },
   "entity": {
+    "number": {
+      "charge_cap": {
+        "name": "Plafond de charge (0 = auto)"
+      }
+    },
+    "binary_sensor": {
+      "meter_distrust": {
+        "name": "Défiance compteur suspectée"
+      }
+    },
     "sensor": {
       "state": {
         "name": "État",
@@ -235,6 +263,39 @@
           "confirm": {
             "title": "Boîtier borne introuvable dans Home Assistant",
             "description": "Aucune entité du boîtier borne « {charger_node} » n'existe dans Home Assistant (boîtier hors ligne depuis avant le démarrage, renommé, ou retiré d'ESPHome). Le boîtier continue de réguler seul - la loi de commande vit dans son firmware - mais Home Assistant ne peut plus l'observer ni le régler. Rétablissez le boîtier sous ce nom exact (ou supprimez puis réinstallez l'intégration avec le bon nom), puis confirmez."
+          }
+        }
+      }
+    },
+    "meter_distrust": {
+      "title": "Défiance compteur suspectée (la borne ignore le compteur émulé)",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Défiance compteur suspectée",
+            "description": "Le signal publié est resté saturé (L + 0,85 ou plus) pendant 120 s alors que le véhicule tirait encore plus de 9 A : la borne a très probablement cessé de croire le compteur émulé. Ce que cela signifie : la régulation en session est inopérante (le biais et le budget n'agissent plus sur la session en cours), mais la porte d'admission des NOUVELLES sessions reste active. Important : ne concluez jamais au retour de la confiance sur un refus de départ de session - un refus, c'est la porte d'admission qui fait son travail, pas un signe de guérison. Cette alerte se lève d'elle-même dès que le signal publié redevient dynamique (sous L - 1 pendant 60 s) ou que la borne finit par obéir (véhicule sous 7 A pendant 60 s). Protocole de récupération : voir la section défiance du modèle de comportement (lien « En savoir plus »), puis confirmez."
+          }
+        }
+      }
+    },
+    "charge_cap_inoperative": {
+      "title": "Plafond de charge réglé mais inopérant (source de courant véhicule absente)",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Plafond de charge réglé mais inopérant",
+            "description": "Un plafond de charge supérieur à 0 a été restauré au démarrage, mais plus aucune source de courant véhicule n'est configurée : la boucle de plafond ne peut pas agir (elle a besoin du courant de charge du véhicule). Reconfigurez la source de courant véhicule (options, mappage avancé des entités) ou remettez le plafond à 0. L'alerte se lève d'elle-même dans les deux cas ; confirmez une fois fait."
+          }
+        }
+      }
+    },
+    "law_knob_target_missing": {
+      "title": "Réglage de loi configuré mais number cible introuvable",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Réglage de loi configuré mais number cible introuvable",
+            "description": "Les réglages de loi suivants sont configurés dans les options mais leur entité number cible est actuellement introuvable : {knobs}. Leur application est ignorée (tout le reste continue de fonctionner). Causes possibles : le boîtier est hors ligne ou a été flashé avec un package qui ne porte pas ce réglage, l'entité a été renommée, ou le réglage est une surcharge spécifique au site (traînée) qui n'a pas été mappée dans le mappage avancé des entités. Rétablissez ou mappez l'entité, ou effacez l'option ; cette alerte se lève d'elle-même dès que la cible apparaît. Confirmez une fois fait."
           }
         }
       }
