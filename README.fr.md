@@ -90,7 +90,6 @@ Le budget vaut `limite contrat × (1 - tampon %)` : avec le tampon par défaut
 | Olimex ESP32-POE | Nœud ESP32 côté compteur | Alimenté par Ethernet (PoE) à côté du compteur ; n'importe quel ESP32 avec un UART libre fait l'affaire. | [Page produit](https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware) |
 | Carte de réception Téléinfo (TIC), design Charles Hallard | Lit la sortie TIC du Linky (bornes I1/I2) | Récepteur série opto-isolé, compatible ESP32. Vendu assemblé. | [GitHub](https://github.com/hallard/WeMos-TIC) - [Tindie](https://www.tindie.com/products/25467/) - [Lectronz](https://lectronz.com/products/wemos-tic) |
 | Câblage RS485 | Du nœud borne au wall connector | Paire torsadée blindée 1,5 mm² recommandée par Tesla, 120 m maximum, drain à la terre côté tableau ; en pratique, les tronçons courts non terminés passent très bien (mesuré sur le pilote). | Note d'application Tesla, voir [docs/fr/INSTALL.md](docs/fr/INSTALL.md) |
-| (Optionnel) Compteur Tesla Neurio W2 | Instrument de référence uniquement | Utile pour écouter un trafic compteur authentique ou pour un test A/B face à l'émulation. Inutile pour LoadPilot lui-même : votre compteur le remplace. | [Exemple de revendeur européen](https://www.wallboxdiscounter.com/fr/tesla-neurio-energy-meter.html) |
 
 **Logiciel :**
 
