@@ -24,7 +24,7 @@
 - [ ] Lovelace overview dashboard (core cards only) - **in progress**
 - [ ] Settle the **PVi1 attribution agreement** and publish a real LICENSE
   (MIT intended) - **blocking for any public release**, see
-  [`../LICENSE.placeholder`](../LICENSE.placeholder)
+  [`../../LICENSE`](../../LICENSE)
 - [ ] First non-reference installation validates → exit criteria for 1.0
 
 ## Meter providers - France first, then the matrix
