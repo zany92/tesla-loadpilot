@@ -62,12 +62,24 @@ substitutions:
   # --- Co-variant law knobs (flash #2, docs/DESIGN_LOI_COVARIANTE.md) ------
   # Compression gain above L (runtime-adjustable via "Law Echo Gain";
   # restore_value false: the law must always boot at its validated default).
-  # 0.75 since 1.3.x: PVi1's original value, quantitatively vindicated on
-  # the pilot bench (engagement gap shrinks from ~1.7 A to ~1.1 A). The
-  # measured distrust floor is ~0.5: NEVER go below it (lesson 31).
-  law_gain_default: "0.75"
+  # 0.5 since 1.4.0. Both 0.5 and 0.75 are field-validated, but 0.75 was
+  # measured PUMPING the regulation (6 <-> 13 A swings) on a pilot whose
+  # house load was near-constant: the loop was chasing its own echo. 0.5
+  # holds the same equilibrium without pumping. The measured distrust floor
+  # is ~0.5: NEVER go below it (lesson 31), so this default sits exactly on
+  # the floor and must not be lowered further.
+  law_gain_default: "0.5"
   # Max excursion above L (A) - runtime-adjustable via "Law Max Excursion".
-  law_emax_default: "1.0"
+  # 0.9 since 1.4.0, capped on PVi1's measured TWC3 reaction curve (forum
+  # post 105, 24 Aug 2026, firmware 26.26.1): +0.9 A above L reduces gently
+  # over tens of seconds, +1.0 A is INCONSISTENT under dynamic conditions,
+  # and +1.1 A drives a FULL STOP in about 3 s. The published value carries
+  # the +/-0.05 dither on top, so emax 1.0 peaked at L+1.05, inside the
+  # inconsistent band and 0.05 A from the stop band. At 0.9 the peak is
+  # L+0.95, which still breaks the dead band (measured engagement ~L+0.85)
+  # while keeping 0.15 A of margin below the stop threshold. This ceiling
+  # deliberately equals escalation_kick_a.
+  law_emax_default: "0.9"
   # Minimum nudge above L (A): the smallest slow-down signal, and the floor
   # applied by the escalation net and by "Charge Stop". NOT a knob.
   law_nudge_min_a: "0.1"

@@ -2,7 +2,7 @@
 
 Golden-test reference model (mission C10). This file re-implements, line
 for line, the C++ lambda of the co-variant publication law so that the
-hard-won measured constants (gain 0.5, emax 1.0, nudge 0.1, dither 0.05,
+hard-won measured constants (gain 0.5, emax 0.9, nudge 0.1, dither 0.05,
 budget = contract x (1 - buffer%), escalation 120 s / 240 s, tail
 -0.15 A/s, firewall R1/R2, fail-safe main_breaker) are locked by tests
 against the real traced episodes in data/traces/.
@@ -44,12 +44,12 @@ class LawParams:
     contract_limit_a: float = 21.7
     # line 58: buffer_default_pct (the vehicle only exploits (1-b) of the margin)
     buffer_pct: float = 10.0
-    # line 65+: law_gain_default (compression gain above L). 0.75 since
+    # line 65+: law_gain_default (compression gain above L). 0.5 since
     # 1.3.x; the golden replays pin 0.5 explicitly because the traces
     # were recorded on the 0.5-era firmware.
-    gain: float = 0.75
+    gain: float = 0.5
     # line 67: law_emax_default (max excursion above L)
-    emax_a: float = 1.0
+    emax_a: float = 0.9
     # line 70: law_nudge_min_a (smallest slow-down signal, NOT a knob)
     nudge_min_a: float = 0.1
     # line 74: law_dither_a (permanent alternating dither, 1 Hz, NOT a knob)

@@ -123,8 +123,8 @@ Constants (defaults in `twc-core.yaml`, runtime-adjustable unless noted):
 
 | Knob / constant | Default | Validated range / notes |
 |---|---|---|
-| `law_gain_default` (echo gain above L) | 0.75 | 0.5 and 0.75 both field-validated; **absolute floor ~0.5** (below: dilution, distrust latches; measured with 0.25) |
-| `law_emax_default` (max excursion above L) | 1.0 A | 0.8-1.0; the dead band reaches ~L+0.9, lower caps waste integral without effect |
+| `law_gain_default` (echo gain above L) | 0.5 | 0.5 and 0.75 both field-validated, but 0.75 was measured **pumping** (6 <-> 13 A) on a near-constant house load; **absolute floor ~0.5** (below: dilution, distrust latches; measured with 0.25) |
+| `law_emax_default` (max excursion above L) | 0.9 A | Capped on the measured TWC3 reaction curve: **+0.9 A gentle, +1.0 A inconsistent, +1.1 A full stop in ~3 s**. With the +/-0.05 dither, emax 1.0 peaked at L+1.05 (inside the inconsistent band); 0.9 peaks at L+0.95, still above the ~L+0.85 dead-band engagement |
 | `law_nudge_min_a` (min signal above L) | 0.1 A | not a knob; also the escalation floor |
 | `law_dither_a` | 0.05 A | not a knob |
 | Variant B tail | 0 (inert) | decays 0.15 A/s; 2.0 A in production on the pilot; validated closed loop (11 min pinned at exact equilibrium, zero oscillation); deltas still pass gain 1 both ways |
